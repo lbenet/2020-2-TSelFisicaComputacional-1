@@ -11,7 +11,7 @@ el ejecutable depende de la plataforma que usen. Esto debería abrir una nueva
 ventana con el *prompt* `julia> `; esta ventana también se conoce como REPL
 ("Read-Eval-Print-Loop").
 
-    <img src="../images/julia_prompt.png" alt="alt text" width="700" height="200"/>
+    <img src="../imagenes/julia_prompt.png" alt="alt text" width="700" height="200"/>
 
     `Julia` puede ser usado desde la terminal (REPL), usando el Jupyter notebook
     (o JupyterLab), o usando [**JUNO-IDE**](https://junolab.org/); el último
