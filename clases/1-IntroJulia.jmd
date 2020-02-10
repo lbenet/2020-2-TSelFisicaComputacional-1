@@ -1,0 +1,662 @@
+
+# Introducción a Julia
+
+El texto canónico de referencia para cualquier cosa (duda o discusión) relacionada con Julia es la propia [documentación oficial de Julia](https://docs.julialang.org/en/v1/).
+
+## Asignación de variables
+
+```julia
+r = 1.6
+```
+
+```julia
+circunf = 2pi * r
+```
+
+```julia
+π   # `\pi<TAB>`
+```
+
+```julia
+vol_circ = (4/3) * π * r^3
+```
+
+```julia
+vol_circ / circunf
+```
+
+```julia
+esta_clase = "Temas Selectos Física Computacional 1"
+```
+
+```julia
+r
+```
+
+```julia
+r = 1.0
+```
+
+```julia
+circunf
+```
+
+```julia
+(1im)^2
+```
+
+```julia
+1//2 + 1//3
+```
+
+```julia
+1 * pi
+```
+
+```julia
+big(1) * pi
+```
+
+```julia
+un_vector = [1,2,3,4]
+```
+
+```julia
+una_tupla = (1, 2, 3, 4)
+```
+
+La diferencia entre una tupla y un vector, es que la tupla es *inmutable*, mientras que el vector es mutable, es decir, sus elemntos pueden ser cambiados de manera individual.
+
+## Tipos/estructuras
+
+En Julia, **todos** los objetos tienen asignado un tipo (*type*) o estructura. Esto permite, por un lado, entender el amacenamiento en memoria, y por otro lado, especificar el comportamiento bajo operaciones/funciones.
+
+```julia
+typeof(r)
+```
+
+```julia
+typeof(pi)
+```
+
+```julia
+typeof(esta_clase)
+```
+
+```julia
+typeof(3)
+```
+
+```julia
+typeof(3.0)
+```
+
+```julia
+typeof(1+1.0im)
+```
+
+```julia
+typeof(1//2)
+```
+
+Uno puede explorar la estructura del *árbol* de tipos en Julia usando `supertype` y `subtype`.
+
+```julia
+supertype(Float64)
+```
+
+```julia
+Float64 <: AbstractFloat
+```
+
+```julia
+supertype(AbstractFloat)
+```
+
+```julia
+subtypes(ans)   # `ans` corresponde al último resultado obtenido
+```
+
+```julia
+3.0 isa Float64
+```
+
+Los tipos pueden ser "concretos" o "abstractos". La diferencia tiene que ver con la manera en que la estructura de datos es almacenada en memoria, y esto es importante para el desempeño (*performance*).
+
+```julia
+isconcretetype(Float64)
+```
+
+```julia
+isconcretetype(AbstractFloat)
+```
+
+```julia
+isabstracttype(AbstractFloat)
+```
+
+En el árbol de los tipos, todos los tipos son subtipos de `Any`.
+
+```julia
+Float64 <: Any
+```
+
+```julia
+Any <: Any
+```
+
+Un tipo especial es `Nothing` y justamente indica la ausencia del tipo.
+
+```julia
+Nothing <: Nothing
+```
+
+```julia
+supertype(Nothing)
+```
+
+### Ejercicios 1
+
+1. ¿Qué tipo tiene el vector `[1, 2, 3, 4.5]`?
+
+- ¿Qué tipo tiene el vector `[1//5, 2//5, 3//5]`?
+
+- ¿Qué tipo tiene el vector `[1+2.5im, "clase"]`?
+
+- ¿Qué tipo tiene la tupla `(1, 2, 3, 4.5)`?
+
+- ¿Qué tipo tiene el tupla `(1//5, 2//5, 3//5)`?
+
+- ¿Qué tipo tiene el tupla `(1+2.5im, "clase")`?
+
+- ¿Qué representa `Int64` en el tipo de `1//8`?
+
+- Construyan un ejemplo de una variable cuyo tipo sea `Complex{BigFloat}`
+
+```julia
+```
+
+## Funciones
+
+Las funciones son **fundamentales** para Julia, ya que permiten la abstracción del código (*code abstraction*) y su reutilización.
+
+Para tener buen desempeño en Julia, se **deben** escribir funciones.
+
+Es convencional escribir los nombres de las funciones en minúsculas.
+
+Una función puede tener un comportamiento *distinto* para tipos distintos de sus argumentos. Esto es la base de lo que se llama "despachamiento múltiple" (*multiple dispatch*), y es fundamental en la manera en que Julia funciona.
+
+```julia
+6 * 7
+```
+
+```julia
+"6" * "7"
+```
+
+Las funciones pueden ser declaradas de varias maneras.
+
+- Sintaxis corta: funciones sencillas que es posible escribir en una línea.
+
+```julia
+area_circ(r) = pi * r^2
+```
+
+```julia
+area_circ(r)
+```
+
+- Sintaxis larga: funciones más complejas. Requiere de la combinación/sintaxis `function ... end`. En principio, no es necesario ningún tipo de formato específico (e.g., sangría), aunque imponer un formato puede ser útil para la claridad y lectura del código.
+
+    No es necesario el uso de `return`; la última instrucción ejectutada será el resultado de la función.
+
+```julia
+"""
+    area_circ(r)
+
+Calcula el área de un círculo de radio `r`.
+"""
+function area_circ(r)
+    a = pi * r^2
+    return a
+end
+```
+
+NOTA: la variable `a` es una variable interna a la función; el argumento `r` se comporta como una variable interna.
+
+```julia
+area_circ(1.0)
+```
+
+```julia
+a
+```
+
+```julia
+area_circ(big(1.0))
+```
+
+```julia
+typeof(ans)
+```
+
+La documentación de la función ("docstrings") se puede especificar, lo que es altamente recomendable. El uso de las comillas triples (`"""`) es porque la cadena ocupa más de una línea. Lo importante es que la documentación va inmediatamente antes de la función que se documenta.
+
+Para acceder a la documentación se usa `?` y el comando o nombre de la función.
+
+```julia
+?area_circ
+```
+
+### Funciones anónimas
+
+Hay una tercer manera de definir funciones, en las que uno no requiere dar un nombre a la función: las funciones anónimas. Esta forma es muy útil, por ejemplo, en los casos en que la función debe ser pasada como un argumento a otra función. Esencialmente, las funciones anónimas corresponden a la notación matemática $x \to f(x)$.
+
+```julia
+x -> x^2 + 2x - 1
+```
+
+```julia
+map(x -> x^2 + 2x - 1, [1,2,3])
+```
+
+```julia
+function (x)
+    x^2 + 2x - 1
+end
+```
+
+```julia
+ans(complex(0, 1))
+```
+
+### Multiple dispatch
+
+Uno puede definir varios *métodos* de la misma función, que pueden variar según el número de argumentos, su posición, y en particular, por el *tipo* de los argumentos. Julia escogerá el método *más específico* según el tipo de argumentos.
+
+Uno utiliza `::` para especificar/restringir uno o varios argumentos de una función.
+
+```julia
+f(a, b::Any)              = "fallback"   # default
+f(a::Number, b::Number)   = "a and b are both `Number`s"
+f(a::Number, b)           = "a is a `Number`"
+f(a, b::Number)           = "b is a `Number`"
+f(a::Integer, b::Integer) = "a and b are both `Integer`s"
+```
+
+```julia
+methods(f)  # Describe los distintos métodos de una función
+```
+
+```julia
+f(1.5, 2)
+```
+
+```julia
+f("2", 1.5)
+```
+
+```julia
+f(1.0, "2")
+```
+
+```julia
+f(1, 2)
+```
+
+```julia
+f("Hello", "World!")
+```
+
+```julia
+@which f("2", 1.5)
+```
+
+A veces, Julia no encuentra el método más concreto respecto al tipo de los argumentos. En ese caso, hay un `MethodError` dado que los métodos son ambiguos.
+
+```julia
+f(x::Int, y::Any) = println("int")
+f(x::Any, y::String) = println("string")
+f(3, "test")
+```
+
+### Sobrecarga de funciones
+
+Es posible (y recomendable) modificar funciones ya definidas para extender su funcionalidad.
+
+```julia
+"Hello" + "World!"
+```
+
+```julia
+methods(+)
+```
+
+Para sobrecargar una función, primero hay que *importarla* para poderla modificar o extender.
+
+```julia
+import Base: + # Primero se "importa" la función desde el módule `Base`
++(x::String, y::String) = x * " " * y # Aquí extendemos el método
+```
+
+```julia
+length(methods(+))
+```
+
+```julia
+"Hello" + "World!"
+```
+
+Lo interesante es que funciones que internamente usan `+` pueden ser ahora usadas con `String`s.
+
+```julia
+sum( ["Esta", "función", "ahora", "puede", "usar", "cadenas", "aunque", "nunca", 
+    "sobrecargamos", "la", "función", "`sum`!"] )
+```
+
+### Funciones con argumentos opcionales
+
+Es posible definir funciones en las que uno especifica ciertos argumentos que son opcionales, es decir, que tienen un valor predeterminado que no es necesario especificar cada vez que se llama a la función. La regla es que los argumentos opcionales debben estar al final de la lista de los argumentos.
+
+```julia
+"""
+    energ_cin(vel, m=1)
+
+Calcula la energía cinética de un objeto que se mueve a velocidad `vel`
+y tiene masa `m`.
+"""
+energ_cin(vel, m=1) = 0.5 * m *vel^2
+```
+
+```julia
+methods(energ_cin)
+```
+
+```julia
+energ_cin(1.0)
+```
+
+```julia
+energ_cin(1.0, 2)
+```
+
+### Argumentos especificados por `keyword`
+
+En ciertas circunstancias, es conveniente especificar uno o varios argumentos de una función a través del nombre del argumento (*keyword*). Esto es conveniente cuando las funciones pueden tener muchos argumentos y es difícil recordar el orden preciso, y si sólo se requiere especificar uno. 
+
+La ventaja de este tipo de funciones, es que el orden estricto de los argumentos puede cambiar.
+
+Funciones con este tipo de argumentos especificados por nombre (*keyword* arguments) se definen después de un punto-y-coma (`;`). Si la etiqueta no incluye un valor determinado, entonces siempre hay que especificar el valor.
+
+```julia
+"""
+    area_triang(; b, h=1)
+
+Calcula el área de un triángulo de base `b` y altura `h`.
+"""
+area_triang(; b, h=1.0) =  b * h / 2
+```
+
+```julia
+methods(area_triang)
+```
+
+```julia
+area_triang(b=2)
+```
+
+```julia
+area_triang( b = 2, h = 2.0)
+```
+
+```julia
+area_triang(h = 2.0)  # error, dado que TENEMOS que especificar el valor de `b`
+```
+
+### Funciones de argumentos variables
+
+En ciertas circunstancias, uno quiere que una función pueda ser usada para cierto número de argumentos *o más*. Por ejemplo, pensemos en la energía cinética total de varias partículas, todas de masa `m=1`. Queremos que esta función sea aplicale tanto al caso de una o más partículas. En ese caso requerimos de una función cuyo número de argumentos puede ser variable (*varargs* function).
+
+```julia
+"""
+    energ_cin_total(a, b...)
+
+Calcula la energía cinética total de varios objetos que se mueven a velocidad `vel`
+y tienen masa `m=1`.
+"""
+energ_cin_total(a, b...) = energ_cin(a) + energ_cin_total(b...)
+energ_cin_total(a) = energ_cin(a)
+```
+
+```julia
+energ_cin_total(1.0)
+```
+
+```julia
+energ_cin_total(1.0, 1.0)
+```
+
+```julia
+energ_cin_total(1.0, 1.0, 1.0)
+```
+
+```julia
+energ_cin_total(1.0, 1.0, 1.0, 1.0)
+```
+
+```julia
+vels = randn(4) # genera 4 elementos al azar, almacenados en un vector
+println(vels)
+energ_cin_total( vels... ) # Los tres puntitos `...` son necesario para "aplanar" el vector en sus varias componentes
+```
+
+```julia
+energ_cin_total( vels ) # error, ya que no sae cómo calcular la energía cinética total de un vector
+```
+
+### Ejercicios 2
+
+1. Escriban una función que proporcione el área y el volumen de un círculo de manera simultánea, es decir, que la función regrese esos dos valores.
+
+- Llamando a la función que hicieron en el ejercicio anterior `mifunc`, ¿qué obtienen (tipo de resultado) al hacer la asignación `res = mifunc(1.0)`?
+
+- ¿Qué asignación pueden hacer para separar los resultados de `mifunc`?
+
+- ¿Cuál es el tipo de `mifunc`? Hint: ¿Cuál es el tipo de `(mifunct, typeof(mifunc))`?
+
+- Analicen qué representa el resultado obtenido al ejecutar la siguiente función: 
+    ```julia
+    map(first ∘ reverse ∘ uppercase, split("you can compose functions like this"))
+    ```
+    
+- ¿Qué tipo de resultado se obtiene al ejecutar la función
+    ```julia
+    println("Nada")
+    ```
+
+```julia
+```
+
+## Control del flujo
+
+### Condicionales
+
+Los condicionales en cualquier lenguaje de programación permiten decidir si ciertas partes del código se evalúan o no.
+En Julia, los condicionales tienen la estructura `if-else-end`, y cada condición debe regresar una variable booleana (`true` o `false`).
+
+```julia
+function compara_x_y(x::Real, y::Real)
+    if x < y
+        println("x es menor que y")
+    elseif x > y
+        println("x es mayor que y")
+    else
+        println("x es igual a y")
+    end
+end
+```
+
+```julia
+compara_x_y(1.0, 2.3)
+```
+
+En ocasiones, uno requiere regresar un valor dependiendo de una condición, y si ésta no se cumple, entonces se regresa otro valor. Esto se puede hacer con la construcción anterior haciendo las asignaciones pertinentes, o también, de una manera más corta, a través del "operador ternario".
+
+```julia
+positivo_o_negativo(x::Real) = x < zero(x) ? "negativo" : "positivo"
+```
+
+```julia
+positivo_o_negativo(-1.2)
+```
+
+Hay otra forma de condicional, que es la llamada evaluación de "corto circuito". En ciertos casos, uno requiere evaluar expresiones que involucran dos variables booleanas, en particular si *ambas* son verdaderas (*and*) o si una lo es (*or*). A menudo, dichas evaluaciones se pueden decidir a partir de la primer evaluación; de ahí que se llamen de *corto circuito*. Concretamente,
+
+- `bool_a && bool_b` significa que `b` se evaluará si `a == true`, ya que si `a == false` el resultado es `false`;
+- `bool_a || bool_b` significa que `b` se evaluará si `a == false`, ya que si `a == true` el resultado es `true`.
+
+```julia
+verdadero(x) = (println(x); true)
+falso(x) = (println(x); false)
+```
+
+```julia
+verdadero(1) && verdadero(2)
+```
+
+```julia
+verdadero(1) && falso(2)
+```
+
+```julia
+falso(1) && verdadero(2)
+```
+
+```julia
+falso(1) && falso(2)
+```
+
+```julia
+verdadero(1) || verdadero(2)
+```
+
+```julia
+verdadero(1) || falso(2)
+```
+
+```julia
+falso(1) || verdadero(2)
+```
+
+```julia
+falso(1) || falso(2)
+```
+
+```julia
+falso(1) & verdadero(2)
+```
+
+Las comparaciones con evaluaciones de corto circuito se comportan de manera distinta que usar `&` y `|` (comparaciones "bitwise").
+
+```julia
+falso(1) & falso(2)
+```
+
+```julia
+verdadero(1) | verdadero(2)
+```
+
+## Ciclos: evaluaciones repetidas
+
+Hay dos tipos de evaluaciones en ciclos: el ciclo `while` y el ciclo `for`. Si bien éstas son en algún sentido equivalentes, a veces usar una o la otra puede ser más conveniente. Ambas requieren `end` para marcar donde acaba el código que se repite.
+
+```julia
+glob_i = 1
+while glob_i <= 5
+    println(glob_i)
+    global glob_i += 1
+end
+```
+
+```julia
+for loc_i=1:5
+    println(loc_i)
+end
+```
+
+```julia
+typeof(1:5)
+```
+
+Vale la pena notar que en el ciclo `for` si la variable `loc_i` no existe antes, entonces ésta sólo existirá dentro del ciclo `for`, y no después o fuera del ciclo.
+
+```julia
+glob_i
+```
+
+```julia
+loc_i
+```
+
+En general, la construcción del ciclo `for` permite *iterar* sobre estructuras iterables.
+
+```julia
+for i in [1,2,3]
+    println(i)
+end
+```
+
+```julia
+animales = ["perro", "gato", "conejo"]
+for i ∈ animales
+    println(i)
+end
+```
+
+En ocasiones, es útil interrumpir las iteraciones subsecuentes en un ciclo, lo que se logra con `break`. Otras, es posible omitir la ejecución del resto del código, sin interrumpir el ciclo; esto se consigue con `continue`.
+
+```julia
+for j = 1:1000
+    println(j)
+    j >= 5 && break
+end
+```
+
+```julia
+for i = 1:10
+    i % 3 != 0 && continue   ## i % 3 es equivalente a mod(i, 3)
+    println(i)
+end
+```
+
+Uno puede encadenar ejecuciones de varios ciclos `for`, en una línea, formando el producto cartesiano de los iterados.
+
+```julia
+for i = 1:2, j = 3:5
+    println((i, j))
+end
+```
+
+### Ejercicios 3
+
+1. Construyan una función qué, a partir de un tipo de estructura (e.g., `Int64`), muestre el *árbol* de estructuras que están por arriba de él, es decir, sus `supertype`s, hasta llegar a `Any`. Muestren su función con varios ejemplos.
+
+- Usando la siguiente función (tomada de [aquí](https://github.com/lbenet/JuliaWorkshop19/blob/master/1_One/1_types_and_dispatch.ipynb))
+    ```julia
+    function show_subtypetree(T, level=1, indent=4)
+        level == 1 && println(T)
+        for s in subtypes(T)
+            println(join(fill(" ", level * indent)) * string(s))
+            show_subtypetree(s, level+1, indent)
+        end
+    end
+    ```
+    ¿qué pueden decir de los tipos que son concretos en cuanto a su posición en el árbol de tipos?
+
+- Escriban una función que aproxime la raíz cuadrada de $a$ usando el método iterativo Babilonio:
+    - Empiecen con un número arbitrario positivo $x$.
+    - Reemplacen $x$ por $(x + a/x)/2$.
+    - Repitan el paso anterior usando el nuevo valor de $x$.
+
+```julia
+```
