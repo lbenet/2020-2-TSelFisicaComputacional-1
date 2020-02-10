@@ -1,4 +1,4 @@
-# Instalació\n de `Julia`
+# Instalación de `Julia`
 
 1. Descargar la versión Julia v1.3.1 (2019-12-30) para la plataforma en la que
 trabajen, de [aquí](https://julialang.org/downloads/) e instalarlo. Sean
