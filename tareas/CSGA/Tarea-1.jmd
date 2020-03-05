@@ -3,7 +3,6 @@
 
 > La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
 
-
 Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
 
 Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
@@ -24,11 +23,48 @@ Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\ov
 - A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
 Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
 
-- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
-(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+Para poder definir la división de duales mediante la multiplicación por el inverso, necesitamos saber la expresión por componentes del número dual identidad.
+Usando esta, podemos determinar las componentes de $\overleftrightarrow{x}^{-1}$ a partir de las componentes de $\overleftrightarrow{x}$ a través de una ecuación algebraica.
+Como *ansatz* podemos probar: $\overleftrightarrow{1} = 1 + \epsilon \, 0$.
+Tomando $\overleftrightarrow{x} = x + \epsilon x'$, tenemos que:
 
-```julia
-```
+\begin{align*}
+\overleftrightarrow{x}\cdot\overleftrightarrow{1} &= 1(x) + \epsilon (x(0) + 1(x')) \\
+    &= x + \epsilon x'\\
+    &= x(1) + \epsilon (1(x') + x(0))\\
+    &= \overleftrightarrow{1}\cdot\overleftrightarrow{x}.
+\end{align*}
+
+Por lo que en efecto, $\overleftrightarrow{1} = 1 + \epsilon \, 0$ es la identidad.
+
+Ahora, consideremos $\overleftrightarrow{x} = x + \epsilon x'$. El inverso de $\overleftrightarrow{x}$, $\overleftrightarrow{x}^{-1} = \overleftrightarrow{y} = y + \epsilon y'$, debe satisfacer: $\overleftrightarrow{x}\cdot \overleftrightarrow{y} = (xy) + \epsilon(xy' + yx') = 1 + \epsilon(0) = \overleftrightarrow{1}$, de dónde:
+
+\begin{align*}
+xy &= 1 \\
+xy' + yx' &= 0.
+\end{align*}
+
+Resolviendo el sistema de ecuaciones se tiene:
+
+\begin{align*}
+y &= \frac{1}{x} \\
+y' &= -\frac{y x'}{x} = -\frac{x'}{x^2}.
+\end{align*}
+
+Por lo que: $\overleftrightarrow{x}^{-1} = \frac{1}{x} + \epsilon \left(-\frac{x'}{x^2}\right)$. De esto, se puede calcular la expresión para $\overleftrightarrow{z} = \frac{\overleftrightarrow{x}}{\overleftrightarrow{y}} = \overleftrightarrow{x}\cdot\overleftrightarrow{y}^{-1} = (x + \epsilon x')\cdot\left(\frac{1}{y} + \epsilon \left( -\frac{y'}{y^2}\right)\right) = \frac{x}{y} + \epsilon\left(\frac{x'}{y} - \frac{xy'}{y^2}\right)$. Es decir:
+
+\begin{align*}
+z &= \frac{x}{y} \\
+z' &= \frac{x'}{y} - \frac{xy'}{y^2}.
+\end{align*}
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero les sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+Observemos que la parte principal de $\overleftrightarrow{z}$, $z = \frac{x}{y}$, corresponde al valor "esperado" de dividir $\overleftrightarrow{x}$ por $\overleftrightarrow{y}$ si estos fueran números reales.
+Darle un significado a la parte derivada quizá sea más sencillo si reescribimos $z'$ como $z' = \frac{x'y - xy'}{y^2}$. Si a un número dual lo interpretamos como "un valor y su derivada (local)" como partes principal y derivada, respectivamente, la parte derivada de $\overleftrightarrow{z}$ correspondería al valor de la derivada del cociente evaluada en el valor principal.
+Podemos ser más precisos respecto a lo anterior considerando a los números duales como el codominio de functores que toma una función diferenciable $f$ y un punto en el dominio de $f$, $x$, y a esta pareja ordenada le asigna el par ordenado $(f(x), f'(x))$. (Es decir, $(f, x) \mapsto (f(x), f'(x))$.)
+En este caso, si $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$ se entienden como las parejas ordenadas correspondientes a evaluar algún par de funciones diferenciables $f$ y $g$ en el valor $x$, entonces el valor derivado de $\overleftrightarrow{z}$ corresponde a evaluar la derivada de $\frac{f}{g}$ en dicho punto.
 
 ## Ejercicio 2
 
