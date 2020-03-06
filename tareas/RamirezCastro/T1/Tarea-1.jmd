@@ -27,8 +27,32 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-```julia
-```
+- Si requerimos encontrar el vector unidad, que lo llamaremos $\overleftrightarrow{u}$, tal que:
+$$
+\overleftrightarrow{x}\cdot\overleftrightarrow{u} = \overleftrightarrow{x}\\
+\Rightarrow \overleftrightarrow{x}\cdot\overleftrightarrow{u} = (x\cdot u) + \varepsilon(xu'+ux') = x +x' 
+$$
+de donde se deduce que:
+$$
+u=1,u'=0
+$$
+Tenemos que si $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$, se deduce que:
+$$
+\overleftrightarrow{y}\cdot \overleftrightarrow{z}= 1\\
+(y\cdot z)+\varepsilon(y'z+yz')=1
+$$
+por lo que:
+$$
+z=\frac{1}{y}\Rightarrow \frac{y'}{y}+yz'=0 \Rightarrow z'=-\frac{y'}{y^2}\\
+\therefore {\overleftrightarrow{y}}^{-1}=\dfrac{1}{y} + \varepsilon\left(-\frac{y'}{y^2}\right)
+$$
+Usando este resultado calculamos:
+$$
+\frac{\overleftrightarrow{x}}{ \overleftrightarrow{y}}=\frac{x}{y}+\varepsilon\left(\frac{x'}{y}-\frac{y'x}{y^2}\right)=\frac{x}{y}+\varepsilon\left(\frac{x'y-y'x}{y^2}\right)\\
+\therefore \frac{\overleftrightarrow{x}}{ \overleftrightarrow{y}}=\frac{x}{y}+\varepsilon\left(\frac{x'y-y'x}{y^2}\right)
+$$
+
+- Observamos que las expresiones anteriores nos permiten interpretar a la componente z' como la derivada de z.
 
 ## Ejercicio 2
 
