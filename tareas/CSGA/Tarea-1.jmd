@@ -345,7 +345,67 @@ En resumen, le hemos dicho a ``Julia`` que queremos una estructura determinada (
 
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
+Podemos realizar algunas baterías de [pruebas](https://docs.julialang.org/en/v1/stdlib/Test/#Working-with-Test-Sets-1) para verificar que las funciones definidas se comporten de forma adecuada:
+
+- Para los constructores:
+
 ```julia
+using Test
+
+@testset "Constructores" begin
+    #Constructor por default:
+    @test Dual(1) == Dual(1, 0)
+    @test Dual(-1.05) == Dual(-1.05, 0.0)
+    #Constructor por default con tipo específico:
+    @test Dual{Float64}(1) == Dual(1.0, 0.0)
+    @test Dual{Int64}(1.0) == Dual(1, 0)
+    #Transformación de subtipo:
+    @test Dual{Float64}(Dual(1, 2)) == Dual(1.0, 2.0)
+    @test Dual{Int64}(Dual(1.0, -2.0)) == Dual(1, -2)
+    #Constructor con campos de tipo distinto:
+    @test Dual(1, 1.0) == Dual(1.0, 1.0)
+    @test Dual(2//1, 1) == Dual(2//1, 1//1)
+end
+```
+
+- Para la promoción y conversión de tipos:
+
+```julia
+@testset "Promoción y conversión de tipos" begin
+    #Promoción de tipos abstracta:
+    @test promote_type(UInt8, Dual{Float64}) == Dual{Float64}
+    @test promote_type(Float64, Dual{Int32}) == Dual{Float64}
+    #Promoción de tipos concreta:
+    @test promote(Dual(1.0, 2.0), 2) == (Dual(1.0, 2.0), Dual(2, 0))
+    @test promote(Dual(1, 2), 2//1) == (Dual(1//1, 2//1), Dual(2//1, 0//1))
+    #Conversión de tipos:
+    @test convert(Dual, 1) == Dual(1, 0)
+    @test convert(Dual{Float64}, 1) == Dual(1.0, 0.0)
+    @test convert(Dual{Float64}, Dual(1//1, 1//2)) == Dual(1.0, 0.5)
+end
+```
+
+Para las operaciones exptendidas explícitamente:
+
+```julia
+@testset "Operaciones básicas con duales" begin
+    #Suma
+    @test Dual(1, 2) + Dual(2//1, 3//2) == Dual(3//1, 7//2)
+    @test 2 + Dual(1.0, 2.0) == Dual(3.0, 2.0)
+    @test Dual(1.0, 2.0) + 2 == Dual(3.0, 2.0)
+    #Resta
+    @test Dual(1, 2) - Dual(2//1, 3//2) == Dual(-1//1, 1//2)
+    @test 2 - Dual(1.0, 2.0) == Dual(1.0, -2.0)
+    @test Dual(1.0, 2.0) - 2 == Dual(-1.0, 2.0)
+    #Producto
+    @test Dual(1, 2) * Dual(2//1, 3//2) == Dual(2//1, 11//2)
+    @test 2 * Dual(1.0, 2.0) == Dual(2.0, 4.0)
+    @test Dual(1.0, 2.0) * 2 == Dual(2.0, 4.0)
+    #División
+    @test Dual(1, 2) / Dual(2//1, 3//2) == Dual(1//2, 5//8)
+    @test 2 / Dual(1.0, 2.0) == Dual(2.0, -4.0)
+    @test Dual(1.0, 2.0) / 2 == Dual(0.5, 1.0)
+end
 ```
 
 ## Ejercicio 3
