@@ -1,3 +1,9 @@
+---
+title: "Tarea 1"
+author: Gabriel A. Carranco-Sapiéns
+date: 20 de marzo de 2020.
+output: pdf_document
+---
 
 # Tarea 1: Números duales
 
@@ -10,10 +16,12 @@ Con esta definición, podemos extender las operaciones aritméticas al igual que
 
 En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
 
+$$
 \begin{eqnarray}
 (x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
 (x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
 \end{eqnarray}
+$$
 
 Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
 
@@ -28,35 +36,43 @@ Usando esta, podemos determinar las componentes de $\overleftrightarrow{x}^{-1}$
 Como *ansatz* podemos probar: $\overleftrightarrow{1} = 1 + \epsilon \, 0$.
 Tomando $\overleftrightarrow{x} = x + \epsilon x'$, tenemos que:
 
+$$
 \begin{align*}
 \overleftrightarrow{x}\cdot\overleftrightarrow{1} &= 1(x) + \epsilon (x(0) + 1(x')) \\
     &= x + \epsilon x'\\
     &= x(1) + \epsilon (1(x') + x(0))\\
     &= \overleftrightarrow{1}\cdot\overleftrightarrow{x}.
 \end{align*}
+$$
 
 Por lo que en efecto, $\overleftrightarrow{1} = 1 + \epsilon \, 0$ es la identidad.
 
 Ahora, consideremos $\overleftrightarrow{x} = x + \epsilon x'$. El inverso de $\overleftrightarrow{x}$, $\overleftrightarrow{x}^{-1} = \overleftrightarrow{y} = y + \epsilon y'$, debe satisfacer: $\overleftrightarrow{x}\cdot \overleftrightarrow{y} = (xy) + \epsilon(xy' + yx') = 1 + \epsilon(0) = \overleftrightarrow{1}$, de dónde:
 
+$$
 \begin{align*}
 xy &= 1 \\
 xy' + yx' &= 0.
 \end{align*}
+$$
 
 Resolviendo el sistema de ecuaciones se tiene:
 
+$$
 \begin{align*}
 y &= \frac{1}{x} \\
 y' &= -\frac{y x'}{x} = -\frac{x'}{x^2}.
 \end{align*}
+$$
 
 Por lo que: $\overleftrightarrow{x}^{-1} = \frac{1}{x} + \epsilon \left(-\frac{x'}{x^2}\right)$. De esto, se puede calcular la expresión para $\overleftrightarrow{z} = \frac{\overleftrightarrow{x}}{\overleftrightarrow{y}} = \overleftrightarrow{x}\cdot\overleftrightarrow{y}^{-1} = (x + \epsilon x')\cdot\left(\frac{1}{y} + \epsilon \left( -\frac{y'}{y^2}\right)\right) = \frac{x}{y} + \epsilon\left(\frac{x'}{y} - \frac{xy'}{y^2}\right)$. Es decir:
 
+$$
 \begin{align*}
 z &= \frac{x}{y} \\
 z' &= \frac{x'}{y} - \frac{xy'}{y^2}.
 \end{align*}
+$$
 
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero les sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
@@ -154,10 +170,10 @@ import Base: +, -, *, /
 
 #Para mayor claridad definimos el cociente de forma más explícita:
 function /(a::Dual, b::Dual)
-    
+
     c_p = a.p / b.p
     c_d = a.d / b.p - (b.d / b.p)*c_p
-    
+
     return Dual(c_p, c_d)
 end
 ```
@@ -232,7 +248,6 @@ Es decir, no es necesario definir algo como:
 
 ```julia
 Base.convert(::Type{Dual}, x::T) where {T <: Real} = Dual{T}(x)
-
 Base.convert(::Type{Dual{T}}, x::Dual{S}) where {T <: Real, S <: Real} = Dual{T}(x)
 ```
 
@@ -442,11 +457,13 @@ Dual(2)^-1
 
 Dado que con la construccion formal de los duales nos permitió entender a un dual como el resultado de evaluar una función diferenciable, $f$ y su derivada, $f'$, en un punto específico, $x_0$, podemos entender a llamar a una función, $g$, en un dual, $\overleftrightarrow{x_0}$, como el resultado de evaluar la función compuesta $g\circ f$ con su derivada $(g\circ f)'$ en el punto $x_0$. Es decir, si $\overleftrightarrow{x_0} = (f, x_0) \mapsto (f(x_0), f'(x_0))$, podemos definir de forma natural: $g(\overleftrightarrow{x_0}) = (g\circ f, x_0) \mapsto ((g \circ f)(x_0), \left(g\circ f)'(x_0)\right)$. A partir de la regla de la cadena y de propiedades de la composición de funciones, se tiene:
 
+$$
 \begin{align*}
 g(\overleftrightarrow{x_0}) &= (g\circ f, x_0) \mapsto \left((g \circ f)(x_0), (g\circ f)'(x_0)\right)\\
     &= (g, f(x_0)) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)\\
     &= (g\circ f, x_0) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)
 \end{align*}
+$$
 
 Por lo que la parte principal del dual $g(\overleftrightarrow{x_0})$ es $g(f(x_0))$ y su parte derivada, $g'(f(x_0))f'(x_0)$. Esto además concuerda con las operaciones elementales definidas anteriormente con duales considerando a las operaciones binarias como funciones unarias con un parámetro fijo. (Por ejemplo, $\overleftrightarrow{x} + \overleftrightarrow{y}$ es la función que mapea $\overleftrightarrow{y}$ a $\overleftrightarrow{x} + \overleftrightarrow{y}$, en la que estrictamente estamos fijando $\overleftrightarrow{x}$)
 
@@ -469,21 +486,21 @@ Extender los métodos de ``^`` a ``Dual``, en teoría, nos debería poder permit
 ```julia
 import Base.^
 function ^(a::Dual, x::T) where {T <: Real}
-    
+
     if x == zero(x)
-        
+
         return one(a)
-        
+
     elseif x == one(x)
-        
+
         return a
-        
+
     elseif x > 0
-        
+
         return Dual(a.p^x, x*(a.p^(x-1))*a.d)
-        
+
     elseif x < 0
-        
+
         return ^(inv(a), -x)
     end
 end
@@ -508,43 +525,43 @@ Dual(2)^(1//2)
 ```julia
 #Incluimos un pequeño análisis de tipo en el caso de una potencia entera para tener el comportamiento esperado (si elevamos un Dual{Int64} a una potencia entera, es razonable esperar un Dual{Int64} y no un flotante a menos que sea necesario.)
 function ^(a::Dual{T}, x::S) where {T <: Real, S <: Integer}
-    
+
     end_type = promote_type(T, S)
-    
+
     if x == zero(x)
-        
+
         return Dual{end_type}(one(a))
-        
+
     elseif x == one(x)
-        
+
         return Dual{end_type}(a)
-        
+
     elseif x > 0
-        
+
         return Dual{end_type}(a.p^x, x*(a.p^(x-1))*a.d)
-        
+
     elseif x < 0
-        
+
         return ^(inv(a), -x)
     end
 end
 
 function ^(a::Dual, x::T) where {T <: Rational}
-    
+
     if x == zero(x)
-        
+
         return one(a)
-        
+
     elseif x == one(x)
-        
+
         return a
-        
+
     elseif x > 0
-        
+
         return Dual(a.p^x, x*(a.p^(x-1))*a.d)
-        
+
     elseif x < 0
-        
+
         return ^(inv(a), -x)
     end
 end
@@ -564,19 +581,19 @@ Para el resto de las funciones, que usualmente tienen métodos más robustos pro
 
 ```julia
 function Base.sqrt(a::Dual)
-    
+
     s = sqrt(a.p)
-    
+
     return Dual(s, a.d/(2*s))
 end
 
 function Base.exp(a::Dual)
-    
+
     e = exp(a.p)
-    
+
     return Dual(e, a.d*e)
 end
-    
+
 Base.log(a::Dual) = Dual(log(a.p), a.d/a.p)
 ```
 
