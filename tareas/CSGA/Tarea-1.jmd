@@ -70,12 +70,278 @@ En este caso, si $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$ se entiende
 
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
 
+Podemos implementar la estructura de la siguiente forma:
+
+```julia
+#Generamos el tipo paramétrico para que acepte campos del mismo tipo.
+#Definimos al tipo dual como un subtipo de Number para facilitar la extensión de funciones numéricas posteriormente.
+"""
+    Dual{T <: Real}
+
+Tipo estático que representa a un número dual con entradas de tipo \$T\$. Se puede acceder a la parte principal mediante el campo `p` y a la parte derivada mediante el campo `d`.
+"""
+struct Dual{T <: Real} <: Number
+    p::T
+    d::T
+end
+```
+
+A partir de esto, probemos construir algunos ejemplos:
+
+```julia
+Dual(1, 3)
+```
+
+```julia
+Dual(1.0, 3.0)
+```
+
+```julia
+Dual(1//5, 2//4)
+```
+
+Como se puede ver, el resultado es el esperado cuando las entradas son del mismo tipo, aunque la forma de mostrar los duales podría ser un poco más informativa.
+Para mejorar la legibilidad de esto, [podemos](https://docs.julialang.org/en/v1/manual/types/#man-custom-pretty-printing-1) sobrecargar la función ``show`` para cuando tenemos un dual. Para sobrecargar una función del módulo ``Base``, necesitamos importar la función explícitamente:
+
+```julia
+import Base.show
+
+#Para implementar un poco de "eyecandy", conviene colocar el signo de la parte derivada antes del número ϵ. Para hacer esto podemos usar la función ```signbit```:
+function show(io::IO, a::Dual{T}) where {T <: Real}
+
+    if signbit(a.d)
+
+        print(io, "$(a.p) - $(abs(a.d))ϵ ")
+
+    else
+
+        print(io, "$(a.p) + $(abs(a.d))ϵ ")
+    end
+end
+
+#Para tener un poco más de información sobre el tipo de los campos en caso de tener un solo elemento:
+show(io::IO, ::MIME"text/plain", a::Dual{T}) where {T <: Real} = print(io, "Dual{$T}: $a")
+```
+
+Ahora, veamos cómo se imprimen los duales antes construidos:
+
+```julia
+Dual(1, 3)
+```
+
+```julia
+Dual(1.0, -3.0)
+```
+
+```julia
+Dual(1//5, 2//4)
+```
+
+```julia
+[Dual(1,3), Dual(1, -3)]
+```
+
 - Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
 
-- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+Para sobrecargar las operaciones suma, resta, producto y cociente necesitamos [importarlas](https://docs.julialang.org/en/v1/manual/modules/index.html) al módulo actual.
+
+```julia
+import Base: +, -, *, /
+
++(a::Dual, b::Dual) = Dual(a.p + b.p, a.d + b.d)
+-(a::Dual, b::Dual) = Dual(a.p - b.p, a.d - b.d)
+*(a::Dual, b::Dual) = Dual(a.p * b.p, a.p * b.d + b.p * a.d)
+
+#Para mayor claridad definimos el cociente de forma más explícita:
+function /(a::Dual, b::Dual)
+    
+    c_p = a.p / b.p
+    c_d = a.d / b.p - (b.d / b.p)*c_p
+    
+    return Dual(c_p, c_d)
+end
+```
+
+Probemos estas funciones:
+
+```julia
+Dual(1.0, 0.0) + Dual(1.1, 2.0)
+```
+
+```julia
+Dual(1, 2) - Dual(1, 2)
+```
+
+```julia
+Dual(1//2, 1//1) * Dual(2, 1)
+```
+
+```julia
+Dual(1//2, 1//1) / Dual(2, 1)
+```
+
+A pesar de que nuestros números duales iniciales están bien definidos (el stacktrace menciona que sí se llama a la función ``/`` con números duales), y la función está bien definida por campos (el stacktrace no menciona ningún problema con la aritmética por componentes), tenemos un error.
+El error viene de la ausencia de un método para la construcción de un ``Dual`` con campos de tipo distinto. (Lo cual tiene sentido dada la "filosofía juliana" sobre los tipos.)
+Esto se puede entender pensando que aunque en apariencia las funciones están bien definidas por campos, nada garantiza en el caso de funciones "complicadas" (como la división) que ambos campos, al final del cálculo, tengan el mismo tipo.
+
+Esto es más claro si vemos qué ocurre cuando usamos tipos distintos en el constructor por default:
+
+```julia
+Dual(1//2, 1.0)
+```
+
+Con este ejemplo podemos recrear el error obtenido producto de querer calcular una división sin cuidar la estabilidad de tipo. Una forma "talachuda" de resolverlo, es imponiendo controles de tipo antes de construir el dual a regresar. Una forma que requiere de menor cantidad de revisiones a mano es mediante la promoción de tipo en los campos calculados en las funciones mediante ``promote`` y llamar el constructor con los campos ya promovidos al mismo tipo. Quizá la forma que más se adecúa al sistema de tipos de ``Julia`` es extendiendo esta idea al constructor de ``Dual`` directamente, es decir, usar ``promote`` para definir un método de ``Dual`` que dados dos valores reales, devuelva un número dual de tipo parámetrico adecuado para representar los campos con los resultados de la promoción como los valores de los mismos:
+
+```julia
+Dual(p::T, d::S) where {T <: Real, S <: Real} = Dual(promote(p, d)...)
+```
+
+Ahora, dado el nuevo método que permite llamar al constuctor con campos con tipos distintos, el ejemplo anterior devuelve algo "razonable" en cuanto consideramos la promoción de la primer entrada de un número de tipo ``Rational{Int64}`` a uno de tipo ``Float64``:
+
+```julia
+Dual(1//2, 1.0)
+```
+
+Y, en consecuencia, nuestras funciones no requieren de ser reescritas:
+
+```julia
+Dual(1//2, 1//1) / Dual(2, 1)
+```
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
+
+El caso de un dual $\overleftrightarrow{x_0} = x_0 + \epsilon 0$ tiene sentido si recordamos la definición más formal de duales dada en términos de funciones evaluadas con su derivada en un punto específico. En este caso, $\overleftrightarrow{x_0}$ corresponde (simplonamente) a el dual correspondiente a la función identidad, $\mathrm{Id}: x \mapsto x$ con el punto $x_0$, i.e. $(\mathrm{Id}, x_0) \mapsto (x_0, 0)$. Es decir, la construcción de un dual con este método puede pensarse como la inclusión "canónica" de los números reales a los números duales. Esto, posteriormente, permitirá extender más fácilmente la aritmética entre números reales y números duales.
+
+Para generar este constructor, conviene usar un cero del mismo tipo que el argumento suministrado: esto se puede obtener usando ``zero``.
+
+```julia
+Dual(x::T) where {T <: Real} = Dual(x, zero(x))
+```
+
+```julia
+Dual(1//2)
+```
 
 - Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
-    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opción es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+Hasta ahora, hemos extendido lógicamente las operaciones aritméticas usuales al caso en el que estamos trabajando con puros duales, e incorporando "fixes" y características para trabajar más fácilmente con ellos.
+
+Dado que definimos al tipo ``Dual`` como un subtipo de ``Number``, al definir cómo transformar de un número real a un dual de forma canónica (con un cero en la parte derivada), ``Julia`` [ya no necesita](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Conversion-vs.-Construction-1) que definamos cómo convertir un número real a un dual exntendiendo la función ``convert``, ya que hay un método para números que llama al constructor respectivo del tipo.
+Es decir, no es necesario definir algo como:
+
+```julia
+Base.convert(::Type{Dual}, x::T) where {T <: Real} = Dual{T}(x)
+
+Base.convert(::Type{Dual{T}}, x::Dual{S}) where {T <: Real, S <: Real} = Dual{T}(x)
+```
+
+Sin embargo, esto no le dice a ``Julia`` cómo tratar la conversión entre subtipos de duales o cuando queremos construir un dual con tipo distinto a los campos suministrados, como se puede ver en los siguientes ejemplos:
+
+```julia
+Dual{Int64}(Dual(1//1, 4//2))
+```
+
+```julia
+convert(Dual{Float64}, Dual(1, 1))
+```
+
+```julia
+convert(Dual{Int64}, Dual(1//1, 4//2))
+```
+
+Para corregir esto, extendemos (un poco más) los métodos de los constructores ``Dual`` con tipos específicos:
+
+```julia
+Dual{T}(x::S) where {T <: Real, S <: Real} = Dual(convert(T, x))
+Dual{T}(x::Dual{S}) where {T <: Real, S <: Real} = Dual(convert(T, x.p), convert(T, x.d))
+```
+
+```julia
+Dual{Int64}(Dual(1//1, 4//2))
+```
+
+```julia
+convert(Dual{Float64}, Dual(1, 1))
+```
+
+```julia
+convert(Dual{Int64}, Dual(1//1, 4//2))
+```
+
+Sin embargo, esto no permite la extensión automática de funciones entre duales y reales, ya que no hemos específicado cómo tratar los casos mixtos cuando tenemos un real y un dual como argumentos de la función:
+
+```julia
+1 + Dual(1, 1)
+```
+
+```julia
+1 - Dual(1, 1)
+```
+
+```julia
+1 * Dual(1, 1)
+```
+
+```julia
+1 / Dual(1, 1)
+```
+
+En principio, podríamos definir todas las posibles permutaciones a mano y sobrecargar las funciones de interés con los métodos mixtos invocando ``convert`` en los sitios respectivos. Sin embargo, una forma, de nuevo más "juliana" (y menos tediosa), aprovecha [el método *fallback* de estas operaciones elementales](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Promotion-1) cuando tenemos un subtipo de ``Number``, que involucra la función ``promote``.
+``promote`` toma la tupla de argumentos de la función y los promueve a tipos interoperables (en este caso, con parejas de duales). Para ello, necesitamos definir las reglas de promoción para los [casos mixtos](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Defining-Promotion-Rules-1). Podemos revisar que en efecto, ``Julia`` sólo es capaz de promover un par de argumentos con un dual involucrado al tipo más genérico compatible entre ambos que hemos establecido (``Number``):
+
+```julia
+promote(Dual(1, 1), 1.0)
+```
+
+```julia
+promote(1.0, Dual(1, 1))
+```
+
+```julia
+promote_type(Dual{Int64}, Float64)
+```
+
+Para definir las reglas de promoción, podemos modificar el código mostrado para ``Rational`` [aquí](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Case-Study:-Rational-Promotions-1): (El método alterno para extender funciones de ``Base`` se explica [aquí](https://docs.julialang.org/en/v1/manual/modules/index.html#Summary-of-module-usage-1).)
+
+```julia
+Base.promote_rule(::Type{Dual{T}}, ::Type{S}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
+Base.promote_rule(::Type{Dual{T}}, ::Type{Dual{S}}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
+```
+
+Estas permiten obtener el comportamiento esperado por la inclusión canónica:
+
+```julia
+promote(Dual(1, 1), 1.0)
+```
+
+```julia
+promote(1.0, Dual(1, 1))
+```
+
+```julia
+promote_type(Dual{Int64}, Float64)
+```
+
+Y por el método fallback, permiten interoperar duales con reales:
+
+```julia
+1 + Dual(1, 1)
+```
+
+```julia
+1 - Dual(1, 1)
+```
+
+```julia
+1 * Dual(1, 1)
+```
+
+```julia
+1 / Dual(1, 1)
+```
+
+En resumen, le hemos dicho a ``Julia`` que queremos una estructura determinada (``Dual``) que se comporta de determinada forma (sus campos son del mismo tipo; y que se pueden sumar, restar, multiplicar y dividir entre ellos (con la extensión de las funciones respectivas)). Más aún, por la estructura que queremos representar, podemos incluir de forma "adecuada" números reales (usando el contructor externo)). Para asegurar la estabilidad de tipo y poder usar la inclusión canónica de los reales de forma simple, además dijimos cómo se pueden convertir los duales entre ellos (dado que tenemos un tipo paramético, esto mediante la extensión de los constructores tipados) y cómo cambiar tuplas de argumentos de tipos mixtos (duales con reales) mediante las reglas de promoción. Esto, por la forma en la que están escritas las operaciones con números en ``Julia``, automáticamente nos da el álgebra entre reales y duales.
 
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
