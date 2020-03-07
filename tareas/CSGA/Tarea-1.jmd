@@ -582,5 +582,24 @@ Base.log(a::Dual) = Dual(log(a.p), a.d/a.p)
 
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
 
+Definamos las baterías de pruebas para cada una de las operaciones extendidas:
+
 ```julia
+@testset "Operaciones con duales" begin
+    #Seno:
+    @test sin(Dual(1.0, -2.0)) == Dual(sin(1.0), -2.0*cos(1.0))
+    #Coseno:
+    @test cos(Dual(1.0, -2.0)) == Dual(cos(1.0), 2.0*sin(1.0))
+    #Tangente:
+    @test tan(Dual(1.0, -2.0)) == Dual(tan(1.0), -2.0*sec(1.0)^2)
+    #Potencias:
+    @test Dual(2, -1)^2 == Dual(4, -4)
+    @test Dual(2, -1)^2.0 == Dual(4.0, -4.0)
+    @test Dual(2//1, -1//1)^2 == Dual(4//1, -4//1)
+    @test Dual(2, -1)^-1 == Dual(0.5, 0.25)
+    #Exponenciación:
+    @test exp(Dual(1.0, -2.0)) == Dual(exp(1.0), -2.0*exp(1.0))
+    #Logaritmo:
+    @test log(Dual(1.0, -2.0)) == Dual(0.0, -2.0)
+end
 ```
