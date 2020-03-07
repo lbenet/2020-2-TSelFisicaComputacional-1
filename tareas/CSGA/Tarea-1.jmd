@@ -355,7 +355,25 @@ $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
+Como ya hemos extendido las operaciones básicas con duales, podemos hacer lo siguiente:
+
 ```julia
+g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
+
+g(Dual(2.0))
+```
+
+Quizá lo único que no es aparente es por qué la exponenciación funciona si no hemos extendido de forma explícita el cálculo de potencias naturales con duales. Esto se puede entender viendo el método que se ocupa para calcular ``Dual(2.0)^2``:
+
+Yendo al pedazo de código que se menciona y siguiendo el hilo de funciones, se sigue que ``Julia`` está calculando el cuadrado (y cualquier potencia natural) de la forma esperada: multiplicando consecutivamente.
+Sorprendentemente, también podemos calcular potencias enteras negativas de forma automática, aunque en principio, [no hay un método](https://github.com/JuliaLang/julia/issues/33699) extendido que lo haga. Esto es evidencia del continuo desarrollo realizado en Julia.
+
+```julia
+Dual(2)^-1
+```
+
+```julia
+@which Dual(2)^-1
 ```
 
 ## Ejercicio 4
