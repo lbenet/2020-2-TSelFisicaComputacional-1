@@ -380,6 +380,146 @@ Dual(2)^-1
 
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
 
+Dado que con la construccion formal de los duales nos permitió entender a un dual como el resultado de evaluar una función diferenciable, $f$ y su derivada, $f'$, en un punto específico, $x_0$, podemos entender a llamar a una función, $g$, en un dual, $\overleftrightarrow{x_0}$, como el resultado de evaluar la función compuesta $g\circ f$ con su derivada $(g\circ f)'$ en el punto $x_0$. Es decir, si $\overleftrightarrow{x_0} = (f, x_0) \mapsto (f(x_0), f'(x_0))$, podemos definir de forma natural: $g(\overleftrightarrow{x_0}) = (g\circ f, x_0) \mapsto ((g \circ f)(x_0), \left(g\circ f)'(x_0)\right)$. A partir de la regla de la cadena y de propiedades de la composición de funciones, se tiene:
+
+\begin{align*}
+g(\overleftrightarrow{x_0}) &= (g\circ f, x_0) \mapsto \left((g \circ f)(x_0), (g\circ f)'(x_0)\right)\\
+    &= (g, f(x_0)) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)\\
+    &= (g\circ f, x_0) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)
+\end{align*}
+
+Por lo que la parte principal del dual $g(\overleftrightarrow{x_0})$ es $g(f(x_0))$ y su parte derivada, $g'(f(x_0))f'(x_0)$. Esto además concuerda con las operaciones elementales definidas anteriormente con duales considerando a las operaciones binarias como funciones unarias con un parámetro fijo. (Por ejemplo, $\overleftrightarrow{x} + \overleftrightarrow{y}$ es la función que mapea $\overleftrightarrow{y}$ a $\overleftrightarrow{x} + \overleftrightarrow{y}$, en la que estrictamente estamos fijando $\overleftrightarrow{x}$)
+
+Para extender las funciones trigonométricas solicitadas, usamos lo siguiente:
+
+```julia
+Base.sin(a::Dual) = Dual(sin(a.p), a.d*cos(a.p))
+Base.cos(a::Dual) = Dual(cos(a.p), -a.d*sin(a.p))
+Base.tan(a::Dual) = Dual(tan(a.p), a.d*sec(a.p)^2)
+```
+
+Como hemos visto, la función ``^`` aparentemente ya está extendida para enteros, sin embargo, si calculamos una potencia no entera (de tipo flotante), obtenemos un error (esperado):
+
+```julia
+Dual(2, 1)^0.0
+```
+
+Extender los métodos de ``^`` a ``Dual``, en teoría, nos debería poder permitir calcular lo anterior:
+
+```julia
+import Base.^
+function ^(a::Dual, x::T) where {T <: Real}
+    
+    if x == zero(x)
+        
+        return one(a)
+        
+    elseif x == one(x)
+        
+        return a
+        
+    elseif x > 0
+        
+        return Dual(a.p^x, x*(a.p^(x-1))*a.d)
+        
+    elseif x < 0
+        
+        return ^(inv(a), -x)
+    end
+end
+```
+
+```julia
+Dual(2, 1)^0.0
+```
+
+Sin embargo, se nos descomponen los métodos adquiridos por fallback:
+
+```julia
+Dual(2)^-1
+```
+
+```julia
+Dual(2)^(1//2)
+```
+
+(Mejor dicho, nuestros métodos son demasiado ambiguos; necesitamos especializarlos como nos dicen los errores.) Esto se puede hacer de la siguiente manera:
+
+```julia
+#Incluimos un pequeño análisis de tipo en el caso de una potencia entera para tener el comportamiento esperado (si elevamos un Dual{Int64} a una potencia entera, es razonable esperar un Dual{Int64} y no un flotante a menos que sea necesario.)
+function ^(a::Dual{T}, x::S) where {T <: Real, S <: Integer}
+    
+    end_type = promote_type(T, S)
+    
+    if x == zero(x)
+        
+        return Dual{end_type}(one(a))
+        
+    elseif x == one(x)
+        
+        return Dual{end_type}(a)
+        
+    elseif x > 0
+        
+        return Dual{end_type}(a.p^x, x*(a.p^(x-1))*a.d)
+        
+    elseif x < 0
+        
+        return ^(inv(a), -x)
+    end
+end
+
+function ^(a::Dual, x::T) where {T <: Rational}
+    
+    if x == zero(x)
+        
+        return one(a)
+        
+    elseif x == one(x)
+        
+        return a
+        
+    elseif x > 0
+        
+        return Dual(a.p^x, x*(a.p^(x-1))*a.d)
+        
+    elseif x < 0
+        
+        return ^(inv(a), -x)
+    end
+end
+```
+
+Por lo que:
+
+```julia
+Dual(2)^-1
+```
+
+```julia
+Dual(2)^(1//2)
+```
+
+Para el resto de las funciones, que usualmente tienen métodos más robustos provenientes de ``C``, conviene extenderlas a mano:
+
+```julia
+function Base.sqrt(a::Dual)
+    
+    s = sqrt(a.p)
+    
+    return Dual(s, a.d/(2*s))
+end
+
+function Base.exp(a::Dual)
+    
+    e = exp(a.p)
+    
+    return Dual(e, a.d*e)
+end
+    
+Base.log(a::Dual) = Dual(log(a.p), a.d/a.p)
+```
+
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
 
 ```julia
