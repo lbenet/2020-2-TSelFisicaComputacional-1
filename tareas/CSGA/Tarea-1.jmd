@@ -32,7 +32,7 @@ Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\ov
 Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
 
 Para poder definir la división de duales mediante la multiplicación por el inverso, necesitamos saber la expresión por componentes del número dual identidad.
-Usando esta, podemos determinar las componentes de $\overleftrightarrow{x}^{-1}$ a partir de las componentes de $\overleftrightarrow{x}$ a través de una ecuación algebraica.
+Usando ésta, podemos determinar las componentes de $\overleftrightarrow{x}^{-1}$ a partir de las componentes de $\overleftrightarrow{x}$ a través de una ecuación algebraica.
 Como *ansatz* podemos probar: $\overleftrightarrow{1} = 1 + \epsilon \, 0$.
 Tomando $\overleftrightarrow{x} = x + \epsilon x'$, tenemos que:
 
