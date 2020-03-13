@@ -254,7 +254,7 @@ Base.convert(::Type{Dual{T}}, x::Dual{S}) where {T <: Real, S <: Real} = Dual{T}
 Sin embargo, esto no le dice a ``Julia`` cómo tratar la conversión entre subtipos de duales o cuando queremos construir un dual con tipo distinto a los campos suministrados, como se puede ver en los siguientes ejemplos:
 
 ```julia
-Dual{Int64}(Dual(1//1, 4//2))
+Dual{Float64}(Dual(1, 2))
 ```
 
 ```julia
@@ -273,7 +273,7 @@ Dual{T}(x::Dual{S}) where {T <: Real, S <: Real} = Dual(convert(T, x.p), convert
 ```
 
 ```julia
-Dual{Int64}(Dual(1//1, 4//2))
+Dual{Float64}(Dual(1, 2))
 ```
 
 ```julia
@@ -282,6 +282,12 @@ convert(Dual{Float64}, Dual(1, 1))
 
 ```julia
 convert(Dual{Int64}, Dual(1//1, 4//2))
+```
+
+Observemos adicionalmente que el incluir estas extensiones todavía nos provee de cierta certeza al momento de intentar convertir números de un tipo que no son representables en otro:
+
+```julia
+convert(Dual{Int64}, Dual(1//2, 2//1))
 ```
 
 Sin embargo, esto no permite la extensión automática de funciones entre duales y reales, ya que no hemos específicado cómo tratar los casos mixtos cuando tenemos un real y un dual como argumentos de la función:
