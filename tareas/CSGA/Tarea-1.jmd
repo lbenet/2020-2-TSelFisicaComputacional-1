@@ -436,7 +436,9 @@ $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
-Como ya hemos extendido las operaciones básicas con duales, podemos hacer lo siguiente:
+Deseamos entender lo que sucede cuando variamos la parte derivada del argumento de una función dejando la parte principal fija.
+
+Antes de proceder al análisis, como ya hemos extendido las operaciones básicas con duales, podemos intentar ver si evaluar la función en un dual funciona:
 
 ```julia
 g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
@@ -444,8 +446,12 @@ g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
 g(Dual(2.0))
 ```
 
+Parece que la extensión que hemos realizado de las operaciones aritméticas elementales fue exitosa.
 Quizá lo único que no es aparente es por qué la exponenciación funciona si no hemos extendido de forma explícita el cálculo de potencias naturales con duales. Esto se puede entender viendo el método que se ocupa para calcular ``Dual(2.0)^2``:
 
+```julia
+@which Dual(2)^2
+```
 Yendo al pedazo de código que se menciona y siguiendo el hilo de funciones, se sigue que ``Julia`` está calculando el cuadrado (y cualquier potencia natural) de la forma esperada: multiplicando consecutivamente.
 Sorprendentemente, también podemos calcular potencias enteras negativas de forma automática, aunque en principio, [no hay un método](https://github.com/JuliaLang/julia/issues/33699) extendido que lo haga. Esto es evidencia del continuo desarrollo realizado en Julia.
 
@@ -456,6 +462,77 @@ Dual(2)^-1
 ```julia
 @which Dual(2)^-1
 ```
+
+Para ver qué pasa cuando fijamos la parte principal y fijamos la parte derivada, conviene definir funciones que dado un dual, nos devuelvan la parte principal y derivada (en particular para poder vectorizar más fácilmente nuestro código):
+
+```julia
+"""
+    principal(x::Dual)
+
+Devuelve la parte principal del ``Dual`` suministrado.
+"""
+principal(x::Dual) = x.p
+
+"""
+    derivada(x::Dual)
+
+Devuelve la parte derivada del ``Dual`` suministrado.
+"""
+derivada(x::Dual) = x.d
+```
+
+Para facilitarnos el análisis, definamos una función que deje fije igual a dos la parte principal del argumento y permita variar la parte derivada del mismo:
+
+```julia
+g_dual(x) = g(Dual(2.0, x))
+```
+
+Podemos ver lo que sucede en el intervalo $[-10, 10]$ variando la parte derivada graficando. Para ello, usemos el paquete ``Plots.jl`` con el graficador ``PyPlot.jl`` con un paso en el dominio de $0.01$:
+
+```julia
+using LaTeXStrings #Para tener leyendas con texto en LaTeX.
+using Plots
+pyplot()
+
+x = -10:0.01:10
+y1 = principal.(g_dual.(x))
+y2 = derivada.(g_dual.(x))
+
+gráfica_g_2 = plot(title = L"y = g(2 + \epsilon x)", xlabel = L"x", ylabel = L"y")
+plot!(x, y1, label = "Principal")
+plot!(x, y2, label = "Derivada")
+```
+
+El valor de la parte principal, como comentamos anteriormente, corresponde al valor de $g(2)$ para cualquier valor de $x$. La parte derivada de $g$ fuera de $x = 1$ (en la que corresponde a $g'(2)$), sin embargo, no resulta inmediatamente clara.
+
+Para entender lo que sucede, consideremos una función $h$ "suficientemente bonita" y un punto $x_0$ de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
+
+$$
+\begin{align*}
+    h(x) &= \sum_{k = 0}^{\infty} \frac{h^{(k)}(x_0)}{k!} (x - x_0)^k \\
+        &= h(x_0) + h'(x_0)(x - x_0) + \sum_{k = 2}^{\infty} \frac{h^{(k)}(x_0)}{k!} (x - x_0)^k.
+\end{align*}
+$$
+
+Si tomamos $x = x_0 + a\varepsilon$:
+
+$$
+\begin{align*}
+    h(x_0 + a\varepsilon) &= \sum_{k = 0}^{\infty} \frac{h^{(k)}(x_0)}{k!} (a\varepsilon)^k \\
+        &= h(x_0) + h'(x_0)(a\varepsilon) + \sum_{k = 2}^{\infty} \frac{h^{(k)}(x_0)}{k!} (a\varepsilon)^k.
+\end{align*}
+$$
+
+Como $\varepsilon^2 = 0$, se tiene:
+
+$$
+\begin{align*}
+    h(x_0 + a\varepsilon) &= h(x_0) + h'(x_0)(a\varepsilon).
+\end{align*}
+$$
+
+Por lo que la parte derivada de evaluar una función "bonita" en un dual tiene parte derivada igual a la derivada de la función evaluada en la parte principal del argumento multiplicada por la parte derivada del argumento.
+Es decir, la parte derivada de evaluar la función es escalada por la parte derivada del argumento, lo que explica la linealidad de la parte derivada en la gráfica.
 
 ## Ejercicio 4
 
