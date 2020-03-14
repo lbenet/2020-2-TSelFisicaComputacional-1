@@ -481,7 +481,7 @@ Devuelve la parte derivada del ``Dual`` suministrado.
 derivada(x::Dual) = x.d
 ```
 
-Para facilitarnos el análisis, definamos una función que deje fije igual a dos la parte principal del argumento y permita variar la parte derivada del mismo:
+Para facilitarnos el análisis, definamos una función que deje igual a dos la parte principal del argumento y permita variar la parte derivada del mismo:
 
 ```julia
 g_dual(x) = g(Dual(2.0, x))
