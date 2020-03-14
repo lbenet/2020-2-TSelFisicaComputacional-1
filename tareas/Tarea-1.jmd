@@ -48,10 +48,13 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 
 ## Ejercicio 3
 
-Usando `x = Dual(2.0)`, calcular
+Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. Con esta función evalúen `g(xd)`
+donde
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
+
+
 
 ```julia
 ```
