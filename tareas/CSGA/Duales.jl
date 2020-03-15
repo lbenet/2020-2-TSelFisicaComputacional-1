@@ -10,6 +10,21 @@ struct Dual{T <: Real} <: Number
     d::T
 end
 
+#Funciones de partes:
+"""
+    principal(x::Dual)
+
+Devuelve la parte principal del ``Dual`` suministrado.
+"""
+principal(x::Dual) = x.p
+
+"""
+    derivada(x::Dual)
+
+Devuelve la parte derivada del ``Dual`` suministrado.
+"""
+derivada(x::Dual) = x.d
+
 #Constructores:
 Dual(x::T) where {T <: Real} = Dual(x, zero(x))
 Dual(p::T, d::S) where {T <: Real, S <: Real} = Dual(promote(p, d)...)
@@ -23,6 +38,13 @@ Base.convert(::Type{Dual{T}}, x::Dual{S}) where {T <: Real, S <: Real} = Dual{T}
 #Promoción entre tipos:
 Base.promote_rule(::Type{Dual{T}}, ::Type{S}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
 Base.promote_rule(::Type{Dual{T}}, ::Type{Dual{S}}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
+
+"""
+    var_Dual(x::T) where {T <: Real}
+
+Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones usando la inclusión de los reales mediante la función identidad.
+"""
+var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
 
 import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log
 
@@ -140,5 +162,13 @@ end
 
 log(a::Dual) = Dual(log(a.p), a.d/a.p)
 
-export Dual
+#Diferenciación automática:
+"""
+    derivada(f::Function, x::T) where {T <: Real}
+
+Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
+"""
+derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
+
+export Dual, var_Dual, principal, derivada
 end

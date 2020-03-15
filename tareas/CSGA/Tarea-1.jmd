@@ -431,39 +431,59 @@ end
 
 ## Ejercicio 3
 
-Usando `x = Dual(2.0)`, calcular
+Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. Con esta función evalúen `g(xd)`
+donde
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
-Deseamos entender lo que sucede cuando variamos la parte derivada del argumento de una función dejando la parte principal fija.
 
-Antes de proceder al análisis, como ya hemos extendido las operaciones básicas con duales, podemos intentar ver si evaluar la función en un dual funciona:
+Hasta ahora, con el álgebra que definimos para los números duales, y con la implementación que hemos hecho de la misma, podemos intuir que evaluar una función real extendida, $f$, en un dual $x = x_0 + \epsilon a$, "debe" de devolvernos un dual $y = f(x) = b + \epsilon c$ cuya parte principal es $b = f(x_0)$ y cuya parte derivada debe ser "algo" relacionado a $f'(x_0)$.
+
+Para poder enteder más precisamente por qué este es el caso (y de paso ver cómo precisar el valor de $d$), supongamos que $f$  es "suficientemente bonita" y $x_0$ es un punto de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
+
+$$
+\begin{align*}
+    f(x) &= \sum_{k = 0}^{\infty} \frac{f^{(k)}(x_0)}{k!} (x - x_0)^k \\
+        &= f(x_0) + f'(x_0)(x - x_0) + \sum_{k = 2}^{\infty} \frac{f^{(k)}(x_0)}{k!} (x - x_0)^k.
+\end{align*}
+$$
+
+Como $x - x_0 = a\varepsilon$:
+
+$$
+\begin{align*}
+    f(x_0 + a\varepsilon) &= \sum_{k = 0}^{\infty} \frac{f^{(k)}(x_0)}{k!} (a\varepsilon)^k \\
+        &= f(x_0) + f'(x_0)(a\varepsilon) + \sum_{k = 2}^{\infty} \frac{f^{(k)}(x_0)}{k!} (a\varepsilon)^k.
+\end{align*}
+$$
+
+Como $\varepsilon^2 = 0$, se tiene:
+
+$$
+\begin{align*}
+    f(x_0 + a\varepsilon) &= f(x_0) + f'(x_0)(a\varepsilon),
+\end{align*}
+$$
+
+de dónde confirmamos que $b = f(x_0)$ y observamos que $c = af'(x_0)$.
+
+Es decir, en términos prácticos, extender una función real, $f$, a los duales nos permite calcular de forma sencilla su derivada en el punto $x_0$ tomando la parte derivada del resultado de evaluar la extensión de la función en el dual $x_0 + \epsilon$.
+
+Además de la necesidad de tomar $a = 1$  para que la parte derivada corresponda a la derivada de la función y no a un múltiplo de la misma (que puede explicarse de otra forma mediante la regla de la cadena en duales), existe una razón más íntimamente relacionada con nuestra definición formal de los duales que explica el por qué es necesario usar $(x_0, 1)$ para calcular la derivada y no $(x_0, 0)$ como la inclusión canónica lo sugeriría: la inclusión canónica trata al dual correspondiente como una constante, mientras que la inclusión usando la función identidad ($\mathrm{Id}: x \mapsto x$ en la que $(\mathrm{Id}, x_0) \mapsto (x_0, 1)$, que corresponde a lo que acabamos de calcular), extiende de forma natural la "continuidad" esperada de la variable independiente al momento de calcular el límite para definir la derivada. En cierta forma, es un análogo de la sutileza entre derivar una función constante y la de evaluar la derivada en una constante que se encuentra en un curso de cálculo.
+
+Para poder calcular la derivada de $g$ en 2, conviene definir una función que constuya el "dual continuo" (la inclusión usando la identidad) que comentamos anteriormente:
 
 ```julia
-g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
+"""
+    var_Dual(x::T) where {T <: Real}
 
-g(Dual(2.0))
+Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones usando la inclusión de los reales mediante la función identidad.
+"""
+var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
 ```
 
-Parece que la extensión que hemos realizado de las operaciones aritméticas elementales fue exitosa.
-Quizá lo único que no es aparente es por qué la exponenciación funciona si no hemos extendido de forma explícita el cálculo de potencias naturales con duales. Esto se puede entender viendo el método que se ocupa para calcular ``Dual(2.0)^2``:
-
-```julia
-@which Dual(2)^2
-```
-Yendo al pedazo de código que se menciona y siguiendo el hilo de funciones, se sigue que ``Julia`` está calculando el cuadrado (y cualquier potencia natural) de la forma esperada: multiplicando consecutivamente.
-Sorprendentemente, también podemos calcular potencias enteras negativas de forma automática, aunque en principio, [no hay un método](https://github.com/JuliaLang/julia/issues/33699) extendido que lo haga. Esto es evidencia del continuo desarrollo realizado en Julia.
-
-```julia
-Dual(2)^-1
-```
-
-```julia
-@which Dual(2)^-1
-```
-
-Para ver qué pasa cuando fijamos la parte principal y fijamos la parte derivada, conviene definir funciones que dado un dual, nos devuelvan la parte principal y derivada (en particular para poder vectorizar más fácilmente nuestro código):
+Así como un par de funciones que nos devuelvan la parte principal y derivada de un dual:
 
 ```julia
 """
@@ -481,58 +501,53 @@ Devuelve la parte derivada del ``Dual`` suministrado.
 derivada(x::Dual) = x.d
 ```
 
-Para facilitarnos el análisis, definamos una función que deje igual a dos la parte principal del argumento y permita variar la parte derivada del mismo:
+Evaluando $g$ en $2 + \epsilon$:
 
 ```julia
-g_dual(x) = g(Dual(2.0, x))
+g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
+
+g(var_Dual(2.0))
 ```
 
-Podemos ver lo que sucede en el intervalo $[-10, 10]$ variando la parte derivada graficando. Para ello, usemos el paquete ``Plots.jl`` con el graficador ``PyPlot.jl`` con un paso en el dominio de $0.01$:
+Por lo que el valor calculado para $g'(2)$ es:
 
 ```julia
-using LaTeXStrings #Para tener leyendas con texto en LaTeX.
-using Plots
-pyplot()
-
-x = -10:0.01:10
-y1 = principal.(g_dual.(x))
-y2 = derivada.(g_dual.(x))
-
-gráfica_g_2 = plot(title = L"y = g(2 + \epsilon x)", xlabel = L"x", ylabel = L"y")
-plot!(x, y1, label = "Principal")
-plot!(x, y2, label = "Derivada")
+derivada(ans)
 ```
 
-El valor de la parte principal, como comentamos anteriormente, corresponde al valor de $g(2)$ para cualquier valor de $x$. La parte derivada de $g$ fuera de $x = 1$ (en la que corresponde a $g'(2)$), sin embargo, no resulta inmediatamente clara.
+En efecto, salvo error, esto concuerda con el [valor esperado](https://www.wolframalpha.com/input/?i=D%5B%283*x%5E2+-+8*x+%2B+1%29%2F%287*x%5E3+-+1%29%2C+x%5D+%2F.+%7Bx+-%3E+2%7D).
 
-Para entender lo que sucede, consideremos una función $h$ "suficientemente bonita" y un punto $x_0$ de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
+Podemos hacer esto de forma automática definiendo lo siguiente:
 
-$$
-\begin{align*}
-    h(x) &= \sum_{k = 0}^{\infty} \frac{h^{(k)}(x_0)}{k!} (x - x_0)^k \\
-        &= h(x_0) + h'(x_0)(x - x_0) + \sum_{k = 2}^{\infty} \frac{h^{(k)}(x_0)}{k!} (x - x_0)^k.
-\end{align*}
-$$
+```julia
+"""
+    derivada(f::Function, x::T) where {T <: Real}
 
-Si tomamos $x = x_0 + a\varepsilon$:
+Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
+"""
+derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
+```
 
-$$
-\begin{align*}
-    h(x_0 + a\varepsilon) &= \sum_{k = 0}^{\infty} \frac{h^{(k)}(x_0)}{k!} (a\varepsilon)^k \\
-        &= h(x_0) + h'(x_0)(a\varepsilon) + \sum_{k = 2}^{\infty} \frac{h^{(k)}(x_0)}{k!} (a\varepsilon)^k.
-\end{align*}
-$$
+```julia
+derivada(g, 2)
+```
 
-Como $\varepsilon^2 = 0$, se tiene:
+Como comentario adicional, resulta curioso que la exponenciación funcione si no hemos extendido de forma explícita el cálculo de potencias naturales con duales. Esto se puede entender viendo el método que se ocupa para calcular ``var_Dual(2.0)^2``:
 
-$$
-\begin{align*}
-    h(x_0 + a\varepsilon) &= h(x_0) + h'(x_0)(a\varepsilon).
-\end{align*}
-$$
+```julia
+@which var_Dual(2.0)^2
+```
 
-Por lo que la parte derivada de evaluar una función "bonita" en un dual tiene parte derivada igual a la derivada de la función evaluada en la parte principal del argumento multiplicada por la parte derivada del argumento.
-Es decir, la parte derivada de evaluar la función es escalada por la parte derivada del argumento, lo que explica la linealidad de la parte derivada en la gráfica.
+Yendo al pedazo de código que se menciona y siguiendo el hilo de funciones, se sigue que ``Julia`` está calculando el cuadrado (y cualquier potencia natural) de la forma esperada: multiplicando consecutivamente.
+Sorprendentemente, también podemos calcular potencias enteras negativas de forma automática, aunque en principio, [no hay un método](https://github.com/JuliaLang/julia/issues/33699) extendido que lo haga. Esto es evidencia del continuo desarrollo realizado en Julia.
+
+```julia
+var_Dual(2.0)^-1
+```
+
+```julia
+@which var_Dual(2.0)^-1
+```
 
 ## Ejercicio 4
 
