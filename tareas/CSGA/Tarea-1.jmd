@@ -440,7 +440,7 @@ $$
 
 Hasta ahora, con el álgebra que definimos para los números duales, y con la implementación que hemos hecho de la misma, podemos intuir que evaluar una función real extendida, $f$, en un dual $x = x_0 + \epsilon a$, "debe" de devolvernos un dual $y = f(x) = b + \epsilon c$ cuya parte principal es $b = f(x_0)$ y cuya parte derivada debe ser "algo" relacionado a $f'(x_0)$.
 
-Para poder enteder más precisamente por qué este es el caso (y de paso ver cómo precisar el valor de $d$), supongamos que $f$  es "suficientemente bonita" y $x_0$ es un punto de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
+Para poder enteder precisamente por qué este es el caso (y de paso ver cómo precisar el valor de $d$), supongamos que $f$  es "suficientemente bonita" y $x_0$ es un punto de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
 
 $$
 \begin{align*}
@@ -515,7 +515,7 @@ Por lo que el valor calculado para $g'(2)$ es:
 derivada(ans)
 ```
 
-En efecto, salvo error, esto concuerda con el [valor esperado](https://www.wolframalpha.com/input/?i=D%5B%283*x%5E2+-+8*x+%2B+1%29%2F%287*x%5E3+-+1%29%2C+x%5D+%2F.+%7Bx+-%3E+2%7D).
+En efecto, salvo errores numéricos (de truncación), esto concuerda con el [valor esperado](https://www.wolframalpha.com/input/?i=D%5B%283*x%5E2+-+8*x+%2B+1%29%2F%287*x%5E3+-+1%29%2C+x%5D+%2F.+%7Bx+-%3E+2%7D).
 
 Podemos hacer esto de forma automática definiendo lo siguiente:
 
