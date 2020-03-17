@@ -27,21 +27,20 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-- Si requerimos encontrar el vector unidad, que lo llamaremos $\overleftrightarrow{u}$, tal que:
+- Primero obtendremos la identidad multiplicativa, la cual llamaremos $\overleftrightarrow{u}$, ésta debe cumplir que:
 $$
 \overleftrightarrow{x}\cdot\overleftrightarrow{u} = \overleftrightarrow{x}\\
 \Rightarrow \overleftrightarrow{x}\cdot\overleftrightarrow{u} = (x\cdot u) + \varepsilon(xu'+ux') = x +x' 
 $$
-de donde se deduce que:
+de donde se tiene que:
 $$
 u=1,u'=0
 $$
-Tenemos que si $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$, se deduce que:
-$$
+Por lo que si $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$, entonces:$$
 \overleftrightarrow{y}\cdot \overleftrightarrow{z}= 1\\
 (y\cdot z)+\varepsilon(y'z+yz')=1
 $$
-por lo que:
+de donde:
 $$
 z=\frac{1}{y}\Rightarrow \frac{y'}{y}+yz'=0 \Rightarrow z'=-\frac{y'}{y^2}\\
 \therefore {\overleftrightarrow{y}}^{-1}=\dfrac{1}{y} + \varepsilon\left(-\frac{y'}{y^2}\right)
@@ -56,35 +55,340 @@ $$
 
 ## Ejercicio 2
 
+
+
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+Primero definimos la estructura Dual de tal forma que acepte dos numeros con la condición de que estos sean reales.
+
+```julia
+struct Dual{T_1 <: Real, T_2 <: Real}
+    x :: T_1
+    x_prima :: T_2
+end
+```
+
+Ahora asociamos indices a cada uno de sus componentes
+
+```julia
+import Base: size
+size(::Dual{T}) where {T} = (2,)
+
+function Base.getindex(v::Dual, i::Int)
+    if i == 1
+        return v.x
+    elseif i == 2
+        return v.x_prima
+    else
+        throw(AssertError)
+    end
+end
+```
+
+Por último mostramos un ejemplo de la estructura Dual y como cada uno de sus componentes tiene su indice asociado.
+
+```julia
+y = Dual(9.0,1)
+```
+
+```julia
+import Test.@test
+@test y[1] == 9.0
+```
+
+```julia
+@test y[2] == 1
+```
 
 - Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
 
+Ahora se sobrecargan las funciones usando la información conocida y mostramos que las funciones implementadas funcionan
+
+```julia
+Base.:+(x::Dual, y::Dual) = Dual((x[1]+y[1]),(x[2]+y[2])...)
+Base.:-(x::Dual, y::Dual) = Dual((x[1]-y[1]),(x[2]-y[2])...)
+Base.:*(x::Dual, y::Dual) = Dual((x[1]*y[1]),(x[1]*y[2]+x[2]*y[1])...)
+Base.:/(x::Dual, y::Dual) = Dual((x[1]/y[1]),((y[1]*x[2]-x[1]*y[2])/(y[1])^2)...)
+```
+
+```julia
+x, y = Dual(2,16), Dual(1,8)
+```
+
+```julia
+@test x + y  == Dual(3 , 24)
+```
+
+```julia
+@test x - y == Dual(1,8)
+```
+
+```julia
+@test x * y == Dual(2,32)
+```
+
+```julia
+@test x / y == Dual(2.0,0.0)
+```
+
 - Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+
+Se define el método y se comprueba el resultado
+
+```julia
+Dual(a::Real) = Dual(a,0)
+```
+
+```julia
+@test Dual(1.0) == Dual(1.0,0)
+```
+
+El '0' de está definición es compatible con la interpretación dada ya que este constructor toma a una 'a' que en este caso sería una constante por lo que su parte derivada correspondiente debe ser 0.
 
 - Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
     NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
 
-- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+```julia
+Base.:+(x::Dual, y::Real) = +((x,Dual(y))...)
+Base.:+(y::Real, x::Dual) = +(x::Dual,y::Real)
+```
 
 ```julia
+Base.:-(x::Dual, y::Real) = -((x,Dual(y))...)
+Base.:-(y::Real, x::Dual) = -((Dual(y),x)...)
+```
+
+```julia
+Base.:*(x::Dual, y::Real) = *((x,Dual(y))...)
+Base.:*(x::Real, y::Dual) = *(y::Dual,x::Real)
+```
+
+```julia
+Base.:/(x::Dual, y::Real) = /((x,Dual(y))...)
+Base.:/(x::Real, y::Dual) = /((Dual(x),y)...)
+```
+
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.l
+
+```julia
+x = Dual(10,1)
+```
+
+```julia
+@test x + 1 == 1 + x == Dual(11,1)
+```
+
+```julia
+@test x - 9 == Dual(1,1)
+```
+
+```julia
+@test 9 - x == Dual(-1,-1)
+```
+
+```julia
+@test x * 3 == 3 * x == Dual(30,3)
+```
+
+```julia
+@test 200 / x == Dual(20.0,-2.0)
+```
+
+```julia
+@test x / 2 == Dual(5.0,0.5)
 ```
 
 ## Ejercicio 3
+
+
 
 Usando `x = Dual(2.0)`, calcular
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
+Primero se implementa el dual de una variable x, cuya derivada es 1. Este Dual toma un valor real y lo evalua en x y su derivada (que no cambia).
+
 ```julia
+x_Dual(x::Real) = Dual(x, 1)
 ```
+
+```julia
+"""
+    power_Dual(x::Dual,a::Int)
+
+Está función retorna el valor de elevar a un numero dual a una potencia entera 
+"""
+function power_Dual(x::Dual,a::Int)
+    if a == 0
+        return Dual(1)
+    end
+    if a > 0
+        i = 1
+        b = x
+        while i < a
+            b *= x
+            i += 1
+        end
+        return b
+    end
+    if a < 0
+        i = 0
+        b = 1
+        while i > a 
+            b /= x
+            i -= 1
+        end
+        return b
+    end
+end
+```
+
+Ahora se recarga la función '^' por simplicidad al implementar g(x)
+
+```julia
+Base.:^(x::Dual, y::Int64) = power_Dual(x,y)
+```
+
+```julia
+#Se define la función g
+g(x) = (3*x^2-8*x+1)/(7*x^3-1)
+```
+
+```julia
+y = g(x_Dual(2))
+```
+
+<img src = "images/g.png">
+<figcaption> <center> Fig. 1 Resultado de evaluar g en 2 y g' en 2 con Mathematica </center> </figcaption>
+
+Al ver con Mathematica los resultados de derivar y evaluar g y su derivada en 2, observamos que g evaluado en 2 es la entrada correspondiente a y[1], por otro lado al derivar g y evaluar en 2 es el mismo resultado que y[2].
 
 ## Ejercicio 4
 
+
+
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+Basandonos en la regla de la cadena
+
+$$
+\text{Si tenemos a una función }\:f(g(x))\:\text{ entonces su derivada es:}\:f'(g(x))g'(x)
+$$
+
+Tenemos que:
+$$
+\begin{split}
+ \sin'(f(x)) &= \cos(f(x))f'(x)\\
+ \cos'(f(x)) &= -\sin(f(x))f'(x)\\
+ \tan'(f(x)) &= \sec^2(f(x))f'(x)\\
+ \left(f^n(x)\right)' &= nf'(x)f^{n-1}(x)\\
+ \left(\sqrt{f(x)}\right)' &= \dfrac{f'(x)}{2\sqrt{f(x)}}\\
+ \left(\exp(f(x))\right)' &= f'(x)\exp(f(x))\\
+ (\log(f(x)))' &= \dfrac{f'(x)}{f(x)}
+ \end{split}
+$$
+
+En base a lo cual recargamos las funciones:
+
+```julia
+Base.:sin(x::Dual) = Dual(sin(x[1]),cos(x[1])*x[2])
+```
+
+```julia
+Base.:cos(x::Dual) = Dual(cos(x[1]),-sin(x[1])*x[2])
+```
+
+```julia
+Base.:tan(x::Dual) = Dual(tan(x[1]),(sec(x[1]))^2*x[2])
+```
+
+```julia
+Base.:^(a::Dual, n::Int) = power_Dual(a,n)
+```
+
+```julia
+Base.:sqrt(x::Dual) = Dual(sqrt(x[1]),(0.5/sqrt(x[1]))*x[2])
+```
+
+```julia
+Base.:exp(x::Dual) = Dual(exp(x[1]),exp(x[1])*x[2])
+```
+
+```julia
+Base.:log(x::Dual) = Dual(log(x[1]),x[2]/x[1])
+```
 
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
 
 ```julia
+f(x) = 3*x^2 + 9
+```
+
+```julia
+x = x_Dual(4)
+```
+
+<img src = "images/sin.png">
+<figcaption> <center> Fig. 2 Se muestran los datos obtenidos al utilizar Mathematica para la función 'sin'. </center> </figcaption>
+
+```julia
+y = sin(f(x))
+@test y[1] ≈ 0.4361647552478249591
+@test y[2] ≈ 21.59680384726065088
+```
+
+<img src = "images/cos.png">
+<figcaption> <center> Fig. 3 Se muestran los datos obtenidos al utilizar Mathematica para la función 'cos'. </center> </figcaption>
+
+```julia
+y = cos(f(x))
+@test y[1] ≈ 0.8998668269691937865
+@test y[2] ≈ -10.46795412594779902
+```
+
+<img src = "images/tan.png">
+<figcaption> <center> Fig. 4 Se muestran los datos obtenidos al utilizar Mathematica para la función 'tan'. </center> </figcaption>
+
+```julia
+y = tan(f(x))
+@test y[1] ≈ 0.4846992267920958786
+@test y[2] ≈ 29.63840017086853428
+```
+
+<img src = "images/expo.png">
+<figcaption> <center> Fig. 5 Se muestran los datos obtenidos al utilizar Mathematica para la función '^'. </center> </figcaption>
+
+```julia
+y = (f(x))^4
+@test y[1] ≈ 10556001
+@test y[2] ≈ 17778528
+```
+
+<img src = "images/sqrt.png">
+<figcaption> <center> Fig. 6 Se muestran los datos obtenidos al utilizar Mathematica para la función 'sqrt'. </center> </figcaption>
+
+```julia
+y = sqrt(f(x))
+@test y[1] ≈ 7.549834435270749697
+@test y[2] ≈ 1.589438828478052568
+```
+
+<img src = "images/exp.png">
+<figcaption> <center> Fig. 7 Se muestran los datos obtenidos al utilizar Mathematica para la función 'exp'. </center> </figcaption>
+
+```julia
+y = exp(f(x))
+@test y[1] ≈ 5.685719999335932223e24
+@test y[2] ≈ 1.364572799840623733e26
+```
+
+<img src = "images/log.png">
+<figcaption> <center> Fig. 8 Se muestran los datos obtenidos al utilizar Mathematica para la función 'log'. </center> </figcaption>
+
+```julia
+y = log(f(x))
+@test y[1] ≈ 4.043051267834550151
+@test y[2] ≈ 0.4210526315789473684
 ```
