@@ -59,7 +59,7 @@ $$
 
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
 
-Primero definimos la estructura Dual de tal forma que acepte dos numeros con la condición de que estos sean reales.
+Primero definimos la estructura Dual de tal forma que acepte dos numeros con la condición de que éstos sean reales.
 
 ```julia
 struct Dual{T_1 <: Real, T_2 <: Real}
@@ -68,7 +68,7 @@ struct Dual{T_1 <: Real, T_2 <: Real}
 end
 ```
 
-Ahora asociamos indices a cada uno de sus componentes
+Ahora asociamos índices a cada uno de sus componentes
 
 ```julia
 import Base: size
@@ -85,7 +85,7 @@ function Base.getindex(v::Dual, i::Int)
 end
 ```
 
-Por último mostramos un ejemplo de la estructura Dual y como cada uno de sus componentes tiene su indice asociado.
+Por último mostramos un ejemplo de la estructura Dual y como cada uno de sus componentes tiene su índice asociado.
 
 ```julia
 y = Dual(9.0,1)
@@ -105,10 +105,10 @@ import Test.@test
 Ahora se sobrecargan las funciones usando la información conocida y mostramos que las funciones implementadas funcionan
 
 ```julia
-Base.:+(x::Dual, y::Dual) = Dual((x[1]+y[1]),(x[2]+y[2])...)
-Base.:-(x::Dual, y::Dual) = Dual((x[1]-y[1]),(x[2]-y[2])...)
-Base.:*(x::Dual, y::Dual) = Dual((x[1]*y[1]),(x[1]*y[2]+x[2]*y[1])...)
-Base.:/(x::Dual, y::Dual) = Dual((x[1]/y[1]),((y[1]*x[2]-x[1]*y[2])/(y[1])^2)...)
+Base.:+(x::Dual, y::Dual) = Dual(x[1]+y[1],x[2]+y[2])
+Base.:-(x::Dual, y::Dual) = Dual(x[1]-y[1],x[2]-y[2])
+Base.:*(x::Dual, y::Dual) = Dual(x[1]*y[1],x[1]*y[2]+x[2]*y[1])
+Base.:/(x::Dual, y::Dual) = Dual(x[1]/y[1],(y[1]*x[2]-x[1]*y[2])/(y[1])^2)
 ```
 
 ```julia
@@ -149,23 +149,23 @@ El '0' de está definición es compatible con la interpretación dada ya que est
     NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
 
 ```julia
-Base.:+(x::Dual, y::Real) = +((x,Dual(y))...)
+Base.:+(x::Dual, y::Real) = +(x,Dual(y))
 Base.:+(y::Real, x::Dual) = +(x::Dual,y::Real)
 ```
 
 ```julia
-Base.:-(x::Dual, y::Real) = -((x,Dual(y))...)
-Base.:-(y::Real, x::Dual) = -((Dual(y),x)...)
+Base.:-(x::Dual, y::Real) = -(x,Dual(y))
+Base.:-(y::Real, x::Dual) = -(Dual(y),x)
 ```
 
 ```julia
-Base.:*(x::Dual, y::Real) = *((x,Dual(y))...)
+Base.:*(x::Dual, y::Real) = *(x,Dual(y))
 Base.:*(x::Real, y::Dual) = *(y::Dual,x::Real)
 ```
 
 ```julia
-Base.:/(x::Dual, y::Real) = /((x,Dual(y))...)
-Base.:/(x::Real, y::Dual) = /((Dual(x),y)...)
+Base.:/(x::Dual, y::Real) = /(x,Dual(y))
+Base.:/(x::Real, y::Dual) = /(Dual(x),y)
 ```
 
 
@@ -201,9 +201,8 @@ x = Dual(10,1)
 
 ## Ejercicio 3
 
-
-
-Usando `x = Dual(2.0)`, calcular
+Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. Con esta función evalúen `g(xd)`
+donde
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
@@ -214,41 +213,37 @@ Primero se implementa el dual de una variable x, cuya derivada es 1. Este Dual t
 x_Dual(x::Real) = Dual(x, 1)
 ```
 
-```julia
-"""
-    power_Dual(x::Dual,a::Int)
+Ahora se recarga la función '^' por simplicidad al implementar g(x) y la función 'inv' para poder realizar correctamente la operación '^-1'
 
-Está función retorna el valor de elevar a un numero dual a una potencia entera 
-"""
-function power_Dual(x::Dual,a::Int)
-    if a == 0
-        return Dual(1)
-    end
-    if a > 0
-        i = 1
-        b = x
-        while i < a
-            b *= x
-            i += 1
-        end
-        return b
-    end
-    if a < 0
-        i = 0
-        b = 1
-        while i > a 
-            b /= x
-            i -= 1
-        end
-        return b
-    end
-end
+```julia
+Base.:^(x::Dual, n::Int) = Dual(x[1]^n,n*x[2]*x[1]^(n-1))
+Base.:inv(x::Dual) = Dual(1,0)/ x
 ```
 
-Ahora se recarga la función '^' por simplicidad al implementar g(x)
+Se muestra ahora el resultado de los ejemplos propuestos en la conversación:
 
 ```julia
-Base.:^(x::Dual, y::Int64) = power_Dual(x,y)
+Dual(1.0,1)^1
+```
+
+```julia
+Dual(1.0,1)^2
+```
+
+```julia
+Dual(1,1.0)^0
+```
+
+```julia
+Dual(1,1.0)^1
+```
+
+```julia
+Dual(1,1)^0
+```
+
+```julia
+Dual(1,1)^(-1)
 ```
 
 ```julia
@@ -259,6 +254,12 @@ g(x) = (3*x^2-8*x+1)/(7*x^3-1)
 ```julia
 y = g(x_Dual(2))
 ```
+
+```julia
+y = g(x_Dual(2//1))
+```
+
+Observamos que al comparar la Fig. 1 con este último resultado. las fracciones coinciden-
 
 <img src = "images/g.png">
 <figcaption> <center> Fig. 1 Resultado de evaluar g en 2 y g' en 2 con Mathematica </center> </figcaption>
@@ -271,7 +272,7 @@ Al ver con Mathematica los resultados de derivar y evaluar g y su derivada en 2,
 
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
 
-Basandonos en la regla de la cadena
+Basándonos en la regla de la cadena
 
 $$
 \text{Si tenemos a una función }\:f(g(x))\:\text{ entonces su derivada es:}\:f'(g(x))g'(x)
@@ -305,7 +306,7 @@ Base.:tan(x::Dual) = Dual(tan(x[1]),(sec(x[1]))^2*x[2])
 ```
 
 ```julia
-Base.:^(a::Dual, n::Int) = power_Dual(a,n)
+Base.:^(x::Dual, n::Int) = Dual(x[1]^n,n*x[2]*x[1]^(n-1))
 ```
 
 ```julia
