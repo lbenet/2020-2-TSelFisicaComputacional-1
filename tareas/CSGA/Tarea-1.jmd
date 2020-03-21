@@ -1,0 +1,720 @@
+---
+title: "Tarea 1"
+author: Gabriel A. Carranco-Sapiéns
+date: 20 de marzo de 2020.
+output: pdf_document
+---
+
+# Tarea 1: Números duales
+
+> La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
+
+Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
+
+Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
+Con esta definición, podemos extender las operaciones aritméticas al igual que las funciones elementales de manera sencilla. Ésta es, de hecho, la manera en que están implementados los números complejos en Julia.
+
+En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
+
+$$
+\begin{eqnarray}
+(x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
+(x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
+\end{eqnarray}
+$$
+
+Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
+
+
+## Ejercicio 1
+
+- A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
+Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
+
+Para poder definir la división de duales mediante la multiplicación por el inverso, necesitamos saber la expresión por componentes del número dual identidad.
+Usando ésta, podemos determinar las componentes de $\overleftrightarrow{x}^{-1}$ a partir de las componentes de $\overleftrightarrow{x}$ a través de una ecuación algebraica.
+Como *ansatz* podemos probar: $\overleftrightarrow{1} = 1 + \epsilon \, 0$.
+Tomando $\overleftrightarrow{x} = x + \epsilon x'$, tenemos que:
+
+$$
+\begin{align*}
+\overleftrightarrow{x}\cdot\overleftrightarrow{1} &= 1(x) + \epsilon (x(0) + 1(x')) \\
+    &= x + \epsilon x'\\
+    &= x(1) + \epsilon (1(x') + x(0))\\
+    &= \overleftrightarrow{1}\cdot\overleftrightarrow{x}.
+\end{align*}
+$$
+
+Por lo que en efecto, $\overleftrightarrow{1} = 1 + \epsilon \, 0$ es la identidad.
+
+Ahora, consideremos $\overleftrightarrow{x} = x + \epsilon x'$. El inverso de $\overleftrightarrow{x}$, $\overleftrightarrow{x}^{-1} = \overleftrightarrow{y} = y + \epsilon y'$, debe satisfacer: $\overleftrightarrow{x}\cdot \overleftrightarrow{y} = (xy) + \epsilon(xy' + yx') = 1 + \epsilon(0) = \overleftrightarrow{1}$, de dónde:
+
+$$
+\begin{align*}
+xy &= 1 \\
+xy' + yx' &= 0.
+\end{align*}
+$$
+
+Resolviendo el sistema de ecuaciones se tiene:
+
+$$
+\begin{align*}
+y &= \frac{1}{x} \\
+y' &= -\frac{y x'}{x} = -\frac{x'}{x^2}.
+\end{align*}
+$$
+
+Por lo que: $\overleftrightarrow{x}^{-1} = \frac{1}{x} + \epsilon \left(-\frac{x'}{x^2}\right)$. De esto, se puede calcular la expresión para $\overleftrightarrow{z} = \frac{\overleftrightarrow{x}}{\overleftrightarrow{y}} = \overleftrightarrow{x}\cdot\overleftrightarrow{y}^{-1} = (x + \epsilon x')\cdot\left(\frac{1}{y} + \epsilon \left( -\frac{y'}{y^2}\right)\right) = \frac{x}{y} + \epsilon\left(\frac{x'}{y} - \frac{xy'}{y^2}\right)$. Es decir:
+
+$$
+\begin{align*}
+z &= \frac{x}{y} \\
+z' &= \frac{x'}{y} - \frac{xy'}{y^2}.
+\end{align*}
+$$
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero les sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+Observemos que la parte principal de $\overleftrightarrow{z}$, $z = \frac{x}{y}$, corresponde al valor "esperado" de dividir $\overleftrightarrow{x}$ por $\overleftrightarrow{y}$ si estos fueran números reales.
+Darle un significado a la parte derivada quizá sea más sencillo si reescribimos $z'$ como $z' = \frac{x'y - xy'}{y^2}$. Si a un número dual lo interpretamos como "un valor y su derivada (local)" como partes principal y derivada, respectivamente, la parte derivada de $\overleftrightarrow{z}$ correspondería al valor de la derivada del cociente evaluada en el valor principal.
+Podemos ser más precisos respecto a lo anterior considerando a los números duales como el codominio de functores que toma una función diferenciable $f$ y un punto en el dominio de $f$, $x$, y a esta pareja ordenada le asigna el par ordenado $(f(x), f'(x))$. (Es decir, $(f, x) \mapsto (f(x), f'(x))$.)
+En este caso, si $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$ se entienden como las parejas ordenadas correspondientes a evaluar algún par de funciones diferenciables $f$ y $g$ en el valor $x$, entonces el valor derivado de $\overleftrightarrow{z}$ corresponde a evaluar la derivada de $\frac{f}{g}$ en dicho punto.
+
+## Ejercicio 2
+
+- Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+Podemos implementar la estructura de la siguiente forma:
+
+```julia
+#Generamos el tipo paramétrico para que acepte campos del mismo tipo.
+#Definimos al tipo dual como un subtipo de Number para facilitar la extensión de funciones numéricas posteriormente.
+"""
+    Dual{T <: Real}
+
+Tipo estático que representa a un número dual con entradas de tipo \$T\$. Se puede acceder a la parte principal mediante el campo `p` y a la parte derivada mediante el campo `d`.
+"""
+struct Dual{T <: Real} <: Number
+    p::T
+    d::T
+end
+```
+
+A partir de esto, probemos construir algunos ejemplos:
+
+```julia
+Dual(1, 3)
+```
+
+```julia
+Dual(1.0, 3.0)
+```
+
+```julia
+Dual(1//5, 2//4)
+```
+
+Como se puede ver, el resultado es el esperado cuando las entradas son del mismo tipo, aunque la forma de mostrar los duales podría ser un poco más informativa.
+Para mejorar la legibilidad de esto, [podemos](https://docs.julialang.org/en/v1/manual/types/#man-custom-pretty-printing-1) sobrecargar la función ``show`` para cuando tenemos un dual. Para sobrecargar una función del módulo ``Base``, necesitamos importar la función explícitamente:
+
+```julia
+import Base.show
+
+#Para implementar un poco de "eyecandy", conviene colocar el signo de la parte derivada antes del número ϵ. Para hacer esto podemos usar la función ```signbit```:
+function show(io::IO, a::Dual{T}) where {T <: Real}
+
+    if signbit(a.d)
+
+        print(io, "$(a.p) - $(abs(a.d))ϵ ")
+
+    else
+
+        print(io, "$(a.p) + $(abs(a.d))ϵ ")
+    end
+end
+
+#Para tener un poco más de información sobre el tipo de los campos en caso de tener un solo elemento:
+show(io::IO, ::MIME"text/plain", a::Dual{T}) where {T <: Real} = print(io, "Dual{$T}: $a")
+```
+
+Ahora, veamos cómo se imprimen los duales antes construidos:
+
+```julia
+Dual(1, 3)
+```
+
+```julia
+Dual(1.0, -3.0)
+```
+
+```julia
+Dual(1//5, 2//4)
+```
+
+```julia
+[Dual(1,3), Dual(1, -3)]
+```
+
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
+
+Para sobrecargar las operaciones suma, resta, producto y cociente necesitamos [importarlas](https://docs.julialang.org/en/v1/manual/modules/index.html) al módulo actual.
+
+```julia
+import Base: +, -, *, /
+
++(a::Dual, b::Dual) = Dual(a.p + b.p, a.d + b.d)
+-(a::Dual, b::Dual) = Dual(a.p - b.p, a.d - b.d)
+*(a::Dual, b::Dual) = Dual(a.p * b.p, a.p * b.d + b.p * a.d)
+
+#Para mayor claridad definimos el cociente de forma más explícita:
+function /(a::Dual, b::Dual)
+
+    c_p = a.p / b.p
+    c_d = a.d / b.p - (b.d / b.p)*c_p
+
+    return Dual(c_p, c_d)
+end
+```
+
+Probemos estas funciones:
+
+```julia
+Dual(1.0, 0.0) + Dual(1.1, 2.0)
+```
+
+```julia
+Dual(1, 2) - Dual(1, 2)
+```
+
+```julia
+Dual(1//2, 1//1) * Dual(2, 1)
+```
+
+```julia
+Dual(1//2, 1//1) / Dual(2, 1)
+```
+
+A pesar de que nuestros números duales iniciales están bien definidos (el stacktrace menciona que sí se llama a la función ``/`` con números duales), y la función está bien definida por campos (el stacktrace no menciona ningún problema con la aritmética por componentes), tenemos un error.
+El error viene de la ausencia de un método para la construcción de un ``Dual`` con campos de tipo distinto. (Lo cual tiene sentido dada la "filosofía juliana" sobre los tipos.)
+Esto se puede entender pensando que aunque en apariencia las funciones están bien definidas por campos, nada garantiza en el caso de funciones "complicadas" (como la división) que ambos campos, al final del cálculo, tengan el mismo tipo.
+
+Esto es más claro si vemos qué ocurre cuando usamos tipos distintos en el constructor por default:
+
+```julia
+Dual(1//2, 1.0)
+```
+
+Con este ejemplo podemos recrear el error obtenido producto de querer calcular una división sin cuidar la estabilidad de tipo. Una forma "talachuda" de resolverlo, es imponiendo controles de tipo antes de construir el dual a regresar. Una forma que requiere de menor cantidad de revisiones a mano es mediante la promoción de tipo en los campos calculados en las funciones mediante ``promote`` y llamar el constructor con los campos ya promovidos al mismo tipo. Quizá la forma que más se adecúa al sistema de tipos de ``Julia`` es extendiendo esta idea al constructor de ``Dual`` directamente, es decir, usar ``promote`` para definir un método de ``Dual`` que dados dos valores reales, devuelva un número dual de tipo parámetrico adecuado para representar los campos con los resultados de la promoción como los valores de los mismos:
+
+```julia
+Dual(p::T, d::S) where {T <: Real, S <: Real} = Dual(promote(p, d)...)
+```
+
+Ahora, dado el nuevo método que permite llamar al constuctor con campos con tipos distintos, el ejemplo anterior devuelve algo "razonable" en cuanto consideramos la promoción de la primer entrada de un número de tipo ``Rational{Int64}`` a uno de tipo ``Float64``:
+
+```julia
+Dual(1//2, 1.0)
+```
+
+Y, en consecuencia, nuestras funciones no requieren de ser reescritas:
+
+```julia
+Dual(1//2, 1//1) / Dual(2, 1)
+```
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
+
+El caso de un dual $\overleftrightarrow{x_0} = x_0 + \epsilon 0$ tiene sentido si recordamos la definición más formal de duales dada en términos de funciones evaluadas con su derivada en un punto específico. En este caso, $\overleftrightarrow{x_0}$ corresponde (simplonamente) a el dual correspondiente a la función constante que devuelve $x_0$, $x_0: x \mapsto x_0$ con el punto $x_0$, i.e. $(x_0, x_0) \mapsto (x_0, 0)$. Es decir, la construcción de un dual con este método puede pensarse como la inclusión "canónica" de los números reales a los números duales. Esto, posteriormente, permitirá extender más fácilmente la aritmética entre números reales y números duales.
+
+Para generar este constructor, conviene usar un cero del mismo tipo que el argumento suministrado: esto se puede obtener usando ``zero``.
+
+```julia
+Dual(x::T) where {T <: Real} = Dual(x, zero(x))
+```
+
+```julia
+Dual(1//2)
+```
+
+- Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opción es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+Hasta ahora, hemos extendido lógicamente las operaciones aritméticas usuales al caso en el que estamos trabajando con puros duales, e incorporando "fixes" y características para trabajar más fácilmente con ellos.
+
+Dado que definimos al tipo ``Dual`` como un subtipo de ``Number``, al definir cómo transformar de un número real a un dual de forma canónica (con un cero en la parte derivada), ``Julia`` [ya no necesita](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Conversion-vs.-Construction-1) que definamos cómo convertir un número real a un dual exntendiendo la función ``convert``, ya que hay un método para números que llama al constructor respectivo del tipo.
+Es decir, no es necesario definir algo como:
+
+```julia
+Base.convert(::Type{Dual}, x::T) where {T <: Real} = Dual{T}(x)
+Base.convert(::Type{Dual{T}}, x::Dual{S}) where {T <: Real, S <: Real} = Dual{T}(x)
+```
+
+Sin embargo, esto no le dice a ``Julia`` cómo tratar la conversión entre subtipos de duales o cuando queremos construir un dual con tipo distinto a los campos suministrados, como se puede ver en los siguientes ejemplos:
+
+```julia
+Dual{Float64}(Dual(1, 2))
+```
+
+```julia
+convert(Dual{Float64}, Dual(1, 1))
+```
+
+```julia
+convert(Dual{Int64}, Dual(1//1, 4//2))
+```
+
+Para corregir esto, extendemos (un poco más) los métodos de los constructores ``Dual`` con tipos específicos:
+
+```julia
+Dual{T}(x::S) where {T <: Real, S <: Real} = Dual(convert(T, x))
+Dual{T}(x::Dual{S}) where {T <: Real, S <: Real} = Dual(convert(T, x.p), convert(T, x.d))
+```
+
+```julia
+Dual{Float64}(Dual(1, 2))
+```
+
+```julia
+convert(Dual{Float64}, Dual(1, 1))
+```
+
+```julia
+convert(Dual{Int64}, Dual(1//1, 4//2))
+```
+
+Observemos adicionalmente que el incluir estas extensiones todavía nos provee de cierta certeza al momento de intentar convertir números de un tipo que no son representables en otro:
+
+```julia
+convert(Dual{Int64}, Dual(1//2, 2//1))
+```
+
+Sin embargo, esto no permite la extensión automática de funciones entre duales y reales, ya que no hemos específicado cómo tratar los casos mixtos cuando tenemos un real y un dual como argumentos de la función:
+
+```julia
+1 + Dual(1, 1)
+```
+
+```julia
+1 - Dual(1, 1)
+```
+
+```julia
+1 * Dual(1, 1)
+```
+
+```julia
+1 / Dual(1, 1)
+```
+
+En principio, podríamos definir todas las posibles permutaciones a mano y sobrecargar las funciones de interés con los métodos mixtos invocando ``convert`` en los sitios respectivos. Sin embargo, una forma, de nuevo más "juliana" (y menos tediosa), aprovecha [el método *fallback* de estas operaciones elementales](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Promotion-1) cuando tenemos un subtipo de ``Number``, que involucra la función ``promote``.
+``promote`` toma la tupla de argumentos de la función y los promueve a tipos interoperables (en este caso, con parejas de duales). Para ello, necesitamos definir las reglas de promoción para los [casos mixtos](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Defining-Promotion-Rules-1). Podemos revisar que en efecto, ``Julia`` sólo es capaz de promover un par de argumentos con un dual involucrado al tipo más genérico compatible entre ambos que hemos establecido (``Number``):
+
+```julia
+promote(Dual(1, 1), 1.0)
+```
+
+```julia
+promote(1.0, Dual(1, 1))
+```
+
+```julia
+promote_type(Dual{Int64}, Float64)
+```
+
+Para definir las reglas de promoción, podemos modificar el código mostrado para ``Rational`` [aquí](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/#Case-Study:-Rational-Promotions-1): (El método alterno para extender funciones de ``Base`` se explica [aquí](https://docs.julialang.org/en/v1/manual/modules/index.html#Summary-of-module-usage-1).)
+
+```julia
+Base.promote_rule(::Type{Dual{T}}, ::Type{S}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
+Base.promote_rule(::Type{Dual{T}}, ::Type{Dual{S}}) where {T <: Real, S <: Real} = Dual{promote_type(T, S)}
+```
+
+Estas permiten obtener el comportamiento esperado por la inclusión canónica:
+
+```julia
+promote(Dual(1, 1), 1.0)
+```
+
+```julia
+promote(1.0, Dual(1, 1))
+```
+
+```julia
+promote_type(Dual{Int64}, Float64)
+```
+
+Y por el método fallback, permiten interoperar duales con reales:
+
+```julia
+1 + Dual(1, 1)
+```
+
+```julia
+1 - Dual(1, 1)
+```
+
+```julia
+1 * Dual(1, 1)
+```
+
+```julia
+1 / Dual(1, 1)
+```
+
+En resumen, le hemos dicho a ``Julia`` que queremos una estructura determinada (``Dual``) que se comporta de determinada forma (sus campos son del mismo tipo; y que se pueden sumar, restar, multiplicar y dividir entre ellos (con la extensión de las funciones respectivas)). Más aún, por la estructura que queremos representar, podemos incluir de forma "adecuada" números reales (usando el contructor externo)). Para asegurar la estabilidad de tipo y poder usar la inclusión canónica de los reales de forma simple, además dijimos cómo se pueden convertir los duales entre ellos (dado que tenemos un tipo paramético, esto mediante la extensión de los constructores tipados) y cómo cambiar tuplas de argumentos de tipos mixtos (duales con reales) mediante las reglas de promoción. Esto, por la forma en la que están escritas las operaciones con números en ``Julia``, automáticamente nos da el álgebra entre reales y duales.
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+
+Podemos realizar algunas baterías de [pruebas](https://docs.julialang.org/en/v1/stdlib/Test/#Working-with-Test-Sets-1) para verificar que las funciones definidas se comporten de forma adecuada:
+
+- Para los constructores:
+
+```julia
+using Test
+
+@testset "Constructores" begin
+    #Constructor por default:
+    @test Dual(1) == Dual(1, 0)
+    @test Dual(-1.05) == Dual(-1.05, 0.0)
+    #Constructor por default con tipo específico:
+    @test Dual{Float64}(1) == Dual(1.0, 0.0)
+    @test Dual{Int64}(1.0) == Dual(1, 0)
+    #Transformación de subtipo:
+    @test Dual{Float64}(Dual(1, 2)) == Dual(1.0, 2.0)
+    @test Dual{Int64}(Dual(1.0, -2.0)) == Dual(1, -2)
+    #Constructor con campos de tipo distinto:
+    @test Dual(1, 1.0) == Dual(1.0, 1.0)
+    @test Dual(2//1, 1) == Dual(2//1, 1//1)
+end
+```
+
+- Para la promoción y conversión de tipos:
+
+```julia
+@testset "Promoción y conversión de tipos" begin
+    #Promoción de tipos abstracta:
+    @test promote_type(UInt8, Dual{Float64}) == Dual{Float64}
+    @test promote_type(Float64, Dual{Int32}) == Dual{Float64}
+    #Promoción de tipos concreta:
+    @test promote(Dual(1.0, 2.0), 2) == (Dual(1.0, 2.0), Dual(2, 0))
+    @test promote(Dual(1, 2), 2//1) == (Dual(1//1, 2//1), Dual(2//1, 0//1))
+    #Conversión de tipos:
+    @test convert(Dual, 1) == Dual(1, 0)
+    @test convert(Dual{Float64}, 1) == Dual(1.0, 0.0)
+    @test convert(Dual{Float64}, Dual(1//1, 1//2)) == Dual(1.0, 0.5)
+end
+```
+
+Para las operaciones exptendidas explícitamente:
+
+```julia
+@testset "Operaciones básicas con duales" begin
+    #Suma
+    @test Dual(1, 2) + Dual(2//1, 3//2) == Dual(3//1, 7//2)
+    @test 2 + Dual(1.0, 2.0) == Dual(3.0, 2.0)
+    @test Dual(1.0, 2.0) + 2 == Dual(3.0, 2.0)
+    #Resta
+    @test Dual(1, 2) - Dual(2//1, 3//2) == Dual(-1//1, 1//2)
+    @test 2 - Dual(1.0, 2.0) == Dual(1.0, -2.0)
+    @test Dual(1.0, 2.0) - 2 == Dual(-1.0, 2.0)
+    #Producto
+    @test Dual(1, 2) * Dual(2//1, 3//2) == Dual(2//1, 11//2)
+    @test 2 * Dual(1.0, 2.0) == Dual(2.0, 4.0)
+    @test Dual(1.0, 2.0) * 2 == Dual(2.0, 4.0)
+    #División
+    @test Dual(1, 2) / Dual(2//1, 3//2) == Dual(1//2, 5//8)
+    @test 2 / Dual(1.0, 2.0) == Dual(2.0, -4.0)
+    @test Dual(1.0, 2.0) / 2 == Dual(0.5, 1.0)
+end
+```
+
+## Ejercicio 3
+
+Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. Con esta función evalúen `g(xd)`
+donde
+$$
+g(x) = \frac{3x^2-8x+1}{7x^3-1}.
+$$
+
+
+Hasta ahora, con el álgebra que definimos para los números duales, y con la implementación que hemos hecho de la misma, podemos intuir que evaluar una función real extendida, $f$, en un dual $x = x_0 + \epsilon a$, "debe" de devolvernos un dual $y = f(x) = b + \epsilon c$ cuya parte principal es $b = f(x_0)$ y cuya parte derivada debe ser "algo" relacionado a $f'(x_0)$.
+
+Para poder enteder precisamente por qué este es el caso (y de paso ver cómo precisar el valor de $d$), supongamos que $f$  es "suficientemente bonita" y $x_0$ es un punto de su dominio (i.e. que admite una expansión de Taylor en torno al punto $x_0$). Si $x$ está "suficientemente cerca" de $x_0$ (i.e. en la región de convergencia de la expansión), tenemos:
+
+$$
+\begin{align*}
+    f(x) &= \sum_{k = 0}^{\infty} \frac{f^{(k)}(x_0)}{k!} (x - x_0)^k \\
+        &= f(x_0) + f'(x_0)(x - x_0) + \sum_{k = 2}^{\infty} \frac{f^{(k)}(x_0)}{k!} (x - x_0)^k.
+\end{align*}
+$$
+
+Como $x - x_0 = a\varepsilon$:
+
+$$
+\begin{align*}
+    f(x_0 + a\varepsilon) &= \sum_{k = 0}^{\infty} \frac{f^{(k)}(x_0)}{k!} (a\varepsilon)^k \\
+        &= f(x_0) + f'(x_0)(a\varepsilon) + \sum_{k = 2}^{\infty} \frac{f^{(k)}(x_0)}{k!} (a\varepsilon)^k.
+\end{align*}
+$$
+
+Como $\varepsilon^2 = 0$, se tiene:
+
+$$
+\begin{align*}
+    f(x_0 + a\varepsilon) &= f(x_0) + f'(x_0)(a\varepsilon),
+\end{align*}
+$$
+
+de dónde confirmamos que $b = f(x_0)$ y observamos que $c = af'(x_0)$.
+
+Es decir, en términos prácticos, extender una función real, $f$, a los duales nos permite calcular de forma sencilla su derivada en el punto $x_0$ tomando la parte derivada del resultado de evaluar la extensión de la función en el dual $x_0 + \epsilon$.
+
+Además de la necesidad de tomar $a = 1$  para que la parte derivada corresponda a la derivada de la función y no a un múltiplo de la misma (que puede explicarse de otra forma mediante la regla de la cadena en duales), existe una razón más íntimamente relacionada con nuestra definición formal de los duales que explica el por qué es necesario usar $(x_0, 1)$ para calcular la derivada y no $(x_0, 0)$ como la inclusión canónica lo sugeriría: la inclusión canónica trata al dual correspondiente como una constante, mientras que la inclusión usando la función identidad ($\mathrm{Id}: x \mapsto x$ en la que $(\mathrm{Id}, x_0) \mapsto (x_0, 1)$, que corresponde a lo que acabamos de calcular), extiende de forma natural la "continuidad" esperada de la variable independiente al momento de calcular el límite para definir la derivada. En cierta forma, es un análogo de la sutileza entre derivar una función constante y la de evaluar la derivada en una constante que se encuentra en un curso de cálculo.
+
+Para poder calcular la derivada de $g$ en 2, conviene definir una función que constuya el "dual continuo" (la inclusión usando la identidad) que comentamos anteriormente:
+
+```julia
+"""
+    var_Dual(x::T) where {T <: Real}
+
+Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones usando la inclusión de los reales mediante la función identidad.
+"""
+var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
+```
+
+Así como un par de funciones que nos devuelvan la parte principal y derivada de un dual:
+
+```julia
+"""
+    principal(x::Dual)
+
+Devuelve la parte principal del ``Dual`` suministrado.
+"""
+principal(x::Dual) = x.p
+
+"""
+    derivada(x::Dual)
+
+Devuelve la parte derivada del ``Dual`` suministrado.
+"""
+derivada(x::Dual) = x.d
+```
+
+Evaluando $g$ en $2 + \epsilon$:
+
+```julia
+g(x) = (3*x^2 - 8*x + 1)/(7*x^3 - 1)
+
+g(var_Dual(2.0))
+```
+
+Por lo que el valor calculado para $g'(2)$ es:
+
+```julia
+derivada(ans)
+```
+
+En efecto, salvo errores numéricos (de truncación), esto concuerda con el [valor esperado](https://www.wolframalpha.com/input/?i=D%5B%283*x%5E2+-+8*x+%2B+1%29%2F%287*x%5E3+-+1%29%2C+x%5D+%2F.+%7Bx+-%3E+2%7D).
+
+Podemos hacer esto de forma automática definiendo lo siguiente:
+
+```julia
+"""
+    derivada(f::Function, x::T) where {T <: Real}
+
+Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
+"""
+derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
+```
+
+```julia
+derivada(g, 2)
+```
+
+Como comentario adicional, resulta curioso que la exponenciación funcione si no hemos extendido de forma explícita el cálculo de potencias naturales con duales. Esto se puede entender viendo el método que se ocupa para calcular ``var_Dual(2.0)^2``:
+
+```julia
+@which var_Dual(2.0)^2
+```
+
+Yendo al pedazo de código que se menciona y siguiendo el hilo de funciones, se sigue que ``Julia`` está calculando el cuadrado (y cualquier potencia natural) de la forma esperada: multiplicando consecutivamente.
+Sorprendentemente, también podemos calcular potencias enteras negativas de forma automática, aunque en principio, [no hay un método](https://github.com/JuliaLang/julia/issues/33699) extendido que lo haga. Esto es evidencia del continuo desarrollo realizado en Julia.
+
+```julia
+var_Dual(2.0)^-1
+```
+
+```julia
+@which var_Dual(2.0)^-1
+```
+
+## Ejercicio 4
+
+- A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+Dado que con la construccion formal de los duales nos permitió entender a un dual como el resultado de evaluar una función diferenciable, $f$ y su derivada, $f'$, en un punto específico, $x_0$, podemos entender a llamar a una función, $g$, en un dual, $\overleftrightarrow{x_0}$, como el resultado de evaluar la función compuesta $g\circ f$ con su derivada $(g\circ f)'$ en el punto $x_0$. Es decir, si $\overleftrightarrow{x_0} = (f, x_0) \mapsto (f(x_0), f'(x_0))$, podemos definir de forma natural: $g(\overleftrightarrow{x_0}) = (g\circ f, x_0) \mapsto ((g \circ f)(x_0), \left(g\circ f)'(x_0)\right)$. A partir de la regla de la cadena y de propiedades de la composición de funciones, se tiene:
+
+$$
+\begin{align*}
+g(\overleftrightarrow{x_0}) &= (g\circ f, x_0) \mapsto \left((g \circ f)(x_0), (g\circ f)'(x_0)\right)\\
+    &= (g, f(x_0)) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)\\
+    &= (g\circ f, x_0) \mapsto \left(g(f(x_0)), g'(f(x_0))f'(x_0))\right)
+\end{align*}
+$$
+
+Por lo que la parte principal del dual $g(\overleftrightarrow{x_0})$ es $g(f(x_0))$ y su parte derivada, $g'(f(x_0))f'(x_0)$. Esto además concuerda con las operaciones elementales definidas anteriormente con duales considerando a las operaciones binarias como funciones unarias con un parámetro fijo. (Por ejemplo, $\overleftrightarrow{x} + \overleftrightarrow{y}$ es la función que mapea $\overleftrightarrow{y}$ a $\overleftrightarrow{x} + \overleftrightarrow{y}$, en la que estrictamente estamos fijando $\overleftrightarrow{x}$)
+
+Para extender las funciones trigonométricas solicitadas, usamos lo siguiente:
+
+```julia
+Base.sin(a::Dual) = Dual(sin(a.p), a.d*cos(a.p))
+Base.cos(a::Dual) = Dual(cos(a.p), -a.d*sin(a.p))
+Base.tan(a::Dual) = Dual(tan(a.p), a.d*sec(a.p)^2)
+```
+
+Como hemos visto, la función ``^`` aparentemente ya está extendida para enteros, sin embargo, si calculamos una potencia no entera (de tipo flotante), obtenemos un error (esperado):
+
+```julia
+Dual(2, 1)^0.0
+```
+
+Extender los métodos de ``^`` a ``Dual``, en teoría, nos debería poder permitir calcular lo anterior:
+
+```julia
+import Base.^
+function ^(a::Dual, x::T) where {T <: Real}
+
+    if x == zero(x)
+
+        return one(a)
+
+    elseif x == one(x)
+
+        return a
+
+    elseif x > 0
+
+        return Dual(a.p^x, x*(a.p^(x-1))*a.d)
+
+    elseif x < 0
+
+        return ^(inv(a), -x)
+    end
+end
+```
+
+```julia
+Dual(2, 1)^0.0
+```
+
+Sin embargo, se nos descomponen los métodos adquiridos por fallback:
+
+```julia
+Dual(2)^-1
+```
+
+```julia
+Dual(2)^(1//2)
+```
+
+(Mejor dicho, nuestros métodos son demasiado ambiguos; necesitamos especializarlos como nos dicen los errores.) Esto se puede hacer de la siguiente manera:
+
+```julia
+#Incluimos un pequeño análisis de tipo en el caso de una potencia entera para tener el comportamiento esperado (si elevamos un Dual{Int64} a una potencia entera, es razonable esperar un Dual{Int64} y no un flotante a menos que sea necesario.)
+function ^(a::Dual{T}, x::S) where {T <: Real, S <: Integer}
+
+    end_type = promote_type(T, S)
+
+    if x == zero(x)
+
+        return Dual{end_type}(one(a))
+
+    elseif x == one(x)
+
+        return Dual{end_type}(a)
+
+    elseif x > 0
+
+        return Dual{end_type}(a.p^x, x*(a.p^(x-1))*a.d)
+
+    elseif x < 0
+
+        return ^(inv(a), -x)
+    end
+end
+
+function ^(a::Dual, x::T) where {T <: Rational}
+
+    if x == zero(x)
+
+        return one(a)
+
+    elseif x == one(x)
+
+        return a
+
+    elseif x > 0
+
+        return Dual(a.p^x, x*(a.p^(x-1))*a.d)
+
+    elseif x < 0
+
+        return ^(inv(a), -x)
+    end
+end
+```
+
+Por lo que:
+
+```julia
+Dual(2)^-1
+```
+
+```julia
+Dual(2)^(1//2)
+```
+
+Para el resto de las funciones, que usualmente tienen métodos más robustos provenientes de ``C``, conviene extenderlas a mano:
+
+```julia
+function Base.sqrt(a::Dual)
+
+    s = sqrt(a.p)
+
+    return Dual(s, a.d/(2*s))
+end
+
+function Base.exp(a::Dual)
+
+    e = exp(a.p)
+
+    return Dual(e, a.d*e)
+end
+
+Base.log(a::Dual) = Dual(log(a.p), a.d/a.p)
+```
+
+- Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+Definamos las baterías de pruebas para cada una de las operaciones extendidas:
+
+```julia
+@testset "Operaciones con duales" begin
+    #Seno:
+    @test sin(Dual(1.0, -2.0)) == Dual(sin(1.0), -2.0*cos(1.0))
+    #Coseno:
+    @test cos(Dual(1.0, -2.0)) == Dual(cos(1.0), 2.0*sin(1.0))
+    #Tangente:
+    @test tan(Dual(1.0, -2.0)) == Dual(tan(1.0), -2.0*sec(1.0)^2)
+    #Potencias:
+    @test Dual(2, -1)^2 == Dual(4, -4)
+    @test Dual(2, -1)^2.0 == Dual(4.0, -4.0)
+    @test Dual(2//1, -1//1)^2 == Dual(4//1, -4//1)
+    @test Dual(2, -1)^-1 == Dual(0.5, 0.25)
+    #Exponenciación:
+    @test exp(Dual(1.0, -2.0)) == Dual(exp(1.0), -2.0*exp(1.0))
+    #Logaritmo:
+    @test log(Dual(1.0, -2.0)) == Dual(0.0, -2.0)
+end
+```
