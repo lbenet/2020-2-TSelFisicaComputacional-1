@@ -25,4 +25,4 @@ deberán ser enviadas en formato `jmd`.
 
 |     Asignación     | Fecha PR inicial | Fecha de aceptación del PR  |         Estado         |
 |:------------------:|:------------------------:|:-----------------------:|:----------------------:|
-|        Tarea 1     | 6/03/2020   |  20/03/2020 | Abierta  |
+|        Tarea 1     | 6/03/2020   |  27/03/2020 | Abierta  |
