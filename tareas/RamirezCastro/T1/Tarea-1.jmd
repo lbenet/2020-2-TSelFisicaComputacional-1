@@ -62,9 +62,16 @@ $$
 Primero definimos la estructura Dual de tal forma que acepte dos numeros con la condición de que éstos sean reales.
 
 ```julia
-struct Dual{T_1 <: Real, T_2 <: Real}
-    x :: T_1
-    x_prima :: T_2
+struct Dual{T <: Real}
+    x :: T
+    x_prima :: T
+end
+```
+
+```julia
+function Dual(x::T_1, x_prima::T_2) where {T_1<:Real, T_2<:Real}
+    x, x_prima = promote(x, x_prima)
+    return Dual(x,x_prima)
 end
 ```
 
@@ -150,7 +157,7 @@ El '0' de está definición es compatible con la interpretación dada ya que est
 
 ```julia
 Base.:+(x::Dual, y::Real) = +(x,Dual(y))
-Base.:+(y::Real, x::Dual) = +(x::Dual,y::Real)
+Base.:+(y::Real, x::Dual) = +(x,y)
 ```
 
 ```julia
@@ -160,7 +167,7 @@ Base.:-(y::Real, x::Dual) = -(Dual(y),x)
 
 ```julia
 Base.:*(x::Dual, y::Real) = *(x,Dual(y))
-Base.:*(x::Real, y::Dual) = *(y::Dual,x::Real)
+Base.:*(x::Real, y::Dual) = *(y,x)
 ```
 
 ```julia
