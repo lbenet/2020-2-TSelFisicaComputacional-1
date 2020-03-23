@@ -154,7 +154,8 @@ plot(domx, sqrt,
     xaxis=("x", (0.0, 5.0), 0:5.0), 
     yaxis=((0.0, 3.0), "F(x)"), 
     legend=false, title="F(x)=sqrt(x)", grid=false)
-plot!(rangox, x->x, color=:red)
+
+plot!(domx, x->x, color=:red)
 
 # Dibuja x_0 -> x_1 = F(x_0)
 plot!([x0, x0, 0.0], [0.0, x1, x1], color=:orange, lw=2.0)
@@ -178,7 +179,8 @@ plot(domx, sqrt,
     xaxis=("x", (0.0, 5.0), 0:5.0), 
     yaxis=((0.0, 3.0), "F(x)"), 
     legend=false, title="F(x)=sqrt(x)", grid=false)
-plot!(rangox, x->x, color=:red)
+    
+plot!(domx, x->x, color=:red)
 
 plot!([x0, x0, x1, x1, x2], [0.0, x1, x1, x2, x2], 
     line=(:orange, :dash, 2.0))
