@@ -27,8 +27,17 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-```julia
-```
+si expresamos $\overleftrightarrow{z} = \frac{\overleftrightarrow{x}}{\overleftrightarrow{y}} \cdot \frac{\overleftrightarrow{y}^*}{\overleftrightarrow{y}^*} $ donde $ \overleftrightarrow{y}^* $ es conjugar la parte que multiplica $\epsilon$ . Por la definición del producto 
+de dos números duales se tiene:
+\begin{eqnarray}
+    \overleftrightarrow{z} = \frac{ (x + \epsilon x^\prime)}{(y + \epsilon y^\prime)} \cdot \frac{(y - \epsilon y^\prime)}{(y - \epsilon y^\prime)}\\
+                           = \frac{(xy) + \epsilon(-xy^\prime + yx^\prime)}{y^2} \\
+        z = \frac{x}{y} \\
+        z^\prime = \frac{yx^\prime - xy^\prime}{y^2}              
+\end{eqnarray}
+La parte de  $z^\prime$ se ve como la derivada de z
+
+
 
 ## Ejercicio 2
 
@@ -44,6 +53,58 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
 ```julia
+struct Dual{ T <: Real}<: AbstractArray{T,1}
+x :: T
+y :: T
+ function Dual(x :: T, y :: T) where {T}
+        @assert length(x) == length(y) == 1
+        return new{T}(x, y)
+    end
+ Dual{T}(x) where {T<:Real} = new{T}(x,0)
+end
+```
+
+```julia
+z = Dual(1.0,2.0)
+t = Dual(2.0,1.0)
+const ϵ = Dual(0.0 , 1.0)
+```
+
+```julia
+import Base: size
+size(::Dual{T}) where {T} = (2,)
+function Base.getindex(v::Dual, i::Int)
+    if i == 1
+        return v.x
+    elseif i == 2
+        return v.y
+    else
+        throw(AssertError)
+    end
+end
+```
+
+```julia
+import Base: show, +, *, -, /
+```
+
+```julia
++(a::Dual, b::Dual) = Dual(a.x + b.y,a.y + b.y)
+-(a::Dual, b::Dual) = Dual(a.x - b.y,a.y - b.y)
+*(a::Dual, b::Dual) = Dual(a.x*b.x,a.x*b.y + b.x*a.y)
+/(a::Dual, b::Dual) = Dual(a.x/b.x,(b.x*a.y-a.x*b.y)/b.x^2)
+```
+
+```julia
+Dual(5,4)
+```
+
+```julia
+Dual(x::T) where {T<:Real} = Dual{T}(x)
+```
+
+```julia
+Dual(5)
 ```
 
 ## Ejercicio 3
@@ -52,6 +113,9 @@ Usando `x = Dual(2.0)`, calcular
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
+
+```julia
+```
 
 ```julia
 ```
