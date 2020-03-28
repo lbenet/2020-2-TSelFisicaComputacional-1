@@ -1,6 +1,4 @@
 
-#### POR: ERICK ALEXIS GÓMEZ HERNÁNDEZ
-
 # Tarea 1: Números duales
 
 > La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
@@ -20,125 +18,25 @@ En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{
 
 Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
 
+
 ## Ejercicio 1
 
 - A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
 Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
 
-Se tiene que
-$$
-\overleftrightarrow{z} \cdot \overleftrightarrow{y} =
-zy + \epsilon(zy' + z'y) = x + \epsilon x' = \overleftrightarrow{x}
-$$
-lo cual se cumple sii
-$$ zy = x \quad\text{y}\quad z' = zy' + z'y $$
-de donde 
-$$ z = \frac{x}{y}, $$
-luego:
-$$ x' = \left(\frac{x}{y}\right)y' + z'y 
-\quad\Rightarrow\quad 
-z' = \frac{yx' - xy'}{y^2} $$
-
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-Haciendo la analogía de la notación funcional de $f'$ como la derivada de $f$, si $z = \frac{x}{y}$, entonces $z'$ es la derivada de $z'$ dada por la regla del cociente de $\left(\frac{x}{y}\right)' = \frac{yx' - xy'}{y^2}$.
+```julia
+```
 
 ## Ejercicio 2
 
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
 
-```julia
-Int64 == Real
-```
-
-```julia
-#"""
-#Definimos a un número Dual como una estructura mutable.
-#"""
-
-# \overleftrightarrow{z} = x + ϵy
-#mutable struct Dual{T <: Real, U <: Real}
- #   x :: T
-  #  y :: U
-   # function Dual(x :: T, y :: U) where {T, U}
-    #    @assert length(x) == length(y) == 1
-     #   return new{T, U}(x,y)
-    #end
-#end
-```
-
-```julia
-# \overleftrightarrow{z} = x + ϵy
-mutable struct Dual{T <: Real}
-    x :: T
-    y :: T
-    function Dual(x :: T, y :: T) where {T}
-        @assert length(x) == length(y) == 1
-        return new{T}(x,y)
-    end
-end
-```
-
-```julia
-z = Dual(5.0,4)
-```
-
-```julia
-typeof(z)
-```
-
-```julia
-z.x = 5.0
-```
-
-```julia
-z
-```
-
-```julia
-w = Dual(3.3,2)
-```
-
 - Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
 
-```julia
-# Sobrecarga de +, -, *, /
-
-import Base: +
-    +(z::Dual, w::Dual) = Dual(z.x + w.x, z.y + w.y)
-
-import Base: -
-    -(z::Dual, w::Dual) = Dual(z.x - w.x, z.y - w.y)
-
-import Base: *
-    *(z::Dual, w::Dual) = Dual((z.x * w.x), (z.x * w.y + z.y * w.x))
-
-import Base: /
-    /(z::Dual, w::Dual) = Dual(z.x/w.x, ((w.x *z.y) - (z.x * w.y))/(w.x)^2)
-```
-
-```julia
-z + w
-```
-
-```julia
-z - w
-```
-
-```julia
-z * w
-```
-
-```julia
-z / w
-```
-
-- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
-
-```julia
-# Método externo que crea objetos del tipo Dual(x0, 0)
-```
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
 
 - Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
     NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
@@ -155,6 +53,8 @@ donde
 $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
+
+
 
 ```julia
 ```
