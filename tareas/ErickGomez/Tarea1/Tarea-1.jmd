@@ -1,4 +1,6 @@
 
+#### POR: ERICK ALEXIS GÓMEZ HERNÁNDEZ
+
 # Tarea 1: Números duales
 
 > La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
@@ -18,32 +20,153 @@ En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{
 
 Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
 
-
 ## Ejercicio 1
 
 - A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
 Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
 
+Se tiene que
+$$
+\overleftrightarrow{z} \cdot \overleftrightarrow{y} =
+zy + \epsilon(zy' + z'y) = x + \epsilon x' = \overleftrightarrow{x}
+$$
+lo cual se cumple sii
+$$ zy = x \quad\text{y}\quad zy' + z'y = x' $$
+de donde 
+$$ z = \frac{x}{y}, $$
+luego:
+$$ x' = \left(\frac{x}{y}\right)y' + z'y 
+\quad\Rightarrow\quad 
+z' = \frac{yx' - xy'}{y^2} $$
+
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-```julia
-```
+Haciendo la analogía de la notación funcional de $f'$ como la derivada de $f$, si $z = \frac{x}{y}$, entonces $z'$ es la derivada de $z$ dada por la regla del cociente de $\left(\frac{x}{y}\right)' = \frac{yx' - xy'}{y^2}$.
 
 ## Ejercicio 2
 
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
 
+```julia
+#"""
+#Definimos a un número Dual como una estructura mutable.
+#"""
+
+# \overleftrightarrow{z} = x + ϵy
+#mutable struct Dual{T <: Real, U <: Real}
+ #   x :: T
+  #  y :: U
+   # function Dual(x :: T, y :: U) where {T, U}
+    #    @assert length(x) == length(y) == 1
+     #   return new{T, U}(x,y)
+    #end
+#end
+```
+
+```julia
+# Creando estructura "Dual" con partes principal y derivada Reales
+# \overleftrightarrow{z} = x + ϵy
+mutable struct Dual{T <: Real}
+    x :: T
+    y :: T
+end
+```
+
+```julia
+"""
+Constructor de la estructura "Dual" que permite crear un objeto de este tipo
+sin importar que los argumentos que se reciban sean de distintos tipos.
+"""
+
+# El operador "..." es para "aplanar" la tupla que resulra de "promote(x,y)"
+Dual(x::T, y::U) where {T <: Real, U <: Real} = Dual(promote(x, y)...)
+```
+
+```julia
+# El constructor permite tomar argumentos numéricos de distintos tipos
+Dual(4, 5.0), Dual(3//6, 4.5)
+```
+
 - Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
 
-- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+```julia
+# Sobrecarga de operadores aritméticos +, -, *, /
+
+import Base: +
+    +(z::Dual, w::Dual) = Dual(z.x + w.x, z.y + w.y)
+
+import Base: -
+    -(z::Dual, w::Dual) = Dual(z.x - w.x, z.y - w.y)
+
+import Base: *
+    *(z::Dual, w::Dual) = Dual((z.x * w.x), (z.x * w.y + z.y * w.x))
+
+import Base: /
+    /(z::Dual, w::Dual) = Dual(z.x/w.x, ((w.x *z.y) - (z.x * w.y))/(w.x)^2)
+```
+
+```julia
+z, w = Dual(exp(3), 4), Dual(3//2, 2π)
+```
+
+```julia
+z + w
+```
+
+```julia
+z - w
+```
+
+```julia
+z * w
+```
+
+```julia
+z / w
+```
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
+
+```julia
+# Método que crea objetos del tipo Dual(x0, 0)
+Dual(x::T) where {T <: Real} = Dual(promote(x, 0.0)...)
+```
+
+```julia
+# Ya se permite expresar números reales como duales con parte derivada nula
+Dual(π)
+```
 
 - Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
     NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
 
+```julia
+# Extensión de operadores aritméticos entre reales y duales
+# Como ya se sabe operar entre duales, basta transformar
+# el real x al dual (x,0)
+
+import Base: +
+    +(z::Dual, w::T) where {T <: Real} = z + Dual(w)
+    +(z::T, w::Dual) where {T <: Real} = Dual(z) + w
+
+import Base: -
+    -(z::Dual, w::T) where {T <: Real} = z - Dual(w)
+    -(z::T, w::Dual) where {T <: Real} = Dual(z) - w
+
+import Base: *
+    *(z::Dual, w::T) where {T <: Real} = z * Dual(w)
+    *(z::T, w::Dual) where {T <: Real} = Dual(z) * w
+
+import Base: /
+    /(z::Dual, w::T) where {T <: Real} = z / Dual(w)
+    /(z::T, w::Dual) where {T <: Real} = Dual(z) / w
+```
+
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
 ```julia
+promote_rule(::Type{T}, ::Type)
 ```
 
 ## Ejercicio 3
@@ -54,14 +177,53 @@ $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
-
+Haciendo la analogía con la interpretación del Ejercicio 1 de un dual como $(f, f')$, consideremos $f(x) = x$. Así, para $f(x_0) = x_0$, la parte derivada de `var_dual(x_0)` debería arrojar la derivada $f'(x_0) = 1$: `var_dual(x_0) = Dual(x_0, 1)`.
 
 ```julia
+"""
+Devuelve el dual (f(x_0),f'(x_0)) para f(x) = x,
+es decir (x_0, 1).
+"""
+var_dual(x0::T) where {T <: Real} = Dual(x0, 1)
 ```
 
 ## Ejercicio 4
 
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+Según la interpretación inicial, un dual $(x,y)$ como un par $(f, f')$. Considerando la composición $g \circ f$, el dual correspondiente es $(g \circ f, (g \circ f)') = (g \circ f, f'(g' \circ f)) $. Así, es como se hace la extensión de $g$ aplicado a un dual: 
+$$ g((x,y)) = (g(x), y\,g'(x)).$$
+Entonces:
+\begin{align*}
+    \sin{(x,y)} &:= (\sin{x}, y\cos{x}) \\
+    \cos{(x,y)} &:= (\cos{x}, -y\sin{x}) \\
+    \tan{(x,y)} &:= \left(\tan{x}, \frac{y}{\cos^2{x}}\right) \\
+    (x,y)^n &:= (x^n, y\,nx^{n-1}) \\
+    \sqrt{(x,y)} &:= \left(\sqrt{x}, \frac{y}{2 \sqrt{x}}\right) \\
+    \exp{(x,y)} &:= (\exp{x}, y\exp{x}) \\
+    \log{(x,y)} &:= \left(\log{x}, \frac{y}{x}\right) \\
+\end{align*}
+
+```julia
+# Extensión de funciones a duales
+
+import Base: sin, cos, tan, ^, sqrt, exp, log
+    sin(z::Dual) = Dual(sin(z.x), z.y*cos(z.x))
+    cos(z::Dual) = Dual(cos(z.x), -z.y*sin(z.x))
+    tan(z::Dual) = Dual(tan(z.x), z.y/cos(z.x)^2 )
+    ^(z::Dual, n::Int) = Dual((z.x)^n, z.y*n*(z.x)^(n-1))
+    sqrt(z::Dual) = Dual(sqrt(z.x), (0.5*z.y)/sqrt(z.x))
+    exp(z::Dual) = Dual(exp(z.x), z.y*exp(z.x))
+    log(z::Dual) = Dual(log(z.x), z.y/z.x)
+```
+
+```julia
+z
+```
+
+```julia
+sin(z), cos(z), tan(z), ^(z,3), sqrt(z), exp(z), log(z)
+```
 
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
 
