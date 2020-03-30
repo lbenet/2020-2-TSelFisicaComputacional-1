@@ -1,0 +1,272 @@
+
+# Tarea 1: Números duales
+
+> La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
+
+
+Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
+
+Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
+Con esta definición, podemos extender las operaciones aritméticas al igual que las funciones elementales de manera sencilla. Ésta es, de hecho, la manera en que están implementados los números complejos en Julia.
+
+En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
+
+\begin{eqnarray}
+(x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
+(x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
+\end{eqnarray}
+
+Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
+
+
+## Ejercicio 1
+
+- A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
+Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+$\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$
+
+Con
+\begin{eqnarray}
+(z + \epsilon z^\prime) \cdot (y + \epsilon y^\prime) & = & (z\cdot y) + \epsilon (zy^\prime + yz^\prime)\\
+                                                      & = & x + \epsilon x^\prime                                                 
+\end{eqnarray}
+podemos hacer $x = z\cdot y$  y  $x^\prime = zy^\prime + yz^\prime$
+de donde se obtiene: 
+$$z = x/y$$
+y $$z^\prime = \frac{x^\prime-zy^\prime}{y} = \frac{x^\prime-x\frac{y^\prime}{y}}{y}=\frac{x^\prime y-xy^\prime}{y^2}$$
+Así, con $\overleftrightarrow{z}= z + \epsilon z^\prime$ podemos definir 
+
+$$ \overleftrightarrow{x}/\overleftrightarrow{y} =\frac{x}{y}+ \epsilon \left(\frac{x^\prime y-xy^\prime}{y^2}\right)$$
+
+Aunque $x,y$ son números reales, se pueden extender las definiciones anteriores a funciones. Así el segundo término, como puede notarse, corresponde a la derivada del primer término. Es decir, que $z^\prime$ es la derivada de $z$.
+
+## Ejercicio 2
+
+- Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+
+- Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+
+```julia
+mutable struct Dual{T <: Real, S <: Real}
+    x :: T
+    x2:: S  #donde x2 = x'
+    function Dual(x :: T, x2 :: S) where {T<:Real, S<:Real}
+        x, x2 = promote(x,x2) #coloco esta parte para poder definir Duales a partir de tipos distintos
+        return new{T,T}(x, x2)
+    end
+end
+```
+
+```julia
+function suma(u::Dual,v::Dual)
+    return [u.x+v.x,u.x2+v.x2]
+end
+Base.:+(u::Dual, v::Dual) = Dual(suma(u,v)...)
+
+
+
+function resta(u::Dual,v::Dual)
+    return [u.x-v.x,u.x2-v.x2]
+end
+Base.:-(u::Dual, v::Dual) = Dual(resta(u,v)...)
+
+
+
+function producto(u::Dual,v::Dual)
+    return [u.x * v.x, u.x*v.x2 + v.x*u.x2]
+end
+Base.:*(u::Dual, v::Dual) = Dual(producto(u,v)...)
+
+
+
+function cociente(u::Dual, v::Dual)
+    z = u.x/v.x #x/y
+    z2 = (1/((v.x)^2))*(u.x2*v.x - u.x*v.x2)  #(1/y²)(x'y-xy')
+    return [z,z2]
+end
+Base.:/(u::Dual, v::Dual) = Dual(cociente(u,v)...)
+```
+
+```julia
+#Para probar que los resultados sean correctos
+x = Dual(1,2)
+y = Dual(1.0,2.0)
+println(x+y)
+println(x-y)
+println(x*y)
+print(x/y)
+```
+
+```julia
+Dual(s::T) where {T <: Real} = Dual(s,convert(T,0))
+#Esta definición si es compatible pues estará relacionada con una función que no cambia y para la
+#cual sólo se necesita un parámetro para especificarla.
+```
+
+```julia
+# Extensión para operar reales y duales
+#  En general quiero trabaja todo en duales, por lo que haré una función que evalúe 
+#  ambos valores, u ya v y en caso de ser reales los convierta a duales usando la función ya 
+#  definida Dual(x). A esta la llamaré convert2.
+
+Base.:convert(::Type{Dual}, x::T) where {T<:Real} = Dual(x)
+
+
+function convert2(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
+    if typeof(u) == T 
+        u = convert(Dual,u)
+    elseif typeof(v) == T
+        v = convert(Dual,v)
+    end
+    return u, v
+end
+```
+
+```julia
+#Extensión para las operaciones:
+function suma(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
+    u, v = convert2(u,v)
+    return [u.x+v.x,u.x2+v.x2]
+end
+Base.:+(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(suma(u,v)...)
+
+
+function resta(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
+    u, v = convert2(u,v)
+    return [u.x-v.x,u.x2-v.x2]
+end
+Base.:-(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(resta(u,v)...)
+
+
+function producto(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
+    u, v = convert2(u,v)
+    return [u.x * v.x, u.x*v.x2 + v.x*u.x2]
+end
+Base.:*(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(producto(u,v)...)
+
+
+
+function cociente(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
+    u, v = convert2(u,v)
+    z = u.x/v.x #x/y
+    z2 = (1/((v.x)^2))*(u.x2*v.x - u.x*v.x2)  #(1/y²)(x'y-xy')
+    return [z,z2]
+end
+Base.:/(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(cociente(u,v)...)
+```
+
+```julia
+#Para probar que las opraciones funcionen correctamente:
+x = 1
+y = Dual(1.0,2.0)
+println(x+y)
+println(x-y)
+println(x*y)
+print(x/y)
+```
+
+# Ejercicio 3
+
+Usando `x = Dual(2.0)`, calcular
+$$
+g(x) = \frac{3x^2-8x+1}{7x^3-1}.
+$$
+
+```julia
+function f(a::Dual)
+    u = 3*(a.x)^2 -8*(a.x) + 1
+    v = 7*(a.x)^3 - 1
+    return u/v
+end
+function dx(a::Dual)
+    h = (6*(a.x)-8)*(7*(a.x)^3 - 1)-(21*(a.x)^2)*(3*(a.x)^2 - 8*(a.x) + 1)
+    l = (7*(a.x)^3 - 1)^2
+    return h/l
+end
+
+function gx(a::Dual)
+    return [f(a),(a.x2)*dx(a)]
+end 
+g(a::Dual) = Dual(gx(a)...)
+
+x = Dual(2.0)
+g(x)
+```
+
+## Ejercicio 4
+
+- A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+- Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+Según la interpretación dada, el primer término representa a la función evaluada en la 
+primer entrada dual y la segunda a la derivada de esa función, entonces tenemos:
+$$f(x+\epsilon x^\prime) = f(x) + \epsilon x^\prime\frac{df(x)}{dx} $$
+
+o
+
+$$f((x,x^\prime)) = (f(x), x^\prime\cdot f^\prime(x))$$
+
+```julia
+#Usando la expresión anterior:
+function sin_dual(a::Dual)
+    return [sin(a.x),(a.x2)*cos(a.x)]
+end
+Base.:sin(a::Dual) = Dual(sin_dual(a::Dual)...)
+
+function cos_dual(a::Dual)
+    return [cos(a.x),-(a.x2)*sin(a.x)]
+end
+Base.:cos(a::Dual) = Dual(cos_dual(a::Dual)...)
+
+function tan_dual(a::Dual)
+    return [tan(a.x),(a.x2)*sec(a.x)^2]
+end
+Base.:tan(a::Dual) = Dual(tan_dual(a::Dual)...)
+
+function pot_dual(a::Dual,n::Int)
+    return [(a.x)^n,(a.x2)*n*(a.x)^(n-1)]
+end
+Base.:^(a::Dual,n::Int) = Dual(pot_dual(a::Dual,n::Int)...)
+
+function sqrt_dual(a::Dual)
+    return [sqrt(a.x),(a.x2)*(1/2)*(1/sqrt(a.x))]
+end
+Base.:sqrt(a::Dual) = Dual(sqrt_dual(a::Dual)...)
+
+function exp_dual(a::Dual)
+    return [exp(a.x),(a.x2)*(a.x)*exp(a.x)]
+end
+Base.:exp(a::Dual) = Dual(exp_dual(a::Dual)...)
+
+function log_dual(a::Dual)
+    return [log(a.x),(a.x2)/(a.x)]
+end
+Base.:log(a::Dual) = Dual(log_dual(a::Dual)...)
+```
+
+```julia
+#Algunas pruebas:
+
+println("sin((0,2.0)) = ",sin(Dual(0,2)))
+println("cos((0,2)) = ",cos(Dual(0,2)))
+println("exp((0,1)) = ",exp(Dual(0,1)))
+println("(1,1)^2 = " ,  Dual(1,1)^2)
+println("sqrt((1,1)) = ",sqrt(Dual(4,1)))
+println("tan((0,1))= ", tan(Dual(0,1)))
+println("log((exp(5),3)) = ", log(Dual(exp(5),3.)))
+```
+
+```julia
+```
