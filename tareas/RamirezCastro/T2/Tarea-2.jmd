@@ -40,7 +40,6 @@ function itera_mapeo(f, x0, n::Int)
 end
 """
     Plot_f_i(f, x0, n)
-
 """
 function Plot_f_i(F::Function, domx=0.0:1/128:5.0;title_l = "F(x)", color=:blue,
         domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]))
@@ -54,7 +53,6 @@ function Plot_f_i(F::Function, domx=0.0:1/128:5.0;title_l = "F(x)", color=:blue,
 end
 """
     analisis_grafico(F::Function, x0::Float64, n::Int)
-
 """
 function analisis_grafico(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0;
         title_l = "F(x)",color=:blue,  
@@ -72,9 +70,9 @@ end
 
 """
     analisis_grafico!(F::Function, x0::Float64, n::Int)
-
 """
-function analisis_grafico!(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0; color=:blue)
+function analisis_grafico!(F::Function, x0::Float64, 
+        n::Int, domx=0.0:1/128:1.0; color=:blue)
     its, its_x, its_y = itera_mapeo(F, x0, n)
     plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
         markercolor= color,linecolor=color,markersize=4, alpha=0.4)
@@ -190,7 +188,7 @@ histogram(its[2:end],leg=false, normed=true, title=latexstring("G(x)"),
 ```
 
 ```julia
-G(x) = mod(2*x,2)
+G(x) = mod(2*x,1)
 ```
 
 ```julia
@@ -200,19 +198,19 @@ histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true,
 ```
 
 ```julia
-its, its_x, its_y = itera_mapeo(G, rand(), 200)
+its, its_x, its_y = itera_mapeo(G, rand(), 1000)
 histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
     xlabel="Visita",ylabel="Frecuencia")
 ```
 
 ```julia
-domx=0:1/256:2.0
+domx=0:1/256:1.0
 plot(domx,G,legend=false)
 plot!(domx,identity)
 ```
 
 ```julia
-analisis_grafico(G, rand(), 100, domx,title_l=latexstring("M_3"),color=:black,domy=(0,2))
+analisis_grafico(G, rand(), 10, domx,title_l=latexstring("M_3"),color=:black,domy=(0,2))
 ```
 
 ## Ejercicio 3
@@ -326,23 +324,17 @@ tienen la propiedad de que $N(z^*)=z_*$. En este caso concreto los ceros los pod
 
 La idea es considerar *muchas* condiciones iniciales $z_0\in[-1,1]\times[-1,1]$, y para cada condición inicial iteraremos muchas veces el mapeo, por ejemplo, $n=10000$ veces. La idea es asignarle a cada condición inicial un color (azul, verde o rojo) según el punto al que converja, o al punto al que más se acerque $z_n$. Dibujen el mapa de colores que se obtiene.
 
-(b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
-\begin{equation}
-z_{n+1} = z_n - a\frac{f(z_n)}{f'(z_n)},
-\end{equation}
-para la misma función $f(z)$, con $a=2$.
-
 *Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
 
 ```julia
-plot([cos(2*pi*0/3)], [sin(2*pi*0/3)], markershape=:circle,
+scatter([cos(2*pi*0/3)], [sin(2*pi*0/3)], markershape=:circle,
     xaxis = ("Real",(-1.1,1.1)),
     yaxis = ("Imaginario",(-1.1,1.1)),
-    markerstrokecolor=:blue, markersize=6, alpha=0.5, label="Cero con r=0")
-plot!([cos(2*pi*1/3)], [sin(2*pi*1/3)], markershape=:circle,
-    markerstrokecolor=:yellow, markersize=6, alpha=0.5, label="Cero con r=1")
-plot!([cos(2*pi*2/3)], [sin(2*pi*2/3)], markershape=:circle,
-    markerstrokecolor=:red, markersize=6, alpha=0.5, label="Cero con r=2")
+    markerstrokecolor=:blue, markersize=10, alpha=0.5, label="Cero con r=0")
+scatter!([cos(2*pi*1/3)], [sin(2*pi*1/3)], markershape=:circle,
+    markerstrokecolor=:yellow, markersize=10, alpha=0.5, label="Cero con r=1")
+scatter!([cos(2*pi*2/3)], [sin(2*pi*2/3)], markershape=:circle,
+    markerstrokecolor=:red, markersize=10, alpha=0.5, label="Cero con r=2")
 ```
 
 ```julia
@@ -351,14 +343,87 @@ a^2
 ```
 
 ```julia
-f(z) = z^3 -1 
-g(x) = f(x)[1]/f(x)[2]
-z = rand()*2-1+im*(rand()*2-1)
-a = Met_Newton(f,z)
+"""
+    itera_mapeo_2(f, x0, n)
+
+"""
+function itera_mapeo_2(f,a,x0, n::Int)
+    for i = 1:n
+        x0 = f(x0,a)
+    end
+    return x0
+end
 ```
 
 ```julia
-typeof(1.0+7*im)
+f(z) = z^3 -1 
+g(x,a) = x-a*f(x_Dual(x))[1]/f(x_Dual(x))[2]
+"""
+    clasifica_x_0(f, x0, n)
+
+"""
+function clasifica_x(n,g;a=1,its=1000)
+    v_0 = cos(2*pi*0/3)+im*sin(2*pi*0/3)
+    v_1 = cos(2*pi*1/3)+im*sin(2*pi*1/3)
+    v_2 = cos(2*pi*2/3)+im*sin(2*pi*2/3)
+    x_0 = [Float64[0],Float64[0]]
+    x_1 = [Float64[0],Float64[0]]
+    x_2 = [Float64[0],Float64[0]]
+    for i in 1:n
+        z = rand()*2-1+im*(rand()*2-1)
+        x = itera_mapeo_2(g,a,z,3000)
+        if abs(v_0-x) < 0.5
+            push!(x_0[1],real(z))
+            push!(x_0[2],imag(z))
+        elseif abs(v_1-x) < 0.5
+            push!(x_1[1],real(z))
+            push!(x_1[2],imag(z))
+        elseif abs(v_2-x) < 0.5
+            push!(x_2[1],real(z))
+            push!(x_2[2],imag(z))
+        else
+            print("No converge")
+        end
+    end
+    scatter(x_0[1], x_0[2], markershape=:circle,
+        xaxis = ("Real",(-1.1,1.1)),
+        yaxis = ("Imaginario",(-1.1,1.1)),
+        markerstrokecolor=:blue, markersize=6, alpha=0.5, label="Cero con r=0")
+    scatter!(x_1[1],x_1[2], markershape=:circle,
+        markerstrokecolor=:yellow, markersize=6, alpha=0.5, label="Cero con r=1")
+    scatter!(x_2[1],x_2[2], markershape=:circle,
+        markerstrokecolor=:red, markersize=6, alpha=0.5, label="Cero con r=2")
+    end
+```
+
+```julia
+clasifica_x(1000,g,its=20000)
+```
+
+```julia
+clasifica_x(2000,g,its=20000)
+```
+
+```julia
+clasifica_x(3000,g,its=20000)
+```
+
+(b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
+\begin{equation}
+z_{n+1} = z_n - a\frac{f(z_n)}{f'(z_n)},
+\end{equation}
+para la misma función $f(z)$, con $a=2$.
+
+```julia
+clasifica_x(1000,g,a=2,its=20000)
+```
+
+```julia
+clasifica_x(2000,g,a=2,its=20000)
+```
+
+```julia
+clasifica_x(3000,g,a=2,its=20000)
 ```
 
 ## Ejercicio 5
@@ -372,9 +437,6 @@ Consideremos ahora el triángulo definido por los tres puntos $A=(1, 0)$, $B=(\c
 (c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
 
 (d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
-
-```julia
-```
 
 ## Ejercicio 6
 
