@@ -53,35 +53,14 @@ La parte de  $z^\prime$ se ve como la derivada de z
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
 ```julia
-struct Dual{ T <: Real}<: AbstractArray{T,1}
+struct Dual{ T <: Real}
 x :: T
 y :: T
- function Dual(x :: T, y :: T) where {T}
-        @assert length(x) == length(y) == 1
-        return new{T}(x, y)
-    end
- Dual{T}(x) where {T<:Real} = new{T}(x,0)
 end
 ```
 
 ```julia
-z = Dual(1.0,2.0)
-t = Dual(2.0,1.0)
-const ϵ = Dual(0.0 , 1.0)
-```
-
-```julia
-import Base: size
-size(::Dual{T}) where {T} = (2,)
-function Base.getindex(v::Dual, i::Int)
-    if i == 1
-        return v.x
-    elseif i == 2
-        return v.y
-    else
-        throw(AssertError)
-    end
-end
+Dual(x::T) where {T<:Real} = Dual{T}(x,zero(x))
 ```
 
 ```julia
@@ -89,22 +68,66 @@ import Base: show, +, *, -, /
 ```
 
 ```julia
-+(a::Dual, b::Dual) = Dual(a.x + b.y,a.y + b.y)
--(a::Dual, b::Dual) = Dual(a.x - b.y,a.y - b.y)
++(a::Dual, b::Dual) = Dual(a.x + b.x,a.y + b.y)
+-(a::Dual, b::Dual) = Dual(a.x - b.x,a.y - b.y)
 *(a::Dual, b::Dual) = Dual(a.x*b.x,a.x*b.y + b.x*a.y)
 /(a::Dual, b::Dual) = Dual(a.x/b.x,(b.x*a.y-a.x*b.y)/b.x^2)
 ```
 
 ```julia
-Dual(5,4)
++(a::T, b::Dual) where {T<:Real} = Dual(a + b.x, b.y)
++(a::Dual, b::T) where {T<:Real}  = b + a
+
+*(a::T, b::Dual ) where {T<:Real} = Dual(a * b.x, a * b.y)
+*(a::Dual, b::T) where {T<:Real}  = b * a
+
+-(a::T, b::Dual) where {T<:Real} = Dual(a - b.x, -b.y)
+-(a::Dual, b::T) where {T<:Real}  = Dual(a.x - b, a.y)
+
+/(a::T, b::Dual) where {T<:Real} = Dual(a / b.x, -a * b.y/(b.x^2))
+/(a::Dual, b::T) where {T<:Real}  = Dual(a.x / b, a.y / b)
 ```
 
 ```julia
-Dual(x::T) where {T<:Real} = Dual{T}(x)
+using Test
 ```
 
 ```julia
-Dual(5)
+t= Dual(1.0,2.0)
+ z= Dual(2.0,1.0)
+ s = Dual(5)
+```
+
+```julia
+@test s + t == Dual(6.0,2.0)
+```
+
+```julia
+@test t/z == Dual(0.5,0.75)
+```
+
+```julia
+@test t*z == Dual(2.0,5.0)
+```
+
+```julia
+@test t-z == Dual(-1.0,1.0)
+```
+
+```julia
+@test s+1 == Dual(6,0)
+```
+
+```julia
+@test z - 4.5 == Dual(-2.5,1.0)
+```
+
+```julia
+@test z*4 == Dual(8.0,4.0)
+```
+
+```julia
+@test  z/2 == Dual(1.0,0.5)
 ```
 
 ## Ejercicio 3
@@ -115,9 +138,20 @@ g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
 ```julia
+g(x) = (3*x*x - 8*x +1)/(7*x*x*x - 1)
+h(x) = (-21x*x*x*x + 112x*x*x -21x*x -6x + 8)/(7x*x*x - 1)^2
 ```
 
 ```julia
+g(2),h(2)
+```
+
+```julia
+var_dual(x) = Dual(x,one(x))
+```
+
+```julia
+g(var_dual(2))
 ```
 
 ## Ejercicio 4
@@ -125,6 +159,50 @@ $$
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
 
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+```julia
+import Base: sin,cos,tan,^,sqrt,exp,log
+```
+
+```julia
+sin(a::Dual) = Dual(sin(a.x), a.y*cos(a.x))
+cos(a::Dual) = Dual(cos(a.x), -a.y*sin(a.x))
+^(a::Dual, n::Int) = Dual(a.x^n,n*a.x^(n-1)*a.y)
+exp(a::Dual) = Dual(exp(a.x),a.y*exp(a.x))
+log(a::Dual) = Dual(log(a.x) , a.y/a.x)
+tan(a::Dual) = Dual(tan(a.x) , a.y*(1/(cos(a.x)^2)) )
+sqrt(a::Dual) = Dual(sqrt(a.x) , a.y*(1/2*sqrt(a.x)))
+```
+
+```julia
+a = Dual(π/2,π/2)
+b = Dual(0.0,1.0)
+c = Dual(4.0,4.0)
+```
+
+```julia
+@test sin(a) == Dual(1.0,0.0)
+```
+
+```julia
+@test cos(a) == Dual(0.0, - 1.5707963267948966 )
+```
+
+```julia
+@test exp(b) == Dual(1.0,1.0)
+```
+
+```julia
+@test log(b) == Dual(-Inf, Inf)
+```
+
+```julia
+@test tan(b) == Dual(0.0,1.0)
+```
+
+```julia
+@test sqrt(c) == Dual(2.0,4.0)
+```
 
 ```julia
 ```
