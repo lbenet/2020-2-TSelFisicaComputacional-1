@@ -14,15 +14,161 @@
 
 Describan la dinámica de varias órbitas para los siguientes mapeos, usando distintos colores para distintas órbitas, en una misma gráfica. Interesa entre otras cosas saber cuántos puntos fijos tiene el mapeo y cómo es la dinámica cerca de dichos puntos.
 
+```julia
+using Plots
+using LaTeXStrings
+```
+
+```julia
+"""
+    iteramapeo(f, x0, n)
+
+"""
+function itera_mapeo(f, x0, n::Int)
+    its = Float64[x0]
+    its_x = Float64[x0]
+    its_y = Float64[0.0]
+    for i = 1:n
+        push!(its_x,x0)
+        x0 = f(x0)
+        push!(its_x, x0)
+        push!(its,x0)
+        push!(its_y,x0)
+        push!(its_y,x0)
+    end
+    return its, its_x, its_y
+end
+"""
+    Plot_f_i(f, x0, n)
+
+"""
+function Plot_f_i(F::Function, domx=0.0:1/128:5.0;title_l = "F(x)", color=:blue,
+        domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]))
+    plot(domx, F, color=:blue,
+        xaxis=("x", (domx[1], domx[end])), 
+        yaxis=(domy,"F(x)"), 
+        legend=false, 
+        title=title_l, 
+        grid=false)
+    plot!(domx, identity, color=:red)
+end
+"""
+    analisis_grafico(F::Function, x0::Float64, n::Int)
+
+"""
+function analisis_grafico(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0;
+        title_l = "F(x)",color=:blue,  
+        domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]),
+        domx_2=(domx[1],domx[end]))
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot(domx, F, color=:blue,
+        xaxis=("x", domx_2),
+        yaxis=(domy,"F(x)"), legend=false, 
+        title=title_l, grid=false)
+    plot!(domx, identity, color=:red)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.5)
+end
+
+"""
+    analisis_grafico!(F::Function, x0::Float64, n::Int)
+
+"""
+function analisis_grafico!(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0; color=:blue)
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.4)
+end
+```
+
 (a) $M_1(x) = \frac{1}{3x}$.
+
+```julia
+M₁(x) = 1/(3*x)
+```
+
+```julia
+domx=-5:1/128:5
+domy=(-5,5)
+Plot_f_i(M₁,domx,title_l=latexstring("M_1"),domy=domy)
+```
+
+```julia
+analisis_grafico(M₁, 1.1, 20, domx, title_l=latexstring("M_1"),domy=domy)
+analisis_grafico!(M₁, 0.1,10 , domx, color=:orange)
+analisis_grafico!(M₁, -1.1, 10, domx, color=:red)
+analisis_grafico!(M₁, -0.1, 10, domx, color=:yellow)
+```
 
 (b) $M_2(x) = -\frac{x^5}{5}$.
 
+```julia
+M₂(x) = -x^5/5
+```
+
+```julia
+domx=-1.1:1/128:1.1
+domy=(-1,1)
+Plot_f_i(M₂,domx,title_l=latexstring("M_2"),domy=domy)
+```
+
+```julia
+analisis_grafico(M₂, 1.0, 5, domx,title_l=latexstring("M_2"),domy=domy,color=:black)
+analisis_grafico!(M₂, -1.0,5 , domx, color=:orange)
+```
+
+```julia
+domx=-0.005:1/128:0.005
+domy=(-0.0001,0.0001)
+analisis_grafico(M₂, 1.0, 10, domx,title_l=latexstring("M_2"),
+    domy=domy,color=:black,domx_2=(-0.001,0.001))
+analisis_grafico!(M₂, -1.0,10 , domx, color=:orange)
+```
+
+```julia
+domx=-0.01:1/128:0.01
+domy=(-0.0001,0.0001)
+analisis_grafico(M₂, 1.0, 10, domx,title_l=latexstring("M_2"),domy=domy,
+    color=:black,domx_2=(-0.0003,0.0003))
+analisis_grafico!(M₂, -1.0,10 , domx, color=:orange)
+```
+
 (c) $M_3(x) = \frac{x}{2}-2$.
+
+```julia
+M₃(x) = x/2-2
+```
+
+```julia
+domx=-10:1/128:2
+Plot_f_i(M₃,domx,title_l=latexstring("M_3"))
+```
+
+```julia
+analisis_grafico(M₃, 0.0, 10, domx,title_l=latexstring("M_3"),color=:black)
+analisis_grafico!(M₃, -8.0,10 , domx, color=:orange)
+```
 
 (d) $M_4(x) = x-x^2$.
 
 ```julia
+M₄(x) = x-x^2
+```
+
+```julia
+domx=-5:1/128:5
+domy=(-5,5)
+Plot_f_i(M₄,domx,title_l=latexstring("M_4"),domy=domy)
+```
+
+```julia
+analisis_grafico(M₄, 0.5, 30, domx,title_l=latexstring("M_4"),color=:purple,
+    domy=domy,domx_2=(-0.1,1.1))
+```
+
+```julia
+analisis_grafico(M₄, -0.1, 30, domx,title_l=latexstring("M_4"),color=:orange,
+    domy=domy,domx_2=(-2.1,0.1))
 ```
 
 ## Ejercicio 2
@@ -34,14 +180,59 @@ Describan la dinámica de varias órbitas para los siguientes mapeos, usando dis
 (c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
 
 ```julia
+F(x) = x^2 -2
+```
+
+```julia
+its, its_x, its_y = itera_mapeo(F, 4*rand()-2, 30000)
+histogram(its[2:end],leg=false, normed=true, title=latexstring("G(x)"),
+    xlabel="Visita",ylabel="Frecuencia")
+```
+
+```julia
+G(x) = mod(2*x,2)
+```
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 20000)
+histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
+    xlabel="Visita",ylabel="Frecuencia")
+```
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 200)
+histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
+    xlabel="Visita",ylabel="Frecuencia")
+```
+
+```julia
+domx=0:1/256:2.0
+plot(domx,G,legend=false)
+plot!(domx,identity)
+```
+
+```julia
+analisis_grafico(G, rand(), 100, domx,title_l=latexstring("M_3"),color=:black,domy=(0,2))
 ```
 
 ## Ejercicio 3
 
 (a) Usando lo que hicieron en la Tarea 1, incluyan lo que desarrollaron para los números `Dual`es en un módulo `NumDual` de Julia ([ver la documentación aquí](https://docs.julialang.org/en/v1.3/manual/modules/)). En particular, el módulo debe exportar el tipo `Dual` y la función `var_dual`, al menos. El archivo con el módulo lo deben incluir en un archivo ".jl" en su propio directorio de tareas. Carguen el módulo en este notebook, usando
+
 ```julia
-include("nombre_archivo.jl")
-using NumDual
+include("NumDual.jl")
+```
+
+```julia
+using Main.NumDual
+```
+
+```julia
+Dual(1.9,2)
+```
+
+```julia
+y=x_Dual(8)
 ```
 
 (b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
@@ -53,6 +244,75 @@ using NumDual
 (e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 -1$ son linealmente estables (atractivos).
 
 ```julia
+function Met_Newton(f::Function,x_0;its=10)
+    x_0 = x_Dual(x_0)
+    x_last = x_0
+    for i in 1:its
+        x_last = x_0
+        f_n = f(x_0)
+        x_0 = x_0-f_n[1]/f_n[2]
+        if x_0 == x_last
+            print("iteraciones = ")
+            println(i)
+            break
+        end
+    end
+    if x_0 == x_last
+        return x_0
+    else
+        throw("IteracionesInsuficientes")
+    end
+end
+```
+
+```julia
+import Test.@test
+```
+
+```julia
+f(x) = x^3-8
+@test Met_Newton(f,10,its=15)[1]==2.0
+```
+
+```julia
+f(x) = x^2 - 1.1
+```
+
+```julia
+g(x) = f(x) - x
+y1 = Met_Newton(g,1.0)
+y2 = Met_Newton(g,-1.0)
+```
+
+```julia
+y1[1]
+```
+
+```julia
+y2[1]
+```
+
+```julia
+g(x) = f(f(x))-x
+y3 = Met_Newton(g,0.2)
+y4 = Met_Newton(g,-2)
+```
+
+```julia
+y3[1]
+```
+
+```julia
+y4[1]
+```
+
+```julia
+f(x) = x^2-1
+g(x) = f(f(x))-x
+y3 = Met_Newton(g,0.1,its=1000)
+y4 = Met_Newton(g,-1.2,its=1000)
+@test abs(f(f(x_Dual(y3[1])))[1]) <= 1
+@test abs(f(f(x_Dual(y4[1])))[1]) <= 1
 ```
 
 ## Ejercicio 4
@@ -75,6 +335,30 @@ para la misma función $f(z)$, con $a=2$.
 *Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
 
 ```julia
+plot([cos(2*pi*0/3)], [sin(2*pi*0/3)], markershape=:circle,
+    xaxis = ("Real",(-1.1,1.1)),
+    yaxis = ("Imaginario",(-1.1,1.1)),
+    markerstrokecolor=:blue, markersize=6, alpha=0.5, label="Cero con r=0")
+plot!([cos(2*pi*1/3)], [sin(2*pi*1/3)], markershape=:circle,
+    markerstrokecolor=:yellow, markersize=6, alpha=0.5, label="Cero con r=1")
+plot!([cos(2*pi*2/3)], [sin(2*pi*2/3)], markershape=:circle,
+    markerstrokecolor=:red, markersize=6, alpha=0.5, label="Cero con r=2")
+```
+
+```julia
+a = x_Dual(1+3*im)
+a^2
+```
+
+```julia
+f(z) = z^3 -1 
+g(x) = f(x)[1]/f(x)[2]
+z = rand()*2-1+im*(rand()*2-1)
+a = Met_Newton(f,z)
+```
+
+```julia
+typeof(1.0+7*im)
 ```
 
 ## Ejercicio 5
@@ -115,6 +399,9 @@ probabilidad $p$, de acuerdo con la siguiente tabla:
 |   0.07    | -0.15     |     0.28  |    0.26   |    0.24   |   0.44    |
 
 Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
+
+```julia
+```
 
 ```julia
 ```
