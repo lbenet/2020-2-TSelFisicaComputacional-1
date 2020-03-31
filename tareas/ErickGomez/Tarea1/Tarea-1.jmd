@@ -315,10 +315,6 @@ end
 isapprox.(vec, vec1)
 ```
 
-```julia
-isapprox(L, L1)
-```
-
 ## Ejercicio 4
 
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
