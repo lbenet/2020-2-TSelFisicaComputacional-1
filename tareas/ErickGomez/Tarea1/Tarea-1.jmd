@@ -89,24 +89,49 @@ import Base: +, -, *, /
 ```
 
 ```julia
-# Probando un ejemplo...
+# Se sobrecarga "==" para poder hacer comparaciones entre duales y reales.
+import Base: ==
+
+# Dual-Dual
+function ==(z::Dual, w::Dual) 
+    z.x == w.x && z.y == w.y
+end
+
+# Real-Dual
+function ==(z::T, w::Dual) where {T <: Real}
+    z == w.x && zero(w.y) == w.y
+end
+
+# Dual-Real
+function ==(z::Dual, w::T) where {T <: Real}
+    z.x == w && z.y == zero(z.y)
+end
+```
+
+```julia
+# Probando un ejemplo.
 z, w = Dual(cos(π), 4), Dual(3//2, 2*1.5)
 ```
 
 ```julia
-z + w
-```
+# En las comparaciones se considera la "promoción" a FLoat64
 
-```julia
-z - w
-```
+# z + w = Dual(-1, 4) + Dual(3//2, 3.0) = Dual(0.5, 7.0) 
+# z - w = Dual(-1, 4) - Dual(3//2, 3.0) = Dual(-2.5, 1.0) 
+# z * w = Dual(-1, 4) * Dual(3//2, 3.0) = Dual(-1.5, -1*3.0 + 4*(3//2)) 
+#       = Dual(-1.5, 3.0) 
+# z * w = Dual(-1, 4) / Dual(3//2, 3.0) = Dual(-2/3, [(3//2)*4 - (-1)*3.0]/(3//2)^2)) 
+#       = Dual(-2/3, 4.0) 
 
-```julia
-z * w
-```
 
-```julia
-z / w
+# Resultados numéricos
+R = [z + w, z - w, z * w, z / w]
+
+# Resultados esperados
+R_pr = [Dual(0.5, 7.0), Dual(-2.5, 1.0), Dual(-1.5, 3.0), Dual(-2/3, 4.0)]
+
+# Si la comparación es "true" el resultado de las operaciones son correctas
+R == R_pr
 ```
 
 - Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
@@ -165,10 +190,11 @@ Dual(π), Dual(7//9), Dual(13)
 # w = Dual(3//2, 2*1.5) = (1.5, 3)
 
 # a, b son reales
-a = 10
+a = π
 b = 1//2
 
-# u, v son "derivados puros" (que en analogía a los imaginarios puros tienen parte principal cero)
+# definimos u, v "derivados puros" (que en analogía a los 
+# imaginarios puros tienen parte principal cero).
 u, v = Dual(0, 42*exp(0)), Dual(0, 3^4)
 ```
 
@@ -176,10 +202,12 @@ u, v = Dual(0, 42*exp(0)), Dual(0, 3^4)
 # +, -
 
 # Se espera que
-    # a + u = Dual(a, u.y) = Dual(10.0, 42.0)
-    # u - a = Dual(-10.0, 42.0)
-
+# a + u = Dual(π, u.y) = Dual(π, 42.0)
+# u - a = Dual(-π, 42.0)
 d1, d2 = a + u, u - a
+
+# Si la comparación es "true" los resultados son correctos
+[d1, d2] == [Dual(π, 42.0), Dual(-π, 42.0)]
 ```
 
 ```julia
@@ -189,10 +217,12 @@ d1, d2 = a + u, u - a
 # se realicen entrada por entrada, i. e. a*Dual(x,y) = Dual(a*x, a*y)
 
 # Se espera
-    # a*d1 = 10*Dual(10.0, 42.0) = Dual(100.0, 420.0)
-    # d2*b = Dual(-10.0, 42.0)*(1//2) = Dual(-5.0, 21.0)
-
+# a*d1 = π*Dual(π, 42.0) = Dual(π^2, π*42.0)
+# d2*b = Dual(-π, 42.0)*(1//2) = Dual(-π/2, 21.0)
 d3, d4 = a*d1, d2*b
+
+# Si la comparación es "true" los resultados son correctos
+[d3, d4] == [Dual(π^2, π*42.0), Dual(-π/2, 21.0)]
 ```
 
 ```julia
@@ -202,7 +232,8 @@ d3, d4 = a*d1, d2*b
     # d1 = Dual(10.0, 42.0)
     # d2 = Dual(-10.0, 42.0)
 
-d3/a, d4/b
+# Si la comparación es "true" los resultados son correctos
+[d3/a, d4/b] == [d1, d2]
 ```
 
 ## Ejercicio 3
@@ -214,14 +245,14 @@ Haciendo la analogía con la interpretación del Ejercicio 1 de un dual como $(f
 `var_dual(x_0) = Dual(x_0, 1)`. 
 
 ```julia
-# como en el caso de zero(x::Irrational), sobrecargamos one(x::Irrational) funcione
+# como en el caso de zero(x::Irrational), sobrecargamos one(x::Irrational) para que funcione
 import Base: one
 
 one(x::Irrational) = 1.0
 ```
 
 ```julia
-one(π)
+one(π) # sin errores
 ```
 
 ```julia
@@ -252,11 +283,12 @@ X0 = rand(I, 20);
 
 ```julia
 # Se evalúan los valores de var_dual(x0) en g
-vec = g.(var_dual.(X0))
+vec = g.(var_dual.(X0));
 ```
 
 Para corroborar que, efectivamente `g(var_dual(x_0)) = Dual(g(x_0), g'(x_0))`, consideremos la expresión analítica de la derivada de g:
 $$ g'(x) = \frac{-21x^4 + 112x^3 - 21x^2 - 6x + 8}{7x^3 - 1} $$
+
 y evaluemos `Dual(g(x_0), g'(x_0))`
 para distintos valores de `x_0`
 
@@ -273,7 +305,7 @@ for x in X0
 end
 ```
 
-Debido a los errores en la manera de realizar los cálculos, es de esperarse que `vec`no sea igual a `vec1`,
+En el ejercicio dos se usaron ejemplos muy sencillos en la comparación de los cálculos y de los resultados esperados. Sin embargo, debido a los errores en la manera de realizar los cálculos (los cuales aumentan mientras más operaciones se vean involucradas), es de esperarse que `vec`no sea igual a `vec1`:
 
 ```julia
 vec == vec1
@@ -288,7 +320,7 @@ vec .- vec1
 
 La diferencia entre las partes principales de los duales son *cero* mientras que en las partes derivadas son *ceros numéricos* (casi cero), por lo cual se puede decir que `g(var_dual(x_0))`efectivamente arroja `Dual(g(x_0), g'(x_0))`.
 
-De otra manera, se podría extender la función `≈` (`Base.isapprox`) para comparar duales.
+De otra manera, se podría extender la función `≈` (`Base.isapprox`) para comparar entre duales y reales y que la "igualdad" se verifique con cierta tolerancia `ϵ`.
 
 ```julia
 import Base: isapprox
@@ -310,10 +342,14 @@ end
 ```
 
 ```julia
-# Es un vector de 1's, es decir de true's lo que significa que 
-# ∀ z∈ vec y ∀ z1 ∈ vec1, isapprox(z, z1) es true.
-isapprox.(vec, vec1)
+# Vemos qué valor booleano tiene isapprox(z, z1) entre los correspondientes z∈ vec y z1 ∈ vec1.
+vec .≈ vec1
+
+# all(x) devuelve "true" si todos los valores booleanos de la colección "x" son "true"
+all(vec .≈ vec1)
 ```
+
+Se verifica la "igualdad numérica" al obtener `all(vec .≈ vec1) = true`.
 
 ## Ejercicio 4
 
@@ -371,10 +407,10 @@ V = [Dual(1,0), Dual(0,700), Dual(0,-5), Dual(1,0), Dual(0,700)]
 V_pr = [sin(α), sin(β), cos(α), cos(β), tan(β)];
 ```
 
+Se verifica la "igualdad numérica" al obtener `all(V .≈ V_pr) = true`.
+
 ```julia
-# La siguiente comparación es un vector de true's por lo que  
-# ambos vectores son "numéricamente iguales". 
-isapprox.(V, V_pr)
+all(V .≈ V_pr)
 ```
 
 ```julia
@@ -402,10 +438,10 @@ U = [Dual(10, 0.1), Dual(25, 0.01), Dual(1000000, 60000), Dual(216,270)]
 U_pr = [sqrt(r), sqrt(s), ^(r,n), ^(t,n)];
 ```
 
+Se verifica la "igualdad numérica" al obtener `all(U .≈ U_pr) = true`.
+
 ```julia
-# La siguiente comparación es un vector de true's por lo que  
-# ambos vectores son "numéricamente iguales". 
-isapprox.(U, U_pr)
+all(U .≈ U_pr)
 ```
 
 Pruebas con `exp` y `log`:
@@ -429,8 +465,8 @@ L = [Dual(1, sqrt(2)), p, Dual(0, 0.8), q]
 L_pr = [exp(p), log(exp(p)), log(q), exp(log(q))];
 ```
 
+Se verifica la "igualdad numérica" al obtener `all(L .≈ L_pr) = true`.
+
 ```julia
-# La siguiente comparación es un vector de true's por lo que  
-# ambos vectores son "numéricamente iguales". 
-isapprox.(L, L_pr)
+all(L .≈ L_pr)
 ```
