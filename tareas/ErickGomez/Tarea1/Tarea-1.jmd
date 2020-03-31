@@ -1,0 +1,472 @@
+
+### TEMAS SELECTOS DE FÍSICA COMPUTACIONAL I, SEMESTRE 2020-2
+#### POR: ERICK ALEXIS GÓMEZ HERNÁNDEZ
+
+# Tarea 1: Números duales
+
+> La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
+
+
+Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
+
+Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
+Con esta definición, podemos extender las operaciones aritméticas al igual que las funciones elementales de manera sencilla. Ésta es, de hecho, la manera en que están implementados los números complejos en Julia.
+
+En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
+
+\begin{eqnarray}
+(x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
+(x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
+\end{eqnarray}
+
+Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
+
+## Ejercicio 1
+
+- A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
+Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
+
+Se tiene que
+$$
+\overleftrightarrow{z} \cdot \overleftrightarrow{y} =
+zy + \epsilon(zy' + z'y) = x + \epsilon x' = \overleftrightarrow{x}
+$$
+lo cual se cumple sii
+$$ zy = x \quad\text{y}\quad zy' + z'y = x' $$
+de donde 
+$$ z = \frac{x}{y}, $$
+luego:
+$$ x' = \left(\frac{x}{y}\right)y' + z'y 
+\quad\Rightarrow\quad 
+z' = \frac{yx' - xy'}{y^2} $$
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+Haciendo la analogía de la notación funcional de $f'$ como la derivada de $f$, si $z = \frac{x}{y}$, entonces $z'$ es la derivada de $z$ dada por la regla del cociente de $\left(\frac{x}{y}\right)' = \frac{yx' - xy'}{y^2}$.
+
+## Ejercicio 2
+
+- Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+```julia
+# Creando estructura mutable "Dual" con partes principal y derivada reales
+# \overleftrightarrow{z} = x + ϵy
+mutable struct Dual{T <: Real}
+    x :: T
+    y :: T
+end
+```
+
+Para permitir ingresar indistintamente cualesquiera tipos `<: Real` como componentes de un objeto `Dual` definimos el siguiente constructor.
+
+```julia
+"""
+Constructor de la estructura "Dual" que permite crear un objeto de este tipo
+sin importar que los argumentos que se reciban sean de distintos tipos.
+"""
+
+# El operador "..." es para "aplanar" la tupla que resulra de "promote(x,y)"
+Dual(x::T, y::U) where {T <: Real, U <: Real} = Dual(promote(x, y)...)
+```
+
+```julia
+# El constructor permite tomar argumentos numéricos de distintos tipos
+Dual(4, 5.0), Dual(3//6, 4.5)
+```
+
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucren a dos `Dual`-es, den el resultado que se espera.
+
+```julia
+# Sobrecarga de operadores aritméticos +, -, *, /
+
+import Base: +, -, *, /
+
++(z::Dual, w::Dual) = Dual(z.x + w.x, z.y + w.y)
+-(z::Dual, w::Dual) = Dual(z.x - w.x, z.y - w.y)
+*(z::Dual, w::Dual) = Dual(z.x * w.x, z.x * w.y + z.y * w.x)
+/(z::Dual, w::Dual) = Dual(z.x/w.x, (w.x * z.y - z.x * w.y)/w.x^2)
+```
+
+```julia
+# Se sobrecarga "==" para poder hacer comparaciones entre duales y reales.
+import Base: ==
+
+# Dual-Dual
+function ==(z::Dual, w::Dual) 
+    z.x == w.x && z.y == w.y
+end
+
+# Real-Dual
+function ==(z::T, w::Dual) where {T <: Real}
+    z == w.x && zero(w.y) == w.y
+end
+
+# Dual-Real
+function ==(z::Dual, w::T) where {T <: Real}
+    z.x == w && z.y == zero(z.y)
+end
+```
+
+```julia
+# Probando un ejemplo.
+z, w = Dual(cos(π), 4), Dual(3//2, 2*1.5)
+```
+
+```julia
+# En las comparaciones se considera la "promoción" a FLoat64
+
+# z + w = Dual(-1, 4) + Dual(3//2, 3.0) = Dual(0.5, 7.0) 
+# z - w = Dual(-1, 4) - Dual(3//2, 3.0) = Dual(-2.5, 1.0) 
+# z * w = Dual(-1, 4) * Dual(3//2, 3.0) = Dual(-1.5, -1*3.0 + 4*(3//2)) 
+#       = Dual(-1.5, 3.0) 
+# z * w = Dual(-1, 4) / Dual(3//2, 3.0) = Dual(-2/3, [(3//2)*4 - (-1)*3.0]/(3//2)^2)) 
+#       = Dual(-2/3, 4.0) 
+
+
+# Resultados numéricos
+R = [z + w, z - w, z * w, z / w]
+
+# Resultados esperados
+R_pr = [Dual(0.5, 7.0), Dual(-2.5, 1.0), Dual(-1.5, 3.0), Dual(-2/3, 4.0)]
+
+# Si la comparación es "true" el resultado de las operaciones son correctas
+R == R_pr
+```
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada?
+
+```julia
+# Sobrecargo zero() porque, por ejemplo, zero(π) arroja un error
+zero(π)
+```
+
+```julia
+# Sobrecargo de zero()
+import Base: zero
+
+zero(x::Irrational) = 0.0
+```
+
+```julia
+# Ya no se presenta el error
+zero(π)
+```
+
+```julia
+# Método que crea objetos del tipo Dual(x0, 0)
+Dual(x::T) where {T <: Real} = Dual(x, zero(x))
+```
+
+```julia
+# Ya se permite expresar números reales como duales con parte derivada nula
+Dual(π), Dual(7//9), Dual(13)
+```
+
+- Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+```julia
+# Extensión de operadores aritméticos entre reales y duales
+
++(z::Dual, w::T) where {T <: Real} = Dual(z.x + w, z.y)
++(z::T, w::Dual) where {T <: Real} = Dual(z + w.x, w.y)
+
+-(z::Dual, w::T) where {T <: Real} = Dual(z.x - w, z.y)
+-(z::T, w::Dual) where {T <: Real} = Dual(z - w.x, w.y)
+
+*(z::Dual, w::T) where {T <: Real} = Dual(z.x * w, z.y * w)
+*(z::T, w::Dual) where {T <: Real} = Dual(z * w.x, z * w.y)
+
+/(z::Dual, w::T) where {T <: Real} = Dual(z.x / w, z.y / w)
+/(z::T, w::Dual) where {T <: Real} = Dual(z / w.x, -z * w.y / w.x^2)
+```
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+
+```julia
+# Defs. anteriores de z y w
+# z = Dual(cos(π), 4) = Dual(-1, 4)
+# w = Dual(3//2, 2*1.5) = (1.5, 3)
+
+# a, b son reales
+a = π
+b = 1//2
+
+# definimos u, v "derivados puros" (que en analogía a los 
+# imaginarios puros tienen parte principal cero).
+u, v = Dual(0, 42*exp(0)), Dual(0, 3^4)
+```
+
+```julia
+# +, -
+
+# Se espera que
+# a + u = Dual(π, u.y) = Dual(π, 42.0)
+# u - a = Dual(-π, 42.0)
+d1, d2 = a + u, u - a
+
+# Si la comparación es "true" los resultados son correctos
+[d1, d2] == [Dual(π, 42.0), Dual(-π, 42.0)]
+```
+
+```julia
+# *
+
+# Al multiplicar un dual por un escalar "a", esperamos que las operaciones 
+# se realicen entrada por entrada, i. e. a*Dual(x,y) = Dual(a*x, a*y)
+
+# Se espera
+# a*d1 = π*Dual(π, 42.0) = Dual(π^2, π*42.0)
+# d2*b = Dual(-π, 42.0)*(1//2) = Dual(-π/2, 21.0)
+d3, d4 = a*d1, d2*b
+
+# Si la comparación es "true" los resultados son correctos
+[d3, d4] == [Dual(π^2, π*42.0), Dual(-π/2, 21.0)]
+```
+
+```julia
+# / 
+
+# Si de vuelta dividimos d3 y d4 entre a y b respectivamente deberíamos obtener
+    # d1 = Dual(10.0, 42.0)
+    # d2 = Dual(-10.0, 42.0)
+
+# Si la comparación es "true" los resultados son correctos
+[d3/a, d4/b] == [d1, d2]
+```
+
+## Ejercicio 3
+
+* Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. 
+
+Haciendo la analogía con la interpretación del Ejercicio 1 de un dual como $(f, f')$, consideremos $f(x) = x$. Así, para $f(x_0) = x_0$, la parte derivada de `var_dual(x_0)` debería arrojar la derivada $f'(x_0) = 1$, es decir 
+
+`var_dual(x_0) = Dual(x_0, 1)`. 
+
+```julia
+# como en el caso de zero(x::Irrational), sobrecargamos one(x::Irrational) para que funcione
+import Base: one
+
+one(x::Irrational) = 1.0
+```
+
+```julia
+one(π) # sin errores
+```
+
+```julia
+"""
+Devuelve el dual (f(x_0),f'(x_0)) para f(x) = x,
+es decir Dual(x_0, 1).
+"""
+var_dual(x0::T) where {T <: Real} = Dual(x0, one(x0))
+```
+
+* Con esta función evalúen `g(xd)`
+donde
+$$
+g(x) = \frac{3x^2-8x+1}{7x^3-1}.
+$$
+
+```julia
+# Definición de g (se hace en términos de las operaciones aritméticas
+# para poder evaluar duales previo a sobrecargar ^).
+g(x) = (3x*x - 8x + 1)/(7x*x*x - 1)
+```
+
+```julia
+# Elegimos aleatoriamente 20 valores distintos para x0 entre 0.5 y 5
+I = 0.5:0.005:5
+X0 = rand(I, 20);
+```
+
+```julia
+# Se evalúan los valores de var_dual(x0) en g
+vec = g.(var_dual.(X0));
+```
+
+Para corroborar que, efectivamente `g(var_dual(x_0)) = Dual(g(x_0), g'(x_0))`, consideremos la expresión analítica de la derivada de g:
+$$ g'(x) = \frac{-21x^4 + 112x^3 - 21x^2 - 6x + 8}{7x^3 - 1} $$
+
+y evaluemos `Dual(g(x_0), g'(x_0))`
+para distintos valores de `x_0`
+
+```julia
+# Definición analítica de la derivada de g
+g_(x) = (-21x^4 + 112x^3 - 21x^2 - 6x + 8)/(7x^3 - 1)^2
+```
+
+```julia
+# Vector de duales Dual(g(x), g'(x))
+vec1 = Dual[]
+for x in X0
+    push!(vec1, Dual(g(x), g_(x)))
+end
+```
+
+En el ejercicio dos se usaron ejemplos muy sencillos en la comparación de los cálculos y de los resultados esperados. Sin embargo, debido a los errores en la manera de realizar los cálculos (los cuales aumentan mientras más operaciones se vean involucradas), es de esperarse que `vec`no sea igual a `vec1`:
+
+```julia
+vec == vec1
+```
+
+por lo cual conviene calcular la diferencia `vec - vec1`.
+
+```julia
+# Calculando las diferencias entre los vectores de duales
+vec .- vec1
+```
+
+La diferencia entre las partes principales de los duales son *cero* mientras que en las partes derivadas son *ceros numéricos* (casi cero), por lo cual se puede decir que `g(var_dual(x_0))`efectivamente arroja `Dual(g(x_0), g'(x_0))`.
+
+De otra manera, se podría extender la función `≈` (`Base.isapprox`) para comparar entre duales y reales y que la "igualdad" se verifique con cierta tolerancia `ϵ`.
+
+```julia
+import Base: isapprox
+
+# Sobrecarga Dual-Dual
+function isapprox(z::Dual, w::Dual, ϵ = 1e-10)
+    isapprox(z.x, w.x; atol = ϵ) == true && isapprox(z.y, w.y, atol = ϵ) == true
+end
+
+# Sobrecarga Real-Dual
+function isapprox(z::T, w::Dual, ϵ = 1e-10) where {T <: Real}
+    isapprox(z, w.x; atol = ϵ) == true && isapprox(zero(z), w.y, atol = ϵ) == true
+end
+
+# Sobrecarga Dual-Real
+function isapprox(z::Dual, w::T, ϵ = 1e-10) where {T <: Real}
+    isapprox(z.x, w; atol = ϵ) == true && isapprox(z.y, zero(w), atol = ϵ) == true
+end
+```
+
+```julia
+# Vemos qué valor booleano tiene isapprox(z, z1) entre los correspondientes z∈ vec y z1 ∈ vec1.
+vec .≈ vec1
+
+# all(x) devuelve "true" si todos los valores booleanos de la colección "x" son "true"
+all(vec .≈ vec1)
+```
+
+Se verifica la "igualdad numérica" al obtener `all(vec .≈ vec1) = true`.
+
+## Ejercicio 4
+
+- A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+Según la interpretación inicial, un dual $(x,y)$ se puede ver como un par $(f, f')$ de $f$ y su derivada. Considerando la composición $g \circ f$, el dual correspondiente es $(g \circ f, (g \circ f)') = (g \circ f, f'(g' \circ f)) $. Así, la extensión de $g$ aplicado a un dual se hace como: 
+$$  g((x,y)) = (g(x), y\,g'(x)).$$
+Entonces:
+\begin{align*}
+    \sin{(x,y)} &:= (\sin{x}, y\cos{x}) \\
+    \cos{(x,y)} &:= (\cos{x}, -y\sin{x}) \\
+    \tan{(x,y)} &:= \left(\tan{x}, \frac{y}{\cos^2{x}}\right) \\
+    (x,y)^n &:= (x^n, y\,nx^{n-1}) \\
+    \sqrt{(x,y)} &:= \left(\sqrt{x}, \frac{y}{2 \sqrt{x}}\right) \\
+    \exp{(x,y)} &:= (\exp{x}, y\exp{x}) \\
+    \log{(x,y)} &:= \left(\log{x}, \frac{y}{x}\right) \\
+\end{align*}
+
+```julia
+# Imprtar para sobrecargar
+import Base: sin, cos, tan, ^, sqrt, exp, log
+
+sin(z::Dual) = Dual(sin(z.x), z.y*cos(z.x))
+cos(z::Dual) = Dual(cos(z.x), -z.y*sin(z.x))
+tan(z::Dual) = Dual(tan(z.x), z.y/cos(z.x)^2 )
+^(z::Dual, n::Int) = Dual((z.x)^n, z.y*n*(z.x)^(n-1))
+sqrt(z::Dual) = Dual(sqrt(z.x), (0.5*z.y)/sqrt(z.x))
+exp(z::Dual) = Dual(exp(z.x), z.y*exp(z.x))
+log(z::Dual) = Dual(log(z.x), z.y/z.x)
+```
+
+- Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+Pruebas con funciones trigonométricas:
+
+```julia
+α = Dual(π/2, sqrt(25))
+β = Dual(2*π, 7e2)
+
+# sin(α) = Dual(sin(π/2), 5*cos(π/2)) = Dual(1, 0)
+# sin(β) = Dual(sin(2π), 700*cos(2π)) = Dual(0, 700)
+
+# cos(α) = Dual(cos(π/2), -5*sin(π/2)) = Dual(0, -5)
+# sin(β) = Dual(cos(2π), -700*sin(2π)) = Dual(1, 0)
+
+# tan(α) = Dual(tan(π/2), 5/cos(π/2)^2) = Dual(∞, ∞)
+# tan(β) = Dual(tan(2π), 700/cos(2π)^2) = Dual(0, 700)
+```
+
+```julia
+# Vector con los resultados esperados
+V = [Dual(1,0), Dual(0,700), Dual(0,-5), Dual(1,0), Dual(0,700)]
+
+# Vector de los resultados que se pondrán a prueba
+V_pr = [sin(α), sin(β), cos(α), cos(β), tan(β)];
+```
+
+Se verifica la "igualdad numérica" al obtener `all(V .≈ V_pr) = true`.
+
+```julia
+all(V .≈ V_pr)
+```
+
+```julia
+# En el caso de tan(α) se espera obtener un dual con entradas Inf o con valores muy grandes
+tan(α)
+```
+
+Pruebas con `sqrt` y `^`:
+
+```julia
+r, s, t, n = Dual(100, 2*exp(0)), Dual(625.0, exp(0)/2), Dual(6, 2.5), 3
+
+# sqrt(r) = Dual(sqrt(100), 2/[2*sqrt(100)]) = Dual(10, 2/20) = Dual(10, 0.1)
+# sqrt(s) = Dual(sqrt(625), (0.5)/[2*sqrt(625)]) = Dual(25, (0.5)/50) = Dual(25, 0.01)
+
+# r^n = Dual(100^3, 2*3*100^2) = Dual(100,000, 60,000)
+# t^n = Dual(6^3, 2.5*3*6^2) = Dual(216, 270)
+```
+
+```julia
+# Resultados esperados
+U = [Dual(10, 0.1), Dual(25, 0.01), Dual(1000000, 60000), Dual(216,270)]
+
+# Vector de pruebas
+U_pr = [sqrt(r), sqrt(s), ^(r,n), ^(t,n)];
+```
+
+Se verifica la "igualdad numérica" al obtener `all(U .≈ U_pr) = true`.
+
+```julia
+all(U .≈ U_pr)
+```
+
+Pruebas con `exp` y `log`:
+
+```julia
+p = Dual(0, sqrt(2))
+q = Dual(1, 4//5)
+
+# exp(p) = Dual(exp(0), sqrt(2)*exp(0)) = Dual(1, sqrt(2))
+# log(exp(p)) = Dual(log(1), sqrt(2)/1) = Dual(0, sqrt(2)) ≡ p
+
+# log(q) = Dual(log(1), (4//5)/1) = Dual(0, 0.8)
+# exp(log(q)) = Dual(exp(0), 0.8*exp(0)) = Dual(1, 0.8) ≡ q
+```
+
+```julia
+# Resultados esperados
+L = [Dual(1, sqrt(2)), p, Dual(0, 0.8), q]
+
+# Vector de pruebas
+L_pr = [exp(p), log(exp(p)), log(q), exp(log(q))];
+```
+
+Se verifica la "igualdad numérica" al obtener `all(L .≈ L_pr) = true`.
+
+```julia
+all(L .≈ L_pr)
+```
