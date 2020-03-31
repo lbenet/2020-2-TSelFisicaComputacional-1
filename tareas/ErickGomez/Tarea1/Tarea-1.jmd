@@ -214,11 +214,22 @@ Haciendo la analogía con la interpretación del Ejercicio 1 de un dual como $(f
 `var_dual(x_0) = Dual(x_0, 1)`. 
 
 ```julia
+# como en el caso de zero(x::Irrational), sobrecargamos one(x::Irrational) funcione
+import Base: one
+
+one(x::Irrational) = 1.0
+```
+
+```julia
+one(π)
+```
+
+```julia
 """
 Devuelve el dual (f(x_0),f'(x_0)) para f(x) = x,
 es decir Dual(x_0, 1).
 """
-var_dual(x0::T) where {T <: Real} = Dual(x0, 1)
+var_dual(x0::T) where {T <: Real} = Dual(x0, one(x0))
 ```
 
 * Con esta función evalúen `g(xd)`
@@ -277,6 +288,37 @@ vec .- vec1
 
 La diferencia entre las partes principales de los duales son *cero* mientras que en las partes derivadas son *ceros numéricos* (casi cero), por lo cual se puede decir que `g(var_dual(x_0))`efectivamente arroja `Dual(g(x_0), g'(x_0))`.
 
+De otra manera, se podría extender la función `≈` (`Base.isapprox`) para comparar duales.
+
+```julia
+import Base: isapprox
+
+# Sobrecarga Dual-Dual
+function isapprox(z::Dual, w::Dual, ϵ = 1e-10)
+    isapprox(z.x, w.x; atol = ϵ) == true && isapprox(z.y, w.y, atol = ϵ) == true
+end
+
+# Sobrecarga Real-Dual
+function isapprox(z::T, w::Dual, ϵ = 1e-10) where {T <: Real}
+    isapprox(z, w.x; atol = ϵ) == true && isapprox(zero(z), w.y, atol = ϵ) == true
+end
+
+# Sobrecarga Dual-Real
+function isapprox(z::Dual, w::T, ϵ = 1e-10) where {T <: Real}
+    isapprox(z.x, w; atol = ϵ) == true && isapprox(z.y, zero(w), atol = ϵ) == true
+end
+```
+
+```julia
+# Es un vector de 1's, es decir de true's lo que significa que 
+# ∀ z∈ vec y ∀ z1 ∈ vec1, isapprox(z, z1) es true.
+isapprox.(vec, vec1)
+```
+
+```julia
+isapprox(L, L1)
+```
+
 ## Ejercicio 4
 
 - A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
@@ -334,8 +376,9 @@ V_pr = [sin(α), sin(β), cos(α), cos(β), tan(β)];
 ```
 
 ```julia
-# Se obtienen duales de ceros y ceros numéricos como se esperaría
-V - V_pr
+# La siguiente comparación es un vector de true's por lo que  
+# ambos vectores son "numéricamente iguales". 
+isapprox.(V, V_pr)
 ```
 
 ```julia
@@ -364,8 +407,9 @@ U_pr = [sqrt(r), sqrt(s), ^(r,n), ^(t,n)];
 ```
 
 ```julia
-# Diferencia con duales de ceros y ceros numéricos
-U .- U_pr
+# La siguiente comparación es un vector de true's por lo que  
+# ambos vectores son "numéricamente iguales". 
+isapprox.(U, U_pr)
 ```
 
 Pruebas con `exp` y `log`:
@@ -390,6 +434,7 @@ L_pr = [exp(p), log(exp(p)), log(q), exp(log(q))];
 ```
 
 ```julia
-# Diferencia con duales de ceros y ceros numéricos
-L .- L_pr
+# La siguiente comparación es un vector de true's por lo que  
+# ambos vectores son "numéricamente iguales". 
+isapprox.(L, L_pr)
 ```
