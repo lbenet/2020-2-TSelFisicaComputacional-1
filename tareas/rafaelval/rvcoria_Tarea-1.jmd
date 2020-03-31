@@ -62,7 +62,6 @@ mutable struct Dual{T <: Real}
     x :: T
     x2:: T  #donde x2 = x'
     function Dual(x ::T, x2 ::T)  where {T<:Real}
-        x, x2 = promote(x,x2) #coloco esta parte para poder definir Duales a partir de tipos distintos
         return new{T}(x, x2)
     end
 end
