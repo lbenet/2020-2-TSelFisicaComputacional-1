@@ -58,118 +58,96 @@ Aunque $x,y$ son números reales, se pueden extender las definiciones anteriores
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
 ```julia
-mutable struct Dual{T <: Real, S <: Real}
+mutable struct Dual{T <: Real}
     x :: T
-    x2:: S  #donde x2 = x'
-    function Dual(x :: T, x2 :: S) where {T<:Real, S<:Real}
+    x2:: T  #donde x2 = x'
+    function Dual(x ::T, x2 ::T)  where {T<:Real}
         x, x2 = promote(x,x2) #coloco esta parte para poder definir Duales a partir de tipos distintos
-        return new{T,T}(x, x2)
+        return new{T}(x, x2)
     end
 end
 ```
 
 ```julia
-function suma(u::Dual,v::Dual)
-    return [u.x+v.x,u.x2+v.x2]
-end
-Base.:+(u::Dual, v::Dual) = Dual(suma(u,v)...)
-
-
-
-function resta(u::Dual,v::Dual)
-    return [u.x-v.x,u.x2-v.x2]
-end
-Base.:-(u::Dual, v::Dual) = Dual(resta(u,v)...)
-
-
-
-function producto(u::Dual,v::Dual)
-    return [u.x * v.x, u.x*v.x2 + v.x*u.x2]
-end
-Base.:*(u::Dual, v::Dual) = Dual(producto(u,v)...)
-
-
-
-function cociente(u::Dual, v::Dual)
-    z = u.x/v.x #x/y
-    z2 = (1/((v.x)^2))*(u.x2*v.x - u.x*v.x2)  #(1/y²)(x'y-xy')
-    return [z,z2]
-end
-Base.:/(u::Dual, v::Dual) = Dual(cociente(u,v)...)
+#constructor para poder definir duales a partir de dos tipos diferentes
+Dual(u::T,v::S) where {T<:Real,S<:Real} = Dual(promote(u,v)...)
 ```
+
+```julia
+Base.:+(u::Dual, v::Dual) = Dual(u.x+v.x,u.x2+v.x2...)
+
+Base.:-(u::Dual, v::Dual) = Dual(u.x-v.x,u.x2-v.x2...)
+
+Base.:*(u::Dual, v::Dual) = Dual(u.x * v.x, u.x*v.x2 + v.x*u.x2...)
+
+Base.:/(u::Dual, v::Dual) = Dual(u.x/v.x, (1/((v.x)^2))*(u.x2*v.x - u.x*v.x2)...)
+```
+
+Para probar que los resultados sean correctos defino: 
+   \begin{eqnarray}
+       \overleftrightarrow{x} &=& 1 + 2\epsilon  \\
+       \overleftrightarrow{y} &=& 1 + 2\epsilon
+   \end{eqnarray} 
+Con lo que debería obtener:
+    \begin{eqnarray}
+        \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+2)\epsilon  &=& 2 + 4\epsilon \\
+        \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (2-2)\epsilon  &=& 0 + 0\epsilon \\
+        \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1x1) + (2+2)\epsilon &=& 1 + 4\epsilon \\
+        \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{2\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 + 0\epsilon
+       \end{eqnarray}
 
 ```julia
 #Para probar que los resultados sean correctos
 x = Dual(1,2)
 y = Dual(1.0,2.0)
-println(x+y)
-println(x-y)
-println(x*y)
-print(x/y)
+println("x+y = ",x+y)
+println("x-y = ",x-y)
+println("x*y = ",x*y)
+print("x/y = ",x/y)
 ```
 
 ```julia
-Dual(s::T) where {T <: Real} = Dual(s,convert(T,0))
+Dual(s::T) where {T <: Real} = Dual(s,zero(s))
 #Esta definición si es compatible pues estará relacionada con una función que no cambia y para la
 #cual sólo se necesita un parámetro para especificarla.
 ```
 
 ```julia
 # Extensión para operar reales y duales
-#  En general quiero trabaja todo en duales, por lo que haré una función que evalúe 
-#  ambos valores, u ya v y en caso de ser reales los convierta a duales usando la función ya 
-#  definida Dual(x). A esta la llamaré convert2.
+Base.convert(::Type{Dual}, x::Union{T,Dual}) where {T<:Real} = Dual(x)
 
-Base.:convert(::Type{Dual}, x::T) where {T<:Real} = Dual(x)
+Base.promote(u::Dual, v::Real) = (u, Dual(v))
+Base.promote(u::Real, v::Dual) = (Dual(u), v)
 
+Base.:+(u::Dual,v::Real) = +(promote(u,v)...)
+Base.:+(u::Real,v::Dual) = +(promote(u,v)...)
 
-function convert2(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
-    if typeof(u) == T 
-        u = convert(Dual,u)
-    elseif typeof(v) == T
-        v = convert(Dual,v)
-    end
-    return u, v
-end
+Base.:-(u::Dual,v::Real) = -(promote(u,v)...)
+Base.:-(u::Real,v::Dual) = -(promote(u,v)...)
+
+Base.:*(u::Dual,v::Real) = *(promote(u,v)...)
+Base.:*(u::Real,v::Dual) = *(promote(u,v)...)
+
+Base.:/(u::Dual,v::Real) = /(promote(u,v)...)
+Base.:/(u::Real,v::Dual) = /(promote(u,v)...)
 ```
 
-```julia
-#Extensión para las operaciones:
-function suma(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
-    u, v = convert2(u,v)
-    return [u.x+v.x,u.x2+v.x2]
-end
-Base.:+(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(suma(u,v)...)
-
-
-function resta(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
-    u, v = convert2(u,v)
-    return [u.x-v.x,u.x2-v.x2]
-end
-Base.:-(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(resta(u,v)...)
-
-
-function producto(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
-    u, v = convert2(u,v)
-    return [u.x * v.x, u.x*v.x2 + v.x*u.x2]
-end
-Base.:*(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(producto(u,v)...)
-
-
-
-function cociente(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real}
-    u, v = convert2(u,v)
-    z = u.x/v.x #x/y
-    z2 = (1/((v.x)^2))*(u.x2*v.x - u.x*v.x2)  #(1/y²)(x'y-xy')
-    return [z,z2]
-end
-Base.:/(u::Union{T,Dual},v::Union{T,Dual}) where {T<:Real} = Dual(cociente(u,v)...)
-```
+Para probar que los resultados sean correctos: 
+   \begin{eqnarray}
+       x &=& 1 \\
+       \overleftrightarrow{y} &=& 1 + 2\epsilon
+   \end{eqnarray} 
+Con lo que debería obtener:
+    \begin{eqnarray}
+        \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+0)\epsilon  &=& 2 + 2\epsilon &=& (2,2) \\
+        \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (0-2)\epsilon  &=& 0 - 2\epsilon  &=& (0,-2)\\
+        \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1\cdot1) + (2\cdot1+1\cdot0)\epsilon &=& 1 + 2\epsilon  &=& (1,2)\\
+        \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{0\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 - 2\epsilon &=& (1,-2)
+       \end{eqnarray}
 
 ```julia
-#Para probar que las opraciones funcionen correctamente:
 x = 1
-y = Dual(1.0,2.0)
+y = Dual(1,2)
 println(x+y)
 println(x-y)
 println(x*y)
@@ -183,22 +161,31 @@ $$
 g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
+Según la interpretación dada, esta función puede calcularse como sigue:
+$$g(x+\epsilon x^\prime) = g(x) + \epsilon x^\prime\frac{dg(x)}{dx} $$
+
+donde 
+$$g(x) = \frac{3x^2-8x+ 1}{7x^3 - 1}$$
+y 
+$$\frac{dg(x)}{dx} = \frac{(6x-8)(7x^3-1)-(21x^2)(3x^2 - 8x + 1)}{(7x^3 - 1)^2}$$
+
+La segunda entrada de la función dual obtenida corresponde a la derivada de la función multiplicada por
+la segunda entrada del dual en el que se evalúa. En este caso, como el dual a evaluar es un Real, su segunda entrada vale cero y por lo tanto el resultado es la función evaluada en 2.0 en la primer entrada y en la segunda entrada su valor es nulo. 
+$$g(Dual(2.0)) = (g(2.0),0.0)$$
+
 ```julia
-function f(a::Dual)
-    u = 3*(a.x)^2 -8*(a.x) + 1
-    v = 7*(a.x)^3 - 1
+function g(x::Real)   #Esta es la función g que aparece en la primer entrada del dual
+    u = 3*(x)^2 -8*(x) + 1
+    v = 7*(x)^3 - 1
     return u/v
 end
-function dx(a::Dual)
-    h = (6*(a.x)-8)*(7*(a.x)^3 - 1)-(21*(a.x)^2)*(3*(a.x)^2 - 8*(a.x) + 1)
-    l = (7*(a.x)^3 - 1)^2
+function dg(x::Real) #Derivada de g, aparece en la segunda entrada del dual
+    h = (6*x-8)*(7*x^3 - 1)-(21*x^2)*(3*x^2 - 8*x + 1)
+    l = (7*x^3 - 1)^2
     return h/l
 end
 
-function gx(a::Dual)
-    return [f(a),(a.x2)*dx(a)]
-end 
-g(a::Dual) = Dual(gx(a)...)
+g(a::Dual) = Dual(g(a.x),(a.x2)*dg(a.x)...)
 
 x = Dual(2.0)
 g(x)
@@ -218,55 +205,55 @@ o
 
 $$f((x,x^\prime)) = (f(x), x^\prime\cdot f^\prime(x))$$
 
+Aplicando esto a cada función: 
+$$\sin{(x,y)} = (\sin(x),y\cos(x))$$
+$$\cos{(x,y)} = (\cos(x),-y\sin(x))$$
+$$\tan{(x,y)} = (\tan(x),y\sec(x)^2)$$
+$$(x,y)^n = (x^n,nyx^{n-1})$$
+$$\sqrt{(x,y)} = \left(\sqrt{x},y\left(2\sqrt{x}\right)^{-1}\right)$$
+$$\exp{(x,y)} = (\exp{x},xy\exp{x})$$
+$$\log{(x,y)} = (\log{x},y/x) $$
+
 ```julia
 #Usando la expresión anterior:
-function sin_dual(a::Dual)
-    return [sin(a.x),(a.x2)*cos(a.x)]
-end
-Base.:sin(a::Dual) = Dual(sin_dual(a::Dual)...)
+Base.:sin(a::Dual) = Dual(sin(a.x),(a.x2)*cos(a.x)...)
 
-function cos_dual(a::Dual)
-    return [cos(a.x),-(a.x2)*sin(a.x)]
-end
-Base.:cos(a::Dual) = Dual(cos_dual(a::Dual)...)
+Base.:cos(a::Dual) = Dual(cos(a.x),-(a.x2)*sin(a.x)...)
 
-function tan_dual(a::Dual)
-    return [tan(a.x),(a.x2)*sec(a.x)^2]
-end
-Base.:tan(a::Dual) = Dual(tan_dual(a::Dual)...)
+Base.:tan(a::Dual) = Dual(tan(a.x),(a.x2)*sec(a.x)^2...)
 
-function pot_dual(a::Dual,n::Int)
-    return [(a.x)^n,(a.x2)*n*(a.x)^(n-1)]
-end
-Base.:^(a::Dual,n::Int) = Dual(pot_dual(a::Dual,n::Int)...)
+Base.:^(a::Dual,n::Int) = Dual((a.x)^n,(a.x2)*n*(a.x)^(n-1)...)
 
-function sqrt_dual(a::Dual)
-    return [sqrt(a.x),(a.x2)*(1/2)*(1/sqrt(a.x))]
-end
-Base.:sqrt(a::Dual) = Dual(sqrt_dual(a::Dual)...)
+Base.:sqrt(a::Dual) = Dual(sqrt(a.x),(a.x2)*(1/2)*(1/sqrt(a.x))...)
 
-function exp_dual(a::Dual)
-    return [exp(a.x),(a.x2)*(a.x)*exp(a.x)]
-end
-Base.:exp(a::Dual) = Dual(exp_dual(a::Dual)...)
+Base.:exp(a::Dual) = Dual(exp(a.x),(a.x2)*(a.x)*exp(a.x)...)
 
-function log_dual(a::Dual)
-    return [log(a.x),(a.x2)/(a.x)]
-end
-Base.:log(a::Dual) = Dual(log_dual(a::Dual)...)
+Base.:log(a::Dual) = Dual(log(a.x),(a.x2)/(a.x)...)
 ```
+
+De esta forma, 
+       $$\sin((0, \pi)) = (\sin(0), \pi\cos(0)) = (0,\pi)$$
+       $$\cos((0,\pi)) = (\cos(0), -\pi\sin(0)) = (1,0)$$
+       $$\tan((0,\pi))= (\tan(0), \pi\sec(0)^2) = (0,\pi)$$
+       $$(2,1)^3 = (2^3,1\cdot 3\cdot 2^{3-1}) = (8,12)$$
+       $$\sqrt{(1,1)} = (\sqrt{1},1\cdot(1/2)\cdot(1/\sqrt{1}))=(1,0.5)$$
+       $$\exp{(1,2)} = (e^1,2e^1) = (e,2e)$$
+       $$log{(1,1)} = (log{1},1/1) = (0,1)$$  
 
 ```julia
 #Algunas pruebas:
 
-println("sin((0,2.0)) = ",sin(Dual(0,2)))
-println("cos((0,2)) = ",cos(Dual(0,2)))
-println("exp((0,1)) = ",exp(Dual(0,1)))
-println("(1,1)^2 = " ,  Dual(1,1)^2)
-println("sqrt((1,1)) = ",sqrt(Dual(4,1)))
-println("tan((0,1))= ", tan(Dual(0,1)))
-println("log((exp(5),3)) = ", log(Dual(exp(5),3.)))
-```
+println("sin((0,π)) = ",sin(Dual(0,π)))
 
-```julia
+println("cos((0,π)) = ",cos(Dual(0,π)))
+
+println("tan((0,π))= ", tan(Dual(0,π)))
+
+println("(2,1)^3 = " ,  Dual(2,1)^3 )
+
+println("sqrt((1,1)) = ",sqrt(Dual(1,1)) )
+
+println("exp((1,2)) = ",exp(Dual(1,2)) )
+
+println("log(1,1) = ", log(Dual(1,1)) )
 ```
