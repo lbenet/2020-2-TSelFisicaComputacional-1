@@ -1,0 +1,285 @@
+
+# Tarea 1: Números duales
+
+> La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
+
+
+Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
+
+Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
+Con esta definición, podemos extender las operaciones aritméticas al igual que las funciones elementales de manera sencilla. Ésta es, de hecho, la manera en que están implementados los números complejos en Julia.
+
+En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
+
+\begin{eqnarray}
+(x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
+(x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
+\end{eqnarray}
+
+Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
+
+
+## Ejercicio 1
+
+- A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
+Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+$\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$
+
+Con
+\begin{eqnarray}
+(z + \epsilon z^\prime) \cdot (y + \epsilon y^\prime) & = & (z\cdot y) + \epsilon (zy^\prime + yz^\prime)\\
+                                                      & = & x + \epsilon x^\prime                                                 
+\end{eqnarray}
+podemos hacer $x = z\cdot y$  y  $x^\prime = zy^\prime + yz^\prime$
+de donde se obtiene: 
+$$z = x/y$$
+y $$z^\prime = \frac{x^\prime-zy^\prime}{y} = \frac{x^\prime-x\frac{y^\prime}{y}}{y}=\frac{x^\prime y-xy^\prime}{y^2}$$
+Así, con $\overleftrightarrow{z}= z + \epsilon z^\prime$ podemos definir 
+
+$$ \overleftrightarrow{x}/\overleftrightarrow{y} =\frac{x}{y}+ \epsilon \left(\frac{x^\prime y-xy^\prime}{y^2}\right)$$
+
+Aunque $x,y$ son números reales, se pueden extender las definiciones anteriores a funciones. Así el segundo término, como puede notarse, corresponde a la derivada del primer término. Es decir, que $z^\prime$ es la derivada de $z$.
+
+## Ejercicio 2
+
+- Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+
+- Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+
+```julia
+mutable struct Dual{T <: Real}
+    x :: T
+    x2:: T  #donde x2 = x'
+end
+```
+
+```julia
+#constructor para poder definir duales a partir de dos tipos diferentes
+Dual(u::T,v::S) where {T<:Real,S<:Real} = Dual(promote(u,v)...)
+```
+
+```julia
+Base.:+(u::Dual, v::Dual) = Dual(u.x+v.x,u.x2+v.x2)
+
+Base.:-(u::Dual, v::Dual) = Dual(u.x-v.x,u.x2-v.x2)
+
+Base.:*(u::Dual, v::Dual) = Dual(u.x * v.x, u.x*v.x2 + v.x*u.x2)
+
+Base.:/(u::Dual, v::Dual) = Dual(u.x/v.x,(u.x2*v.x - u.x*v.x2)/(v.x)^2)
+```
+
+Para probar que los resultados sean correctos defino: 
+   \begin{eqnarray}
+       \overleftrightarrow{x} &=& 1 + 2\epsilon  \\
+       \overleftrightarrow{y} &=& 1 + 2\epsilon
+   \end{eqnarray} 
+Con lo que debería obtener:
+    \begin{eqnarray}
+        \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+2)\epsilon  &=& 2 + 4\epsilon &=& (2,4)\\
+        \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (2-2)\epsilon  &=& 0 + 0\epsilon &=& (0,0)\\
+        \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1x1) + (2+2)\epsilon &=& 1 + 4\epsilon &=& (1,4)\\
+        \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{2\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 + 0\epsilon &=& (1,0)
+       \end{eqnarray}
+
+```julia
+#Para probar que los resultados sean correctos cargo una función para comparar duales
+Base.isequal(a::Dual,b::Dual) = (a.x==b.x)&&(a.x2==b.x2)
+```
+
+```julia
+x = Dual(1,2)
+y = Dual(1.0,2.0)
+@assert isequal(x+y, Dual(2,4))
+@assert isequal(x-y, Dual(0,0))
+@assert isequal(x*y, Dual(1,4)) 
+@assert isequal(x/y, Dual(1,0))
+```
+
+```julia
+Dual(s::T) where {T <: Real} = Dual(s,zero(s))
+#Esta definición si es compatible pues estará relacionada con una función que no cambia y para la
+#cual sólo se necesita un parámetro para especificarla.
+```
+
+```julia
+# Extensión para operar reales y duales
+Base.convert(::Type{Dual}, x::Union{T,Dual}) where {T<:Real} = Dual(x)
+
+Base.promote(u::Dual, v::Real) = (u, Dual(v))
+Base.promote(u::Real, v::Dual) = (Dual(u), v)
+
+Base.:+(u::Dual,v::Real) = +(promote(u,v)...)
+Base.:+(u::Real,v::Dual) = +(promote(u,v)...)
+
+Base.:-(u::Dual,v::Real) = -(promote(u,v)...)
+Base.:-(u::Real,v::Dual) = -(promote(u,v)...)
+
+Base.:*(u::Dual,v::Real) = *(promote(u,v)...)
+Base.:*(u::Real,v::Dual) = *(promote(u,v)...)
+
+Base.:/(u::Dual,v::Real) = /(promote(u,v)...)
+Base.:/(u::Real,v::Dual) = /(promote(u,v)...)
+```
+
+Para probar que los resultados sean correctos, hago: 
+   \begin{eqnarray}
+       x &=& 1 \\
+       \overleftrightarrow{y} &=& 1 + 2\epsilon
+   \end{eqnarray} 
+Con lo que debería obtener:
+    \begin{eqnarray}
+        \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+0)\epsilon  &=& 2 + 2\epsilon &=& (2,2) \\
+        \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (0-2)\epsilon  &=& 0 - 2\epsilon  &=& (0,-2)\\
+        \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1\cdot1) + (2\cdot1+1\cdot0)\epsilon &=& 1 + 2\epsilon  &=& (1,2)\\
+        \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{0\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 - 2\epsilon &=& (1,-2)
+       \end{eqnarray}
+
+```julia
+x = 1
+y = Dual(1.0,2.0)
+@assert isequal(x+y, Dual(2,2)) 
+@assert isequal(x-y, Dual(0,-2)) 
+@assert isequal(x*y, Dual(1,2))
+@assert isequal(x/y, Dual(1,-2))
+```
+
+# Ejercicio 3
+Definan una nueva función `var_dual(x_0)` cuyo resultado sea un `Dual` cuya parte principal es `x_0` y cuya parte derivada sea tal que `var_dual(x_0)` *represente* a la variable independiente `x` en `x_0`. La idea es piensen qué debe representar la parte derivada del dual `xd` que regresa `xd = var_dual(x_0)`. Con esta función evalúen `g(xd)`
+donde
+
+$$
+g(x) = \frac{3x^2-8x+1}{7x^3-1}.
+$$
+
+Según la interpretación dada, esta función puede calcularse como sigue:
+$$g(x+\epsilon x^\prime) = g(x) + \epsilon x^\prime\frac{dg(x)}{dx} $$
+
+donde 
+$$g(x) = \frac{3x^2-8x+ 1}{7x^3 - 1}$$
+y 
+$$\frac{dg(x)}{dx} = \frac{(6x-8)(7x^3-1)-(21x^2)(3x^2 - 8x + 1)}{(7x^3 - 1)^2}$$
+
+```julia
+#Por la interpretación dada, para que la parte var_dual(x_0) represente a la variable independiente x, 
+#la segunda entrada del dual debe ser la derivada de la identidad, es decir, 1.
+
+var_dual(x_0::T) where {T<:Real} = Dual(x_0,one(x_0))
+```
+
+```julia
+#Defino a la función g(x) de tal manera que acepte duales:
+function g(a::Dual)
+    u = 3*(a*a) -8*(a) + 1
+    v = 7*(a*(a*a)) - 1
+    return u/v
+end
+
+#Ahora puedo evaluar a g en xd = var_dual(x_0). Usaré un punto en particular 
+
+xd = var_dual(2.0)
+println("g(xd) = ", g(xd))
+
+# Por la interpretación dada, este valor debería coincidir con (g(x_0),g'(x_0)) ya que la segunda entrada del 
+# zdual es 1
+#Para probar esto calcularé a la funció usando esta última expresión:
+
+function g1(a::Dual) #Es la misma función g pero esta sólo considera la primer entrada del dual
+    u = 3*(a.x)^2 -8*(a.x) + 1
+    v = 7*(a.x)^3 - 1
+    return u/v
+end
+
+function dg1(a::Dual)  #Derivada de g
+    h = (6*(a.x)-8)*(7*(a.x)^3 - 1)-(21*(a.x)^2)*(3*(a.x)^2 - 8*(a.x) + 1)
+    l = (7*(a.x)^3 - 1)^2
+    return h/l
+end
+
+g2(a::Dual) = Dual(g1(a),one(a.x2)*dg1(a)) ##Calcula usando la interpretación
+
+println("(g(x_0),g'(x_0)) = ", g2(xd))
+println("(g(x_0),g'(x_0)) == g(xd):  ", isequal(g(xd),g2(xd)) )
+```
+
+## Ejercicio 4
+
+- A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+- Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+Según la interpretación dada, el primer término representa a la función evaluada en la 
+primer entrada dual y la segunda a la derivada de esa función, entonces tenemos:
+$$f(x+\epsilon x^\prime) = f(x) + \epsilon x^\prime\frac{df(x)}{dx} $$
+
+o
+
+$$f((x,x^\prime)) = (f(x), x^\prime\cdot f^\prime(x))$$
+
+Aplicando esto a cada función: 
+$$\sin{(x,y)} = (\sin(x),y\cos(x))$$
+$$\cos{(x,y)} = (\cos(x),-y\sin(x))$$
+$$\tan{(x,y)} = (\tan(x),y\sec(x)^2)$$
+$$(x,y)^n = (x^n,nyx^{n-1})$$
+$$\sqrt{(x,y)} = \left(\sqrt{x},y\left(2\sqrt{x}\right)^{-1}\right)$$
+$$\exp{(x,y)} = (\exp{x},xy\exp{x})$$
+$$\log{(x,y)} = (\log{x},y/x) $$
+
+```julia
+#Usando la expresión anterior:
+Base.:sin(a::Dual) = Dual(sin(a.x),(a.x2)*cos(a.x))
+
+Base.:cos(a::Dual) = Dual(cos(a.x),-(a.x2)*sin(a.x))
+
+Base.:tan(a::Dual) = Dual(tan(a.x),(a.x2)*sec(a.x)^2)
+
+Base.:^(a::Dual,n::Int) = Dual((a.x)^n,(a.x2)*n*(a.x)^(n-1))
+
+Base.:sqrt(a::Dual) = Dual(sqrt(a.x),(a.x2)*(1/2)*(1/sqrt(a.x)))
+
+Base.:exp(a::Dual) = Dual(exp(a.x),(a.x2)*(a.x)*exp(a.x))
+
+Base.:log(a::Dual) = Dual(log(a.x),(a.x2)/(a.x))
+```
+
+De esta forma, 
+       $$\sin((0, \pi)) = (\sin(0), \pi\cos(0)) = (0,\pi)$$
+       $$\cos((0,\pi)) = (\cos(0), -\pi\sin(0)) = (1,0)$$
+       $$\tan((0,\pi))= (\tan(0), \pi\sec(0)^2) = (0,\pi)$$
+       $$(2,1)^3 = (2^3,1\cdot 3\cdot 2^{3-1}) = (8,12)$$
+       $$\sqrt{(1,1)} = (\sqrt{1},1\cdot(1/2)\cdot(1/\sqrt{1}))=(1,0.5)$$
+       $$\exp{(1,2)} = (e^1,2e^1) = (e,2e)$$
+       $$log{(1,1)} = (log{1},1/1) = (0,1)$$
+
+```julia
+#Como algunos valores no son exactamente iguales, cargo esta función para poder comparar
+Base.isapprox(a::Dual,b::Dual) = isapprox(a.x,b.x) && isapprox(a.x2,b.x2)
+```
+
+```julia
+#Algunas pruebas:
+
+@assert isapprox(sin(Dual(0,π)), Dual(0,π))
+
+@assert isapprox(cos(Dual(0,π)), Dual(1,0))
+
+@assert isapprox(tan(Dual(0,π)), Dual(0,π))
+
+@assert isapprox(Dual(2,1)^3, Dual(8,12))
+
+@assert isapprox(sqrt(Dual(1,1)), Dual(1,0.5))
+
+@assert isapprox(exp(Dual(1,2)), Dual(ℯ,2*ℯ))
+
+@assert isapprox(log(Dual(1,1)), Dual(0,1))
+```
