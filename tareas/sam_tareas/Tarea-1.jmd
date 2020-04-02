@@ -142,16 +142,14 @@ g(x) = (3*x*x - 8*x +1)/(7*x*x*x - 1)
 h(x) = (-21x*x*x*x + 112x*x*x -21x*x -6x + 8)/(7x*x*x - 1)^2
 ```
 
-```julia
-g(2),h(2)
-```
+Donde h(x) representa la derivada analítica de g(x). Así podremos comparar al evaluar g(var_dual(2)) con Dual(g(2),h(2)).  
 
 ```julia
 var_dual(x) = Dual(x,one(x))
 ```
 
 ```julia
-g(var_dual(2))
+g(var_dual(2)) == Dual(g(2),h(2))
 ```
 
 ## Ejercicio 4
@@ -162,6 +160,12 @@ g(var_dual(2))
 
 ```julia
 import Base: sin,cos,tan,^,sqrt,exp,log
+```
+
+```julia
+function isapprox(x::Dual, y::Dual)
+    x.x - y.x <= 2e-3 && x.y - y.y <= 2e-3  
+end
 ```
 
 ```julia
@@ -181,11 +185,11 @@ c = Dual(4.0,4.0)
 ```
 
 ```julia
-@test sin(a) == Dual(1.0,0.0)
+isapprox(sin(a), Dual(1.0,0.0))
 ```
 
 ```julia
-@test cos(a) == Dual(0.0, - 1.5707963267948966 )
+isapprox( cos(a) , Dual( 0.0 , 1.57 ))
 ```
 
 ```julia
@@ -205,4 +209,5 @@ c = Dual(4.0,4.0)
 ```
 
 ```julia
+pwd()
 ```
