@@ -435,16 +435,140 @@ include("nombre_archivo.jl")
 using NumDual
 ```
 
+El módulo respectivo está contenido en el directorio ```tareas/CSGA``` con el nombre ```NumDual.jl```:
+
+```julia
+push!(LOAD_PATH, pwd())
+using NumDual
+```
+
 (b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
+
+Podemos implementar el método de Newton (unidimensional) de la siguiente forma:
+
+```julia
+"""
+    Newton(f::Function, x0::Number, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton unidimensional usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Number, número_iteraciones::Int = 100)
+    
+    x = var_Dual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= y.p/y.d
+    end
+    
+    return x.p
+end
+```
+
+Probemos calculando una raíz de $f(x)$:
+
+```julia
+#Definiendo la función:
+f(x) = x^3 - 8
+
+#Calculando un cero:
+x0 = Newton(f, 10)
+```
+
+Comprobemos que en realidad es raíz:
+
+```julia
+f(x0)
+```
 
 (c) Encuentren los puntos fijos del mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
 
-(d) Encuentren las puntos *de periodo 2* para el mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
-
-(e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 -1$ son linealmente estables (atractivos).
+Podemos implementar una función que calcule los puntos fijos:
 
 ```julia
+"""
+    puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+
+Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos fijos (i.e. soluciones a la ecuación \$ f(x) - x = 0\$) usando el método de Newton.
+Devuelve un arreglo de los puntos fijos encontrados con las condiciones iniciales dadas.
+"""
+function puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    
+    puntos_fijos = x -> f(x) - x
+    
+    convergencia = [Newton(puntos_fijos, x0, número_iteraciones) for x0 in x0s]
+    unique!(convergencia)
+    
+    return convergencia
+end
 ```
+
+Definimos la función:
+
+```julia
+F(x) = x^2 - 1.1
+```
+
+Y calculamos los puntos fijos. En principio, al este mapeo definir una ecuación cuadrática, sólo existen, cuanto más, dos puntos fijos; por lo que sólo dos condiciones  iniciales (adecuadas) deberían de bastar para encontrar los puntos:
+
+```julia
+F1 = puntos_fijos(x->x^2 - 1.1, [-1, 1])
+```
+
+Verifiquemos que son puntos fijos:
+
+```julia
+F.(F1)
+```
+
+(d) Encuentren los puntos *de periodo 2* para el mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
+
+De manera análoga, podemos definir una función que calcule los puntos de periodo arbitrario. (La función anterior es un caso especial de este, para cuando el orden del periodo de los puntos es uno.)
+
+```julia
+"""
+    puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+
+Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos de periodo \$n\$ (i.e. soluciones a la ecuación \$ f^{(n)}(x) - x = 0\$) usando el método de Newton.
+Devuelve un arreglo de los puntos de periodo \$n\$ encontrados con las condiciones iniciales dadas.
+"""
+function puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    
+    @assert n > 0
+    
+    puntos_periodo_n = x -> iterar(f, n, x) - x
+    
+    convergencia = [Newton(puntos_periodo_n, x0, número_iteraciones) for x0 in x0s]
+    unique!(convergencia)
+    
+    return convergencia
+end
+```
+
+Usemos lo que acabamos de definir para calcular los puntos de periodo dos. Dado que la segunda iteración define una cuártica, existen cuanto más, cuatro puntos de periodo dos:
+
+```julia
+F2 = puntos_periodo(F, 2, [-10, -1, 0, 1, 10])
+```
+
+Comprobemos que en efecto son puntos de periodo dos:
+
+```julia
+iterar(F, 2).(F2)
+```
+
+(e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 - 1.1$ son linealmente estables (atractivos).
+
+Basta convertir los valores anteriores a sus ```var_Dual```es correspondientes, evaluar $F^{(2)}(x)$ en los duales correspondientes y examinar la derivada:
+
+```julia
+derivada.(iterar(F, 2).(var_Dual.(F2)))
+```
+
+Esto quiere decir que hay un par de puntos atractores y un par de puntos respulsores de periodo 2.
 
 ## Ejercicio 4
 
