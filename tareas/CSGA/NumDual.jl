@@ -1,4 +1,4 @@
-module Duales
+module NumDual
 
 """
     Dual{T <: Real}
