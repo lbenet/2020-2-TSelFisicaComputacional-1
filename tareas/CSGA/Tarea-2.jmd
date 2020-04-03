@@ -14,16 +14,350 @@
 
 Describan la dinámica de varias órbitas para los siguientes mapeos, usando distintos colores para distintas órbitas, en una misma gráfica. Interesa entre otras cosas saber cuántos puntos fijos tiene el mapeo y cómo es la dinámica cerca de dichos puntos.
 
+Definamos algunas herramientas para poder estudiar mapeos, por ejemplo: 
+
+- una función que calcule el arreglo de $n$ iterados bajo un mapeo $f$ con condición inicial $x_0$; y,
+- una función que calcule la $n$-ésima iteración bajo un mapeo $f$ de una condición inicial $x_0$.
+
+Para tener algo de flexibilidad al momento de aplicar las funciones (pudiendo utilizar mapeos de $\mathbb{R}^n$ o inclusive $\mathbb{C}^n$ en si mismos, pidamos solamente que $f$ sea un mapeo (una función) y $n$ sea un entero no negativo. ($n = 0$, por convención, definamos que corresponde al mapeo identidad.)
+
+```julia
+"""
+    iterados(f::Function, n::T, x0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$ y una condición inicial \$x_0\$, devuelve el vector \$(x_0, f(x_0), \\ldots, f^{(n)}(x_0)\$.
+\$f\$ debe tener dominio y codominio iguales.
+"""
+function iterados(f::Function, n::T, x0) where {T <: Integer}
+    
+    @assert n >= 0
+    
+    iterados = fill(x0, n + 1)
+    
+    for i in 1:n
+        
+        iterados[i + 1] = f(iterados[i])
+    end
+    
+    return iterados
+end
+
+"""
+    iterados(f::Function, n::T) where {T <: Integer}
+
+Forma funcional de ```iterados(f, n, x0)``` que permite variar la condición inicial \$x_0\$.
+"""
+iterados(f::Function, n::T) where {T <: Integer} = x0 -> iterados(f, n, x0)
+
+"""
+    iterar(f::Function, n::T, x0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$ y una condición inicial \$x_0\$, devuelve el resultado de iterar \$f\$ en \$x_0\$, \$n\$ veces.
+Los valores intermedios son  usados para el cálculo, pero no son almacenados.
+"""
+function iterar(f::Function, n::T, x0) where {T <: Integer}
+    
+    @assert n >= 0
+    
+    x = x0
+    
+    for i in 1:n
+        
+        x = f(x) 
+    end
+    
+    return x
+end
+
+"""
+    iterar(f::Function, n::T) where {T <: Integer}
+
+Forma funcional de ```iterar(f, n, x0)``` que permite variar la condición inicial \$x_0\$.
+"""
+iterar(f::Function, n::T) where {T <: Integer} = x0 -> iterar(f, n, x0)
+```
+
+Hagamos algunas pruebas para verificar el funcionamiento de los métodos y compararlos:
+
+```julia
+#Para medir adecuadamente el tiempo de ejecución en Julia, requerimos correr la función por primera vez para quitar el tiempo de compilación.
+#Una herramienta para hacer benchmarks es BenchmarkTools y su correspondiente macro, @benchmark:
+using BenchmarkTools
+
+#Para cuando guardamos los iterados intermedios:
+@benchmark iterados(x -> x*(1 - x), 10, 0.5)
+@benchmark iterados(x -> x*(1 - x), 1000, 0.5)
+```
+
+```julia
+#Y para cuando usamos una variable local que vamos actualizando:
+@benchmark iterar(x -> x*(1 - x), 10, 0.5)
+@benchmark iterar(x -> x*(1 - x), 1000, 0.5)
+```
+
+Como se puede ver del ejemplo, el hecho de guardar la trayectoria del punto inicial bajo las iteraciones con el mapeo aumenta tanto la memoria usada como el tiempo de cómputo. Sin embargo, ésto es a costa de la información que guardamos.
+
+Para poder implementar el análisis gráfico, requerimos cargar un módulo para graficar. Por simplicidad, utilicemos ```Plots.jl``` con el backend ```pyplot```:
+
+```julia
+#Cargamos Plots:
+using Plots; pyplot()
+```
+
+Dado que vamos a graficar varios segmentos de recta, nos conviene poder generarlos de forma sencilla.
+Una manera de hacer ésto es mediante la forma paramétrica de la línea que pasa entre dos puntos:
+
+```julia
+"""
+    línea_paramétrica(x1, x2)
+
+Forma paramétrica de la línea que pasa por \$x_1\$ y \$x_2\$.
+Devuelve una función que depende del parámetro real \$t\$.
+El segmento de recta comprendido entre \$x_1\$ y \$x_2\$ está parametrizado por \$t \\in [0, 1]\$.
+
+Porque esta forma es lineal, la forma paramétrica de las coordenadas de la recta entre ambos puntos se pueden obtener de esta función utilizando las coordenadas de los puntos respectivas en su lugar.
+"""
+línea_paramétrica(x1, x2) = t -> (x2 - x1)*t + x1
+
+"""
+    puntos_línea(x1, x2, ts)
+
+Devuelve el conjunto de puntos de la línea que pasa por \$x_1\$ y \$x_2\$ resultado de evaluar la forma paramétrica de la línea en el conjunto de puntos ```ts```.
+"""
+puntos_línea(x1, x2, ts) = línea_paramétrica(x1, x2).(ts)
+```
+
+Asimismo, nos conviene definir una función que haga un paso del análisis gráfico, correspondiente en graficar las líneas que van del punto de la curva de la función a la identidad y de allí a la imagen del punto original bajo la función:
+
+```julia
+"""
+    análisis_iterado!(gráfica, x, fx, ffx, ts; linecolor = :green)
+
+Dada una ```gráfica```, agrega a la misma los segmentos de línea entre los puntos \$(x, f(x))\$ y \$(f(x), f(x))\$, y \$(f(x), f(x))\$ y \$(f(x), f^{(2)}(x))\$.
+Éstos segmentos corresponden a la representación de una iteración de \$f\$ con condición inicial \$x_0\$ en dos dimensiones.
+Los segmentos incorporados tienen el color ```linecolor```.
+"""
+function análisis_iterado!(gráfica, x, fx, ffx, ts; linecolor = :green)
+    
+    x_fx_x = puntos_línea(x, fx, ts)
+    x_fx_y = puntos_línea(fx, fx, ts)
+    fx_ffx_x = x_fx_y
+    fx_ffx_y = puntos_línea(fx, ffx, ts)
+    
+    plot!(gráfica, x_fx_x, x_fx_y, label = "", linecolor = linecolor, linestyle = :dash)
+    plot!(gráfica, fx_ffx_x, fx_ffx_y, label = "", linecolor = linecolor, linestyle = :dash)
+end
+```
+
+Para poder comparar diferentes condiciones iniciales, nos conviene implementar un método que agregue a una gráfica dada el análisis gráfico de una única condición inicial:
+
+```julia
+"""
+    análisis_gráfico!(gráfica, f, n, x0; ts = 0:0.01:1, linecolor = :green)
+
+Dado un mapeo \$f\$, un número de iteraciones \$n\$ y una condición inicial, \$x_0\$, genera el análisis gráfico correspondiente sobre la ```gráfica``` dada.
+Los segmentos respectivos son mostrados en color ```linecolor``` y son muestreadas en los valores del parámetro ```ts```.
+Se devuelve el máximo y el mínimo de los valores de los iterados para determinar los límites de graficación.
+"""
+function análisis_gráfico!(gráfica, f, n, x0; ts = 0:0.1:1, linecolor = :green)
+    
+    #Calculamos los iterados solicitados:    
+    vector_iterados = iterados(f, n, x0)
+    
+    #Obtenemos el máximo y el mínimo:
+    máx = maximum(vector_iterados)
+    mín = minimum(vector_iterados)
+      
+    #El primer iterado:
+    x = vector_iterados[1]
+    fx = vector_iterados[2]
+    x_fx_x = puntos_línea(x, x, ts)
+    x_fx_y = puntos_línea(0, fx, ts)
+        
+    plot!(gráfica, x_fx_x, x_fx_y, label = "", linecolor = linecolor, linestyle = :dash)
+        
+    #Y los demás, basados en la identidad:
+    for i in 1:(n - 1)
+    
+        análisis_iterado!(gráfica, vector_iterados[i:(i + 2)]..., ts, linecolor = linecolor)
+    end
+        
+    return mín, máx
+end
+```
+
+Finalmente, podemos empaquetar el método anterior, considerar los límites de la gráfica e incorporar las gráficas de la función y de la identidad en un sólo método:
+
+```julia
+"""
+    análisis_gráfico(f, n, x0s; paso = 0.1, linecolors = nothing)
+
+Dado un mapeo \$f\$, un número de iteraciones \$n\$ y un arreglo de condiciones iniciales, ```x0s```, genera el análisis gráfico correspondiente.
+Opcionalmente, se pueden especificar el tamaño de ```paso``` usado y el color de la órbita de cada condición inicial.
+"""
+function análisis_gráfico(f, n, x0s; paso = 0.1, linecolors = nothing)
+    
+    gráfica = plot()
+    
+    #Puntos para calcular las líneas:
+    ts = 0:paso:1
+    
+    #Arrays para guardar valores límites:
+    extremos = []
+    
+    #Definimos los colores de los iterados como fallback:
+    if isnothing(linecolors)
+        
+        linecolors = fill(:green, length(x0s))
+    end
+    
+    #Iteramos sobre las condiciones iniciales:
+    for i in eachindex(x0s)
+        
+        mín, máx = análisis_gráfico!(gráfica, f, n, x0s[i]; ts = ts, linecolor = linecolors[i])
+        
+        push!(extremos, mín)
+        push!(extremos, máx)
+    end
+    
+    #Límites de las gráfica:
+    xmín = minimum(extremos)
+    xmáx = maximum(extremos)
+    
+    #Graficamos las funciones
+    #Incorporamos más pasos al dominio de las funciones:
+    xs = xmín:0.1*paso:xmáx
+    
+    plot!(gráfica, xs, x -> x, label = "Id", legend = :outerright, linecolor = :blue)
+    plot!(gráfica, xs, f, label = "Función", linecolor = :red)
+        
+    return gráfica
+end
+```
+
 (a) $M_1(x) = \frac{1}{3x}$.
+
+Para el primer ejercicio, definamos la función:
+
+```julia
+M₁(x) = 1/(3*x)
+```
+
+Tomemos como condiciones iniciales:
+
+```julia
+n_1 = 4
+x0s_1 = [0.1:0.2:0.9...]
+```
+
+Podemos usar la paleta de colores por [defecto](https://discourse.julialang.org/t/way-to-get-default-color-order-in-plots-jl/12643).
+Para usar ésto posteriormente, definamos una función auxiliar que nos de una paleta del número de colores que requerimos:
+
+```julia
+paleta_colores(l) =  get_color_palette(:auto, plot_color(:white), l)
+```
+
+Usando ésto, podemos proceder al análisis gráfico:
+
+```julia
+colores_1 = paleta_colores(length(x0s_1))
+
+análisis_gráfico(M₁, n_1, x0s_1, linecolors = colores_1)
+```
+
+Por completitud, realicemos el análisis en la rama negativa:
+
+```julia
+análisis_gráfico(M₁, n_1, -x0s_1, linecolors = colores_1)
+```
+
+De las gráficas se observa que hay dos puntos fijos: $x_0 = \pm 1$.
+Algebráicamente es sencillo demostrar que éstos son los únicos puntos fijos reales del mapeo:
+
+$$ M_1(x) = x \iff \frac{1}{x} = x \implies x^2 = 1 \iff x_0 = \pm 1. $$
+
+Adicionalmente, vemos que todo punto del dominio de $f$ menos los puntos fijos genera una órbita estable de periodo 2.
+Esto se puede ver de la siguiente forma:
+
+$$ M_1^{(2)}(x) = M_1(M_1(x)) = \frac{1}{f(x)} = \frac{1}{\frac{1}{x}} = x. $$
+
+Claramente dos es el mínimo periodo.
 
 (b) $M_2(x) = -\frac{x^5}{5}$.
 
+Procedemos análogamente:
+
+```julia
+M₂(x) = -x^5/5
+
+n_2 = 4
+x0s_2 = [-1.5:0.1:1.5...]
+
+colores_2 = paleta_colores(length(x0s_2))
+
+gráfica_2 = análisis_gráfico(M₂, n_2, x0s_2, linecolors = colores_2)
+xlims!(-5, 5)
+ylims!(-5, 5)
+```
+
+Observamos inmediatamente que existe un punto fijo atractor en $x_0 = 0$. Sin embargo, cuando $x_0 = \pm 1.5$, las órbitas cambian de comportamiento y empiezan a diverger.
+La recta identidad sólo interseca la función en $x_0 = 0$, por lo que el cambio de comportamiento no se puede entender en términos de un punto fijo (real).
+
+Podemos, sin realizar un análisis en los complejos, determinar la región de atracción del punto fijo fijándonos en la norma del primer iterado.
+Sabemos que una condición necesaria y suficiente para que la sucesión $\{x^n\}$ converja es que $|x| \leq 1$, por lo que la región de atracción del punto fijo es:
+
+$$ |M_2(x)| = \frac{|x|^5}{5} \leq 1 \iff |x| \leq 5^\frac{1}{5} \approx 1.3792. $$
+
 (c) $M_3(x) = \frac{x}{2}-2$.
+
+Análogamente:
+
+```julia
+M₃(x) = x/2 - 2
+
+n_3 = 4
+x0s_3 = [-10:0.5:1...]
+
+colores_3 = paleta_colores(length(x0s_3))
+
+gráfica_3 = análisis_gráfico(M₃, n_3, x0s_3, linecolors = colores_3)
+```
+
+Observamos que existe un único punto atractor, $x_0 = 4$.
+La unicidad se desprende inmediatamente de aplicar la definición de punto fijo y el teorema fundamental del álgebra:
+
+$$M_3(x) = x \iff \frac{x}{2} - 2 = x \iff x_0 = 4.$$
+
+
+La región de atracción del punto fijo es infinita. Esto se puede ver acotando la distancia entre el primer iterado y el punto atractor con la distancia de la condición inicial al punto atractor:
+
+$$ d(M_3(x), -4) = |M_3(x) - (-4)| = \left|\frac{x}{2} - 2 + 4\right| = \left|\frac{x}{2} + 2 \right| = \frac{|x + 4|}{2} \leq |x - (-4)| = d(x, -4).$$
+
+(I.e. el iterado siempre queda tan lejos o tan cerca como la condición inicial. 
+Dado que la única forma en que la mitad de un número sea exactamente igual al número es  que el número sea cero, quitando el punto atractor, la desigualdad se vuelve estricta lo que fuerza la convergencia.)
 
 (d) $M_4(x) = x-x^2$.
 
+Análogamente:
+
 ```julia
+M₄(x) = x - x^2
+
+n_4 = 2
+x0s_4 = [-1:0.2:2...]
+
+colores_4 = paleta_colores(length(x0s_4))
+
+gráfica_4 = análisis_gráfico(M₄, n_4, x0s_4, linecolors = colores_4)
+xlims!(-2, 2)
+ylims!(-2, 1)
 ```
+
+Se observan dos regímenes: uno cuando las condiciones están afuera del interior de la parábola, en el que las órbitas divergen y el otro, al interior de y en la parábola en el que el único punto fijo funje de atractor. Esto significa que el punto fijo es neutral.
+
+Que el punto fijo es único se encuentra inmediatamente de aplicar la definición:
+
+$$ M_4(x) = x \iff x - x^2 = x \iff x^2 = 0 \iff x_0 = 0. $$
 
 ## Ejercicio 2
 
@@ -39,6 +373,7 @@ Describan la dinámica de varias órbitas para los siguientes mapeos, usando dis
 ## Ejercicio 3
 
 (a) Usando lo que hicieron en la Tarea 1, incluyan lo que desarrollaron para los números `Dual`es en un módulo `NumDual` de Julia ([ver la documentación aquí](https://docs.julialang.org/en/v1.3/manual/modules/)). En particular, el módulo debe exportar el tipo `Dual` y la función `var_dual`, al menos. El archivo con el módulo lo deben incluir en un archivo ".jl" en su propio directorio de tareas. Carguen el módulo en este notebook, usando
+
 ```julia
 include("nombre_archivo.jl")
 using NumDual
