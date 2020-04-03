@@ -363,12 +363,68 @@ $$ M_4(x) = x \iff x - x^2 = x \iff x^2 = 0 \iff x_0 = 0. $$
 
 (a) Consideren el mapeo $F(x) = x^2-2$ definido en $-2 \leq x \leq 2$. A partir de una condición al azar, construyan una órbita muy larga, por ejemplo, de $20\,000$ iterados o más. Obtengan el histograma de frecuencias (normalizado) que la órbita visita.
 
+Definamos el mapeo:
+
+```julia
+F(x) = begin @assert (abs(x) <= 2); x^2 - 2 end
+```
+
+Podemos demostrar que en efecto está bien definido utilizando aritmética de intervalos:
+
+$$f[[-2, 2]] = [-2, 2]^2 - 2 = [0, 4] - 2 = [-2, 2]$$
+
+Para muestrear una distribución homogénea en el intervalo $[-2, 2)$, podemos utilizar la función ```rand```.
+Ésta función devuelve un número aleatorio tomado de una distribución homogénea en $[0, 1)$.
+Multiplicando el resultado por cuatro y restando a éste 2, tenemos una distribución homogénea en $[-2, 2)$. 
+Esta distribución es idéntica a la homogénea en $[-2, 2]$ salvo por un conjunto de medida cero. ({2})
+
+Una generalización ligera es la distribución uniforme en el intervalo $[a, b)$, en el que se multiplica al resultado de ```rand``` por $b - a$ y a éste se le suma $a$.
+
+```julia
+uniforme(a, b) = (b - a)*rand() + a
+```
+
+Podemos utilizar la paquetería ```Plots``` para realizar histogramas sencillos;
+
+```julia
+#Tomemos un millón de iteraciones:
+muestreo_F = iterados(F, 1_000_000)(uniforme(-2, 2))
+
+#Y se puede normalizar el histograma a una función de distribución de probabilidad mediante ```normalize = :pdf```:
+histogram(muestreo_F, normalize = :pdf, label = "")
+```
+
+Se observa que los puntos fijos del mapeo de cierta forma, son "atractivos en estadística" para las órbitas de un punto aleatorio en el dominio.
+El término "atractivo en estadística" se ocupa dado que estrictamente los puntos fijos son repulsores, como lo demuestra el análisis de la primera derivada.
+
 (b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\mod 1$, definido en el intervalo $x\in[0,1]$.
+
+Definimos el mapeo: 
+
+```julia
+G(x) = begin @assert 0 <= x <= 1; mod(2*x, 1); end
+```
+
+El mapeo está bien definido por la inclusión de la aritmética modular.
+
+Realicemos el análisis:
+
+```julia
+#Tomemos un millón de iteraciones:
+muestreo_G = iterados(G, 1_000_000)(uniforme(0, 1))
+
+#Y hagamos el histograma:
+histogram(muestreo_G, normalize = :pdf, label = "")
+```
+
+De nuevo, aunque estrictamente los puntos fijos del mapeo (los extremos del dominio) son repulsores, uno de ellos "atrae en estadística" las órbitas de un punto tomado al azar en el dominio.
 
 (c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
 
-```julia
-```
+Los histogramas que realizamos, al normalizarlos como una función de densidad de probabilidad, nos dice la probabilidad a lo largo de una órbita de explorar el dominio del mapeo (su espacio fase). 
+
+Más allá de la curiosidad de que puntos repulsores en un dominio acotado puedan atraer las órbitas de  puntos al azar, que la distribución de probabilidad que obtenemos de los mapeos no sea uniforme a pesar de empezar con una distribución uniforme, nos dice que ¡los mapeos no son ergódicos!
+No todos los puntos del espacio fase tienen igual probabilidad de ser visitados.
 
 ## Ejercicio 3
 
