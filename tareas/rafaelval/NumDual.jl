@@ -12,7 +12,7 @@ export Dual, var_dual
     Dual(u::T,v::S) where {T<:Real,S<:Real} = Dual(promote(u,v)...)
     Dual(s::T) where {T <: Real} = Dual(s,zero(s))
 
-
+    #Carga de algunas funciones para operar con duales
     Base.:+(u::Dual, v::Dual) = Dual(u.x+v.x,u.x′+v.x′)
 
     Base.:-(u::Dual, v::Dual) = Dual(u.x-v.x,u.x′-v.x′)
