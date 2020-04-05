@@ -438,8 +438,8 @@ using NumDual
 El módulo respectivo está contenido en el directorio ```tareas/CSGA``` con el nombre ```NumDual.jl```:
 
 ```julia
-push!(LOAD_PATH, pwd())
-using NumDual
+include("NumDual.jl")
+using Main.NumDual
 ```
 
 (b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
