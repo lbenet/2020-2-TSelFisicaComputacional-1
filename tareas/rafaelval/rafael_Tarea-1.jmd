@@ -86,17 +86,10 @@ Para probar que los resultados sean correctos defino:
    \end{eqnarray} 
 Con lo que debería obtener:
     \begin{eqnarray}
-<<<<<<< HEAD
         \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+2)\epsilon  &=& 2 + 4\epsilon &=& (2,4)\\
         \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (2-2)\epsilon  &=& 0 + 0\epsilon &=& (0,0)\\
         \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1x1) + (2+2)\epsilon &=& 1 + 4\epsilon &=& (1,4)\\
         \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{2\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 + 0\epsilon &=& (1,0)
-=======
-        \overleftrightarrow{x} + \overleftrightarrow{y}&=& (1+1) + (2+2)\epsilon  &=& 2 + 4\epsilon \\
-        \overleftrightarrow{x} - \overleftrightarrow{y} &=& (1-1) + (2-2)\epsilon  &=& 0 + 0\epsilon \\
-        \overleftrightarrow{x} \cdot \overleftrightarrow{y} &=&  (1x1) + (2+2)\epsilon &=& 1 + 4\epsilon \\
-        \overleftrightarrow{x}/\overleftrightarrow{y} &=& (1/1) + \left(\frac{2\cdot1-2\cdot1}{1^2}\right)\epsilon &=& 1 + 0\epsilon
->>>>>>> a6524eca5b22fd3f20a10ae287f8abd01099ea20
        \end{eqnarray}
 
 ```julia
@@ -139,7 +132,7 @@ Base.:/(u::Dual,v::Real) = /(promote(u,v)...)
 Base.:/(u::Real,v::Dual) = /(promote(u,v)...)
 ```
 
-Para probar que los resultados sean correctos: 
+Para probar que los resultados sean correctos, hago: 
    \begin{eqnarray}
        x &=& 1 \\
        \overleftrightarrow{y} &=& 1 + 2\epsilon
@@ -159,7 +152,6 @@ y = Dual(1.0,2.0)
 @assert isequal(x-y, Dual(0,-2)) 
 @assert isequal(x*y, Dual(1,2))
 @assert isequal(x/y, Dual(1,-2))
-
 ```
 
 # Ejercicio 3
@@ -177,7 +169,6 @@ donde
 $$g(x) = \frac{3x^2-8x+ 1}{7x^3 - 1}$$
 y 
 $$\frac{dg(x)}{dx} = \frac{(6x-8)(7x^3-1)-(21x^2)(3x^2 - 8x + 1)}{(7x^3 - 1)^2}$$
-
 
 ```julia
 #Por la interpretación dada, para que la parte var_dual(x_0) represente a la variable independiente x, 
@@ -268,7 +259,7 @@ De esta forma,
        $$(2,1)^3 = (2^3,1\cdot 3\cdot 2^{3-1}) = (8,12)$$
        $$\sqrt{(1,1)} = (\sqrt{1},1\cdot(1/2)\cdot(1/\sqrt{1}))=(1,0.5)$$
        $$\exp{(1,2)} = (e^1,2e^1) = (e,2e)$$
-       $$log{(1,1)} = (log{1},1/1) = (0,1)$$  
+       $$log{(1,1)} = (log{1},1/1) = (0,1)$$
 
 ```julia
 #Como algunos valores no son exactamente iguales, cargo esta función para poder comparar
@@ -291,5 +282,4 @@ Base.isapprox(a::Dual,b::Dual) = isapprox(a.x,b.x) && isapprox(a.x2,b.x2)
 @assert isapprox(exp(Dual(1,2)), Dual(ℯ,2*ℯ))
 
 @assert isapprox(log(Dual(1,1)), Dual(0,1))
-
 ```
