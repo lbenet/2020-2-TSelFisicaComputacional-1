@@ -353,7 +353,7 @@ xlims!(-2, 2)
 ylims!(-2, 1)
 ```
 
-Se observan dos regímenes: uno cuando las condiciones están afuera del interior de la parábola, en el que las órbitas divergen y el otro, al interior de y en la parábola en el que el único punto fijo funje de atractor. Esto significa que el punto fijo es neutral.
+Se observan dos regímenes: uno cuando las condiciones iniciales están afuera del interior de la parábola, en el que las órbitas divergen y el otro, al interior de y en la parábola en el que el único punto fijo funje de atractor. Esto significa que el punto fijo es neutral.
 
 Que el punto fijo es único se encuentra inmediatamente de aplicar la definición:
 
