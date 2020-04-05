@@ -1,0 +1,213 @@
+
+# Tarea 1: Números duales
+
+> La fecha de envío del primer PR de la tarea es **6 de marzo**. NOTA: Este primer PR será revisado y se les hará llegar comentarios. El PR *final* deberá ser **aceptado** *a más tardar* el día **20 de marzo**.
+
+
+Para explicar los *números duales* recordaremos algunas propiedades de los números complejos.
+
+Los números complejos los podemos entender como una *pareja ordenada* $z=(x, y)$ que algebraicamente escribimos $z = x +i y$, donde $x,y\in\mathbb R$, y el "número" $i$ lo definimos a partir de $i^2 = -1$. Decimos que $x$ es la *parte real* de $z$, y que $y$ es su *parte imaginaria*.
+Con esta definición, podemos extender las operaciones aritméticas al igual que las funciones elementales de manera sencilla. Ésta es, de hecho, la manera en que están implementados los números complejos en Julia.
+
+En el mismo espíritu, uno puede definir al *par ordenado* $\overleftrightarrow{x} = (x, x^\prime) = x + \epsilon x^\prime$, con $x, x^\prime \in \mathbb R$, y donde $\epsilon$ lo definimos con la propiedad $\epsilon^2=0$. Es fácil pues convencerse que estas estructuras, que llamaremos *números duales*, cumplen:
+
+\begin{eqnarray}
+(x + \epsilon x^\prime) \pm (y + \epsilon y^\prime) & = & (x\pm y) + \epsilon (x^\prime\pm y^\prime),\\
+(x + \epsilon x^\prime) \cdot (y + \epsilon y^\prime) & = & (x\cdot y) + \epsilon (xy^\prime+y x^\prime).
+\end{eqnarray}
+
+Llamaremos a $x$ la *parte principal* y a $x^\prime$ la *parte derivada* de $\overleftrightarrow{x}$.
+
+
+## Ejercicio 1
+
+- A partir de $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$, obtener la expresión para $\overleftrightarrow{z}  = \overleftrightarrow{x} / \overleftrightarrow{y}$. Es decir, obtener qué es $z$ y $z^\prime$ en términos de las componentes de $\overleftrightarrow{x}$ y $\overleftrightarrow{y}$.
+Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow{y}}^{-1}$
+
+- De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
+(En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
+
+si expresamos $\overleftrightarrow{z} = \frac{\overleftrightarrow{x}}{\overleftrightarrow{y}} \cdot \frac{\overleftrightarrow{y}^*}{\overleftrightarrow{y}^*} $ donde $ \overleftrightarrow{y}^* $ es conjugar la parte que multiplica $\epsilon$ . Por la definición del producto 
+de dos números duales se tiene:
+\begin{eqnarray}
+    \overleftrightarrow{z} = \frac{ (x + \epsilon x^\prime)}{(y + \epsilon y^\prime)} \cdot \frac{(y - \epsilon y^\prime)}{(y - \epsilon y^\prime)}\\
+                           = \frac{(xy) + \epsilon(-xy^\prime + yx^\prime)}{y^2} \\
+        z = \frac{x}{y} \\
+        z^\prime = \frac{yx^\prime - xy^\prime}{y^2}              
+\end{eqnarray}
+La parte de  $z^\prime$ se ve como la derivada de z
+
+
+
+## Ejercicio 2
+
+- Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
+
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
+
+- Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
+
+- Extiendan los métodos que permitan sumar/restar y multiplicar/dividir un número (`Real`) y un `Dual`. (Recuerden que ciertas operaciones son conmutativas!).
+    NOTA: Este ejercicio lo pueden hacer escribiendo todos los métodos, uno a uno. Otra opció es usar `promote` y `convert` para definir reglas de promoción y conversión; [la documentación](https://docs.julialang.org/en/v1/manual/conversion-and-promotion/) tiene más información, por si este camino les interesa.
+
+- Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
+
+```julia
+struct Dual{ T <: Real}
+x :: T
+y :: T
+end
+```
+
+```julia
+Dual(x::T) where {T<:Real} = Dual{T}(x,zero(x))
+```
+
+```julia
+import Base: show, +, *, -, /
+```
+
+```julia
++(a::Dual, b::Dual) = Dual(a.x + b.x,a.y + b.y)
+-(a::Dual, b::Dual) = Dual(a.x - b.x,a.y - b.y)
+*(a::Dual, b::Dual) = Dual(a.x*b.x,a.x*b.y + b.x*a.y)
+/(a::Dual, b::Dual) = Dual(a.x/b.x,(b.x*a.y-a.x*b.y)/b.x^2)
+```
+
+```julia
++(a::T, b::Dual) where {T<:Real} = Dual(a + b.x, b.y)
++(a::Dual, b::T) where {T<:Real}  = b + a
+
+*(a::T, b::Dual ) where {T<:Real} = Dual(a * b.x, a * b.y)
+*(a::Dual, b::T) where {T<:Real}  = b * a
+
+-(a::T, b::Dual) where {T<:Real} = Dual(a - b.x, -b.y)
+-(a::Dual, b::T) where {T<:Real}  = Dual(a.x - b, a.y)
+
+/(a::T, b::Dual) where {T<:Real} = Dual(a / b.x, -a * b.y/(b.x^2))
+/(a::Dual, b::T) where {T<:Real}  = Dual(a.x / b, a.y / b)
+```
+
+```julia
+using Test
+```
+
+```julia
+t= Dual(1.0,2.0)
+ z= Dual(2.0,1.0)
+ s = Dual(5)
+```
+
+```julia
+@test s + t == Dual(6.0,2.0)
+```
+
+```julia
+@test t/z == Dual(0.5,0.75)
+```
+
+```julia
+@test t*z == Dual(2.0,5.0)
+```
+
+```julia
+@test t-z == Dual(-1.0,1.0)
+```
+
+```julia
+@test s+1 == Dual(6,0)
+```
+
+```julia
+@test z - 4.5 == Dual(-2.5,1.0)
+```
+
+```julia
+@test z*4 == Dual(8.0,4.0)
+```
+
+```julia
+@test  z/2 == Dual(1.0,0.5)
+```
+
+## Ejercicio 3
+
+Usando `x = Dual(2.0)`, calcular
+$$
+g(x) = \frac{3x^2-8x+1}{7x^3-1}.
+$$
+
+```julia
+g(x) = (3*x*x - 8*x +1)/(7*x*x*x - 1)
+h(x) = (-21x*x*x*x + 112x*x*x -21x*x -6x + 8)/(7x*x*x - 1)^2
+```
+
+Donde h(x) representa la derivada analítica de g(x). Así podremos comparar al evaluar g(var_dual(2)) con Dual(g(2),h(2)).  
+
+```julia
+var_dual(x) = Dual(x,one(x))
+```
+
+```julia
+g(var_dual(2)) == Dual(g(2),h(2))
+```
+
+## Ejercicio 4
+
+- A partir de la interpretación que han hecho para la parte derivada (último inciso del Ejercicio 1), y *generalizando* esa interpretación de qué representa cada campo y en particular el segundo de `Dual{T}`, *extiendan* las funciones `sin(a::Dual)`, `cos(a::Dual)`, `tan(a::Dual)`, `^(a::Dual, n::Int)`, `sqrt(a::Dual)`, `exp(a::Dual)` y `log(a::Dual)`.
+
+- Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
+
+```julia
+import Base: sin,cos,tan,^,sqrt,exp,log
+```
+
+```julia
+function isapprox(x::Dual, y::Dual)
+    x.x - y.x <= 2e-3 && x.y - y.y <= 2e-3  
+end
+```
+
+```julia
+sin(a::Dual) = Dual(sin(a.x), a.y*cos(a.x))
+cos(a::Dual) = Dual(cos(a.x), -a.y*sin(a.x))
+^(a::Dual, n::Int) = Dual(a.x^n,n*a.x^(n-1)*a.y)
+exp(a::Dual) = Dual(exp(a.x),a.y*exp(a.x))
+log(a::Dual) = Dual(log(a.x) , a.y/a.x)
+tan(a::Dual) = Dual(tan(a.x) , a.y*(1/(cos(a.x)^2)) )
+sqrt(a::Dual) = Dual(sqrt(a.x) , a.y*(1/2*sqrt(a.x)))
+```
+
+```julia
+a = Dual(π/2,π/2)
+b = Dual(0.0,1.0)
+c = Dual(4.0,4.0)
+```
+
+```julia
+isapprox(sin(a), Dual(1.0,0.0))
+```
+
+```julia
+isapprox( cos(a) , Dual( 0.0 , 1.57 ))
+```
+
+```julia
+@test exp(b) == Dual(1.0,1.0)
+```
+
+```julia
+@test log(b) == Dual(-Inf, Inf)
+```
+
+```julia
+@test tan(b) == Dual(0.0,1.0)
+```
+
+```julia
+@test sqrt(c) == Dual(2.0,4.0)
+```
+
+```julia
+pwd()
+```
