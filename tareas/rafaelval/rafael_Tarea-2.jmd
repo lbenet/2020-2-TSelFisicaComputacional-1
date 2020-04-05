@@ -241,7 +241,7 @@ f(x) = x^3 - 8
 
 ```julia
 F(x) = x^2-1.1
-#Es fácil notar de la expresión que ambos puntos fijos están cerca de 1 y -1, respectivamente.
+#Es fácil notar de la expresión que ambos puntos fijos están cerca de 1 y -1, respectivamente:
 println("x1 = ", newton(F,1))
 println("x2 = ", newton(F,-1))
 ```
