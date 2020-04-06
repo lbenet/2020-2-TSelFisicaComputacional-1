@@ -575,7 +575,7 @@ Plot_x = []
 Plot_y = []
 X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
 plot!(X,Y, markershape=:circle,legend=false,
-    markerstrokecolor=:black, markersize=1, alpha=1,legend=false)
+    markerstrokecolor=:black, markersize=1, alpha=1)
 savefig("Mapeo_triangulo")
 ```
 
@@ -658,14 +658,14 @@ function mapeo_lineal(cte,p,x;its=1000)
         ctes = Float64[]
         for int in 1:length(cte)
             pro = rand(1:100)
-            i = 1
+            a = 1
             for prob in p
                 if pro in prob
                     break
                 end
-                i += 1
+                a += 1
             end
-            push!(ctes,cte[int][i])
+            push!(ctes,cte[int][a])
         end
         A = [ctes[1] ctes[2];ctes[3] ctes[4]]
         x = A*x.+[0,ctes[5]]
@@ -677,6 +677,7 @@ end
 ```
 
 ```julia
+x = [rand(),rand()]
 X,Y = mapeo_lineal(cte,p,x,its=5)
 ```
 
