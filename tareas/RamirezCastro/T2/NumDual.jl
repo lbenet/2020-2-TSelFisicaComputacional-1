@@ -1,5 +1,7 @@
 module NumDual
 
+import Base: size
+
 export Dual, x_Dual
 
 struct Dual{T <: Number}
@@ -12,7 +14,6 @@ function Dual(x::T_1, x_prima::T_2) where {T_1<:Number, T_2<:Number}
     return Dual(x,x_prima)
 end
 
-import Base: size
 size(::Dual{T}) where {T} = (2,)
 
 function Base.getindex(v::Dual, i::Int)
