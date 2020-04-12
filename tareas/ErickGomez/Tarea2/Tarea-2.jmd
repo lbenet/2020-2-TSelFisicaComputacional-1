@@ -27,7 +27,7 @@ Describan la dinámica de varias órbitas para los siguientes mapeos, usando dis
 
 ```julia
 using Plots
-gr()
+gr(), pyplot()
 ```
 
 ```julia
@@ -40,8 +40,9 @@ M4(x) = x - x^2
 
 ```julia
 """
-mapear(F :: Function, x_0 :: T, n :: Int), {T <: Real} \n
-Devuelve un vector de 'n' iteraciones de la función 'F' con condición inicial 'x_0'.
+mapear(F :: Function, x0 :: T, n :: Int), {T <: Real} \n
+
+Devuelve un vector de 'n' iteraciones de la función 'F' con condición inicial x0.
 """
 function mapear(F::Function, x0::T, n::Int) where {T <: Real}
     iteraciones = Float64[]
@@ -96,8 +97,7 @@ end
 
 ```julia
 """
-Similar a 'analisis_grafico' pero que además permite 
-permite sobreponer una órbita sobre otra.
+Similar a 'analisis_grafico' pero que además permite permite sobreponer una órbita sobre otra.
 """
 
 function analisis_grafico!(F::Function, x0::Float64, n::Int, col = :red1; lab = "x0")    
@@ -189,7 +189,7 @@ analisis_grafico(M2, 1.4, n,
 ```
 
 ```julia
-mapear(M2, 1.493, 30)
+#mapear(M2, 1.493, 30)
 ```
 
 Las órbitas con $x_0\in[-1,1]$ convergen al punto $x=0$ por lo que este es un punto fijo atractor de éstas órbitas.
@@ -410,6 +410,7 @@ graph_newton(F::Function, R, xlim = (-20,20)), {T <: Real} \n
 
 Hace una gráfica de la función y las aproximaciones sucesivas a la raíz.
 """
+
 function graph_newton(F::Function, R, xlim = (-20,20)) where {T <: Real} 
    
     # Vector de aproximaciones a la raiz de la función
@@ -580,11 +581,12 @@ cy = [1.0, 1.0, -1.0, -1.0, 1.0];
 
 ```julia
 """
-map_complex(F :: Function, z0 :: Complex, n :: Int) \n
+orb_complex(F :: Function, z0 :: Complex, n :: Int) \n
 
-Devuelve un vector de 'n' iteraciones de la función compleja 'F' con condición inicial 'z0'.
+Devuelve un vector de la órbita que surge de 'n' iteraciones de la
+función compleja 'F' con condición inicial 'z0'.
 """
-function map_complex(F::Function, z0::Complex, n::Int)
+function orb_complex(F::Function, z0::Complex, n::Int)
     Z = [z0]
     
     for i in 1:n
@@ -602,13 +604,13 @@ using LinearAlgebra # para la función norm()
 
 ```julia
 """
-graf_map_complex!(F :: Function, z0 :: Complex, n :: Int) \n
+graf_orb_complex!(F :: Function, z0 :: Complex, n :: Int) \n
 
 Permite sobreponer sobre una gráfica a la gráfica de un mapeo de 'n' iteraciones 
 de la función compleja 'F' con condición inicial 'z0'.
 """
-function graf_map_complex!(F::Function, z0::Complex, n::Int, lin = :line) # lin es para el tipo de línea
-    Z = map_complex(F, z0, n)
+function graf_orb_complex!(F::Function, z0::Complex, n::Int, lin = :line) # lin es para el tipo de línea
+    Z = orb_complex(F, z0, n)
     X = real.(Z)
     Y = imag.(Z)
     
@@ -649,7 +651,7 @@ p = plot(zx, zy, l = 3, lc = :green1, grid = false, xlims = (-α, α), ylims = (
 plot!(cx, cy, c = :yellow, l = 2, label = "")
 
 for i in 1:m
-    graf_map_complex!(z -> N(z, 1), Z0[i], n)
+    graf_orb_complex!(z -> N(z, 1), Z0[i], n)
 end
 p
 ```
@@ -657,6 +659,83 @@ p
 En la gráfica anterior se muestra un triángulo con vértices las raíces de $f(z) = z^3 - 1$ y las distintas órbitas del mapeo $N(z)$. Las condiciones iniciales $z_0 \in [-1,1]\times[-1,1]$ están indicadas con estrellas y las iteraciones finales con círculos.
 
 Las $40$ órbitas de prueba convergen a alguna de las raíces de $f(z)$.
+
+Ahora observemos cómo se dividen los puntos del plano complejo de acuerdo a qué punto convergen.
+
+```julia
+"""
+fractal_1(x::T, y::T, a, n = 1000) where {T <: Real} \n
+
+Colorea una región del plano complejo z = x + iy en función del 
+punto de convergencia de z como condición inicial de la órbita 
+de N(z;a) = z - a*F(z)/F'(z) para F(z) = z^3 - 1. n es 
+el número iteraciones de N. \n
+
+Si la órbita converge a: \n
+
+* z1: fractal_1(...) = 1. \n
+* z2: fractal_1(...) = 2. \n
+* z3: fractal_1(...) = 3. \n
+"""
+
+function fractal_1(x::T, y::T, a = 1.0, n = 1000) where {T <: Real}
+    
+    zf = orb_complex(z -> N(z,a), x + y*im, n)[end]
+    zf = [real(zf), imag(zf)]
+    
+    if norm(zf - z1) < norm(zf - z2)
+        return 1
+    elseif norm(zf - z2) < norm(zf - z3)
+        return 2
+    else
+        return 3
+    end
+    
+end
+```
+
+Construyamos una función que ayude a visualizar las regiones según el punto de convergencia.
+
+```julia
+"""
+mapeo_frac1(a = 1, ℓ = 1, n = 5000, Δ = 1/300) \n
+
+Evalúa fractal_1 en el cuadrado [-ℓ,ℓ]×[-ℓ,ℓ] (con espaciado mínimo Δ).
+"""
+
+function mapeo_frac1(a = 1, ℓ = 1, n = 5000, Δ = 1/300)
+
+    X = -ℓ:Δ:ℓ
+    Y = -ℓ:Δ:ℓ
+    
+    # Matriz de valores de fractal_1([-1,1]×[-1,1]), se inicializa en ceros.
+    M = zeros(length(X), length(Y));
+
+    for i in 1:length(X)
+        for j in 1:length(Y)
+            M[i, j] = fractal_1(X[i], Y[j], a, n)
+        end
+    end
+    
+    return X, Y, M
+    
+end
+```
+
+```julia
+# n = 5000
+a, ℓ = 1, 1
+X1, Y1, A1 = mapeo_frac1();
+```
+
+```julia
+using Colors
+```
+
+```julia
+heatmap(X1, Y1, A1, aspectratio = 1, c = cgrad([:darkblue, :purple, :aqua]), grid = false,
+    title = "Mapa de colores para z en [-$ℓ,$ℓ]×[-$ℓ,$ℓ], a = $a")
+```
 
 (b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
 \begin{equation}
@@ -666,43 +745,24 @@ para la misma función $f(z)$, con $a=2$.
 
 *Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
 
-```julia
-α = 2.5 # para los intervalos de graficación
-
-# Número de iteraciones
-n = 1000
-
-p = plot(zx, zy, l = 3, lc = :green1, grid = false, xlims = (-α, α), ylims = (-α, α), # triángulo
-    label = "", xlabel = "Parte real", ylabel = "Parte imaginaria", aspectratio = 1,
-     title = "Órbitas de N(z; a=2), f(z) = z^3 - 1")  
-plot!(cx, cy, c = :yellow, l = 2, label = "")
-
-for i in 1:m
-    graf_map_complex!(z -> N(z, 2), Z0[i], n)
-end
-p
-```
-
-Todos los puntos de convergencia coinciden nuevamente con los vértices del triángulo.
+Se observa que los puntos de convergencia vuelven a ser laas raíces de $z^3 -1$.
 
 ```julia
-#α = 2.5 # para los intervalos de graficación
-#z0 = 2*rand() - 1 + im*(2*rand() - 1)
-
-# Número de iteraciones
-#n = 20000
-
-#plot(zx, zy, l = 3, lc = :green1, grid = false, xlims = (-α, α), ylims = (-α, α), # triángulo
- #   label = "", xlabel = "Parte real", ylabel = "Parte imaginaria", aspectratio = 1,
-  #  title = "Órbitas de N(z; a=2), f(z) = z^3 - 1")  
-#plot!(cx, cy, c = :yellow, l = 2, label = "")
-#graf_map_complex!(z -> N(z, 1), z0, n)
-#graf_map_complex!(z -> N(z, 2), z0, n, :dash)
+# a = 2, ℓ = 5, n = 2000
+a, ℓ, n, Δ = 2, 6, 2000, 1/100
+X2, Y2, A2 = mapeo_frac1(a, ℓ, n, Δ);
 ```
+
+```julia
+heatmap(X2, Y2, A2, aspectratio = 1, c = cgrad([:brown4, :brown1, :yellow]), grid = false,
+    title = "Mapa de colores para z en [-$ℓ,$ℓ]×[-$ℓ,$ℓ], a = $a")
+```
+
+Se observa una estructura fractal con las proporciones de un triángulo equilátero.
 
 ## Ejercicio 5
 
-Consideremos ahora el triángulo definido por los tres puntos $A=(0,1)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+Consideremos ahora el triángulo definido por los tres puntos $A=(0,1)$, $B=(\cos(7\pi/6),\, \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0 \, \in \, [-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
 
 (a) Definan una regla, la que quieran, que asigne dos salidas distintas del dado (por ejemplo, 1 y 5) a cada uno de los tres vértices del triángulo.
 
@@ -716,7 +776,7 @@ sin(7*pi/6), sin(11*pi/6) # = -1/2
 
 ```julia
 """
-mapeo(x0, A, B, C) \n
+map_dado(x0, A, B, C) \n
 
 Calcula el punto medio entre x0 y A, B o C dependiendo del valor de dado = rand(1:6).\n
 
@@ -758,7 +818,8 @@ scatter!([X0[1]], [X0[2]], m = :star, ms = 8, label = "x_0")
 n = 10000
 for i in 1:n
     Q = map_dado(X0, A, B, C)
-    scatter!([Q[1]], [Q[2]], label = "", m = :circle, ms = 0.5)
+    plot!([Q[1]], [Q[2]], label = "", m = :circle, ms = 0.5, l = 0)
+    #scatter!([Q[1]], [Q[2]], label = "", m = :circle, ms = 0.5)
     X0 = Q
 end
 p
@@ -768,72 +829,40 @@ p
 
 La gráfica de las iteraciones se hizo con $n = 1000$. Analicemos cuales son los atractores del mapeo para n = 100,000.
 
-Grafiquemos los valores visitados de $x$ y $y$ visitados por el punto $(x,y)$.
 
 ```julia
 m = 10000 # iteraciones
-M = [mapeo(X0, A, B, C, rand(1:6)) for i in 1:m] # vector de vectores 2D del mapeo
+M = [map_dado(X0, A, B, C) for i in 1:m] # vector de vectores 2D del mapeo
 Mx = Float64[] # abcisas del mapeo
 My = Float64[] # ordenadas del mapeo
+```
 
+```julia
 for i in 1:m
     push!(Mx, M[i][1])
     push!(My, M[i][2])
 end
-
-N = 1:m
 ```
 
 ```julia
-# Valores visitados por las abcisas del mapeo
-plot(N, Mx, l = 0, m = :circle, ms = 1, xlims = (0,10000), label = "")
+# histograma en 2d
+histogram2d(Mx, My, bins = 30, c = cgrad([:darkblue, :aqua, :green2]))
+#scatter!(A, B, C)
+```
+
+Del histograma 2d se obserba que los puntos iterados se concentran en los vértices del triángulo, por lo que podemos decir que éstos son puntos atractores.
+
+```julia
+#plot(1:m, Mx, l = 0, m = :circle, ms = 1, xlims = (0,10000), label = "")
 ```
 
 ```julia
-plot(N, My, l = 0, m = :circle, ms = 1, xlims = (0,10000), label = "")
+#plot(1:m, N, My, l = 0, m = :circle, ms = 1, xlims = (0,10000), label = "")
 ```
 
-Se observan tres valores atractores para las abcisas y dos para las ordenadas, veamos cuáles son.
+Se observan tres valores atractores para las abcisas y dos para las ordenadas.
 
 * Abscisas
-
-```julia
-# con ayuda de las gráficas:
-    X1 = Float64[]
-    X2 = Float64[]
-    X3 = Float64[]
-
-for i in 1:length(Mx)   
-    if Mx[i] < -0.1
-        push!(X1, Mx[i])
-    elseif 0.15 < Mx[i] && Mx[i] < 0.25
-        push!(X2, Mx[i])
-    elseif Mx[i] > 0.55 
-        push!(X3, Mx[i])
-    end
-end
-```
-
-```julia
-# con ayuda de las gráficas:
-    Y1 = Float64[]
-    Y2 = Float64[]
-    
-for i in 1:length(Mx)   
-    if My[i] < 0.15
-        push!(Y1, Mx[i])
-    elseif 0.15 < Mx[i] && Mx[i] < 0.8
-        push!(Y2, Mx[i])
-    end
-end
-```
-
-```julia
-X1, X2, X3
-plot([A[1], B[1], C[1], A[1]], [A[2], B[2], C[2], A[2]],
-    l = 1.5, lc = :green3, label = "",
-    xlims = (-1.2,1.2), ylims = (-1,1), aspectratio = 1)
-```
 
 (d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
 
@@ -879,7 +908,7 @@ end
 q
 ```
 
-Se observa que, al menos con condiciones iniciales $ x_0 \in [-5,5]^2 - [-1,1]^2 $, la órbita aún describe el triángulo de Sierpinski.
+Se observa que, al menos con condiciones iniciales $ x_0 \in [-5,5]^2 - [-1,1]^2 $, los puntos de la órbita aún describen el triángulo de Sierpinski.
 
 ## Ejercicio 6
 
@@ -918,10 +947,10 @@ a = sample([0.0 ,  0.85,  0.2 , -0.15], proba)
 b = sample([0.0 ,  0.04, -0.26,  0.28], proba)
 c = sample([0.0 , -0.04,  0.23,  0.26], proba)
 d = sample([0.16,  0.85,  0.22,  0.24], proba)
-g = sample([0.0 ,  1.6 ,  1.6 ,  0.44], proba)
+f = sample([0.0 ,  1.6 ,  1.6 ,  0.44], proba)
 
 # Mapeo 2D
-B1(X) = [a*X[1] + b*X[2], c*X[2] + d*X[2] + g]
+B1(X) = [a*X[1] + b*X[2], c*X[2] + d*X[2] + f]
 ```
 
 ```julia
@@ -941,18 +970,21 @@ end
 
 ```julia
 n = 5000
-m = 100 # número de condiciones iniciales
+m = 2000 # número de condiciones iniciales
 
-r = 5.0
-pp = plot(grid = false, label = "", title = "Mapeo B. El círculo es el punto atractor.")#,
+pp = plot(grid = false, label = "", aspectratio = 1,
+    title = "Mapeo B. El círculo es el punto atractor.")#,
     #xlims = (-r,r), ylims = (-r,r))
 
 for i in 1:m
-    X0 = [2*r*rand() - r, 2*r*rand() - r]
+    X0 = [21*rand() - 8, 16*rand()]
     xx, yy = map_B1(X0, n)
     plot!(xx, yy, label = "")
     scatter!([xx[1]],   [yy[1]],   m = :star, label = "")
     scatter!([xx[end]], [yy[end]], m = :circle, mc = :green, ms = 5, label = "")
 end
 pp
+```
+
+```julia
 ```
