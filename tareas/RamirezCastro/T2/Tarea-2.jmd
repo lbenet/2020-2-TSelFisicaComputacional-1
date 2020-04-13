@@ -194,7 +194,7 @@ analisis_grafico(M₄, -0.1, 30, domx,title_l=latexstring("M_4"),color=:orange,
 ```
 
 <font size=2>
-Por otro lado si tomamos un punto fijo a la izquierda observamos como comienza a diverger, esto es el punto fijo lo repele. Por lo que observamos que este punto fijo es inestable.
+Por otro lado si tomamos un punto a la izquierda observamos como comienza a diverger, esto es, el punto fijo lo repele. Por lo que observamos que este nodo es inestable.
 
 ## Ejercicio 2
 
@@ -217,7 +217,7 @@ G(x) = mod(2*x,1)
 ```
 
 ```julia
-its, its_x, its_y = itera_mapeo(G, 0.99, 20000)
+its, its_x, its_y = itera_mapeo(G,rand(),900)
 histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
     xlabel="Visita",ylabel="Frecuencia")
 ```
@@ -462,10 +462,10 @@ savefig("clasifica_x_2_200000")
 
 ## Ejercicio 5
 
-Consideremos ahora el triángulo definido por los tres puntos $A=(1, 0)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+Consideremos ahora el triángulo definido por los tres puntos $A=(0, 1)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
 
 ```julia
-A = (1,0)
+A = (0,1)
 B = (cos(7*pi/6),sin(7*pi/6))
 C = (cos(11*pi/6),sin(11*pi/6))
 Conj = [A,B,C,A]
@@ -560,21 +560,21 @@ plot([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
         xaxis=("x",(-1,1)),
       yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
 X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
-plot!(X,Y, markershape=:circle,legend=false
-    markerstrokecolor=:black, markersize=1, alpha=1,legend=false,dpi=100)
+plot!(X,Y, markershape=:circle,legend=false,
+    markerstrokecolor=:black, markersize=1, alpha=1,dpi=100)
 ```
 
 (c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
 
 ```julia
 num = 100000
-plot([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
         xaxis=("x",(-1,1)),
       yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
 Plot_x = []
 Plot_y = []
 X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
-plot!(X,Y, markershape=:circle,legend=false,
+scatter!(X,Y, markershape=:circle,legend=false,
     markerstrokecolor=:black, markersize=1, alpha=1)
 savefig("Mapeo_triangulo")
 ```
@@ -590,7 +590,7 @@ scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
 Plot_x = []
 Plot_y = []
 X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
-plot!(X,Y, markershape=:circle,
+scatter!(X,Y, markershape=:circle,
     markerstrokecolor=:black, markersize=1, alpha=1,legend=false)
 savefig("Mapeo_triangulo_otra_c")
 ```
@@ -598,13 +598,13 @@ savefig("Mapeo_triangulo_otra_c")
 ```julia
 x = [100*rand(),100*rand()-1]
 num = 100000
-plot([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
-        xaxis=("x"),
-      yaxis=("y"), label="Triangulo ABC", grid=false)
+scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+      yaxis=("y",(-1,1)), label="Triangulo ABC", grid=false)
 Plot_x = []
 Plot_y = []
 X,Y = Mapeo_triangulo([5.0,5.0],[A,B,C],reglas,its=num)
-plot!(X,Y, markershape=:circle,
+scatter!(X,Y, markershape=:circle,
     markerstrokecolor=:black, markersize=1, alpha=1,legend=false)
 savefig("Mapeo_triangular_c_f")
 ```
@@ -637,40 +637,42 @@ probabilidad $p$, de acuerdo con la siguiente tabla:
 Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
 
 ```julia
-p1 = [i for i in 1:1]
-p2 = [i for i in 2:86]
-p3 = [i for i in 87:93]
-p4 = [i for i in 94:100]
+p1 = [0.0,0.1]
+p2 = [0.1,0.86]
+p3 = [0.86,0.93]
+p4 = [0.93,1.0]
 p = [p1,p2,p3,p4]
 vect_a = [0,0.85,0.2,-0.15]
 vect_b = [0,0.04,-0.26,0.28]
 vect_c = [0,-0.04,0.23,0.26]
 vect_d = [0.16,0.85,0.22,0.24]
 vect_e = [0,1.6,1.6,0.44]
-cte = [vect_a,vect_b,vect_c,vect_d,vect_e]
+cte_1 = [vect_a,vect_b,vect_c,vect_d,vect_e]
+cte = [[a[1] for a in cte_1],
+    [a[2] for a in cte_1],
+    [a[3] for a in cte_1],
+    [a[4] for a in cte_1]]
 ```
 
 ```julia
 function mapeo_lineal(cte,p,x;its=1000)
-    X = Float64[]
-    Y = Float64[]
+    X = Array{Float64,1}(undef, its)
+    Y = Array{Float64,1}(undef, its)
+    ctes = Float64[]
     for i in 1:its
-        ctes = Float64[]
         for int in 1:length(cte)
-            pro = rand(1:100)
-            a = 1
-            for prob in p
-                if pro in prob
+            pro = rand()
+            for int in 1:length(p)
+                if pro > p[int][1] && pro <= p[int][2]
+                    ctes = cte[int]
                     break
                 end
-                a += 1
             end
-            push!(ctes,cte[int][a])
         end
         A = [ctes[1] ctes[2];ctes[3] ctes[4]]
         x = A*x.+[0,ctes[5]]
-        push!(X,x[1])
-        push!(Y,x[2])
+        X[i] = x[1]
+        Y[i] = x[2]
     end
     return X,Y
 end
@@ -678,13 +680,13 @@ end
 
 ```julia
 x = [rand(),rand()]
-X,Y = mapeo_lineal(cte,p,x,its=5)
+X,Y = mapeo_lineal(cte,p,x,its=10)
 ```
 
 ```julia
-x = [rand(),rand()]
+x = [rand()*30,rand()*30]
 X,Y = mapeo_lineal(cte,p,x,its=500000)
-scatter(X,Y, markershape=:circle,
+scatter(X,Y, markershape=:circle,xaxis=("x",(-5,5)),yaxis=("y",(0,10)),
     markerstrokecolor=:green, markersize=1, alpha=1,legend=false)
 savefig("Mapeo_lineal")
 ```
