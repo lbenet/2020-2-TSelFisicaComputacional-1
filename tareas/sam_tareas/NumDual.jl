@@ -1,3 +1,4 @@
+module NumDual
 struct Dual{ T <: Real}
 x :: T
 y :: T
@@ -31,3 +32,4 @@ exp(a::Dual) = Dual(exp(a.x),a.y*exp(a.x))
 log(a::Dual) = Dual(log(a.x) , a.y/a.x)
 tan(a::Dual) = Dual(tan(a.x) , a.y*(1/(cos(a.x)^2)) )
 sqrt(a::Dual) = Dual(sqrt(a.x) , a.y*(1/2*sqrt(a.x)))
+end
