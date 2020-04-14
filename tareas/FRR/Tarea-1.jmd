@@ -27,14 +27,45 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - De la expresión obtenida (y de las fórmulas anteriores), ¿qué podemos decir/concluir/interpretar de $z^\prime$?
 (En caso de falta de inspiración, ver [aquí](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers), pero es sugiero esforzarse y *arriesgarse* tratando de reconocer las expresiones.)
 
-```julia
-```
+Como $\overleftrightarrow{z} = z + \epsilon z^\prime$ y $\overleftrightarrow{y} = y + \epsilon y^\prime$ entonces:
+
+\begin{eqnarray}
+\overleftrightarrow{z} \cdot \overleftrightarrow{y} & = & (z + \epsilon z^\prime) \cdot (y + \epsilon y^\prime)\\
+                                                    & = & zy + \epsilon z y^\prime + \epsilon z^\prime y + \epsilon^2 z^\prime y^\prime \\
+                                                    & = & zy + \epsilon(z^\prime y + z y^\prime)
+\end{eqnarray}
+
+Además $\overleftrightarrow{z} \cdot \overleftrightarrow{y} = \overleftrightarrow{x}$ y $\overleftrightarrow{x}= x + \epsilon x^\prime$ entonces:
+
+\begin{eqnarray}
+ x + \epsilon x^\prime & = & zy + \epsilon(z^\prime y + z y^\prime)
+\end{eqnarray}
+
+ despejando:
+\begin{eqnarray}
+ 0 + \epsilon 0^\prime & = & (zy - x) + \epsilon(z^\prime y + z y^\prime - x^\prime)
+\end{eqnarray}
+
+De donde: 
+- $0 = zy - x  \\
+            \Rightarrow z= \frac{x}{y}$
+            
+            
+- $\epsilon (0^\prime) = z^\prime y + z y^\prime - x^\prime \\
+            \Rightarrow z = \frac{x^\prime - z y^\prime}{y} = \frac{x^\prime y - x y^\prime}{y^2}$ 
+                                                                             
+
+Por último: $ \overleftrightarrow{z}= (\frac{x}{y}, \frac{x^\prime y - x y^\prime}{y^2})$
+
+
+> Por definición $z,z^\prime \in\mathbb R$, pensando en $\overleftrightarrow{z}=\overleftrightarrow{x}/\overleftrightarrow{y}\\$ 
+como una función de $\mathbb R$ $\Rightarrow$ $\mathbb R$ donde existe su derivada (que es la segunda entrada de $\overleftrightarrow{z}$
 
 ## Ejercicio 2
 
 - Definir una estructura `Dual` que represente a los números duales; por sencillez pueden considerar que los campos del `Dual` son `Float64`, aunque pueden *osar* y tratar de implementar el caso paramétrico `Dual{T <: Real}`, donde `T` es el tipo de *ambos* campos.
 
-- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucrena dos `Dual`-es, den el resultado que se espera.
+- Sobrecargar las operaciones de tal manera que las cuatro operaciones aritméticas que involucren a dos `Dual`-es, den el resultado que se espera.
 
 - Definan un método específico para crear duales (constructor externo), a partir de un sólo valor (en lugar de los dos requeridos), que corresponderá a $\overleftrightarrow{x_0} = (x_0, 0)$. ¿Es el *0* de esta definición, o sea, $x_0'=0$, compatible con la interpretación que dieron en el ejercicio anterior para la parte derivada
 
@@ -44,6 +75,130 @@ Si es necesario pueden iniciar en $\overleftrightarrow{z} = {\overleftrightarrow
 - Incluyan varios casos (propuestos por ustedes mismos) donde se *compruebe* que lo que implementaron da el resultado que debería ser. Para esto, pueden usar la librería estándard [`Test`](https://docs.julialang.org/en/v1/stdlib/Test/) de Julia.
 
 ```julia
+struct Dual
+    x :: Float64
+    x´ :: Float64
+end
+```
+
+```julia
+a= Dual(1.0,1.0)
+```
+
+```julia
+b= Dual(0.0,3.0)
+```
+
+```julia
+a*b
+```
+
+```julia
+import Base: +, -, *, /
+```
+
+```julia
++(u::Dual, v::Dual)= Dual(u.x + v.x, u.x´ + v.x´)
+-(u::Dual, v::Dual)= Dual(u.x - v.x, u.x´ - v.x´)
+*(u::Dual, v::Dual)= Dual(u.x * v.x, u.x*v.x´ + v.x*u.x´)
+/(u::Dual, v::Dual)= Dual(u.x/v.x, v.x*u.x´-u.x*v.x´ / v.x^2)
+```
+
+```julia
+Dual(1,0)/Dual(0,1)
+```
+
+```julia
+Dual(x)= Dual(x,0)
+```
+
+```julia
+Dual(1)
+```
+
+```julia
+import Base: +, -, *, /
+```
+
+```julia
++(a::Dual, b::Real)= Dual(a.x + b, a.x´ + b)
+-(a::Dual, b::Real)= Dual(a.x - b, a.x´ - b)
+*(a::Dual, b::Real)= Dual(a.x * b, a.x´ * b)
+/(a::Dual, b::Real)= Dual(a.x / b, a.x´ / b)
+
++(c::Real, d::Dual)= Dual(c + d.x, c + d.x´)
+-(c::Real, d::Dual)= Dual(c - d.x, c - d.x´)
+*(c::Real, d::Dual)= Dual(c * d.x, c * d.x´)
+/(c::Real, d::Dual)= Dual(c / d.x, -c / d.x´^2)
+```
+
+```julia
+a= 7
+b= 2
+```
+
+```julia
+a+Dual(1)
+```
+
+```julia
+a-Dual(1)
+```
+
+```julia
+a*Dual(1)
+```
+
+```julia
+a/Dual(1)
+```
+
+```julia
+Dual(1)+a
+```
+
+```julia
+Dual(1)-a
+```
+
+```julia
+Dual(1)*a
+```
+
+```julia
+Dual(1)/a
+```
+
+```julia
+b+Dual(-2,3)
+```
+
+```julia
+b-Dual(-2,3)
+```
+
+```julia
+b*Dual(-2,3)
+```
+
+```julia
+b/Dual(-2,3)
+```
+
+```julia
+Dual(-2,3)+b
+```
+
+```julia
+Dual(-2,3)-b
+```
+
+```julia
+Dual(-2,3)*b
+```
+
+```julia
+Dual(-2,3)/b
 ```
 
 ## Ejercicio 3
@@ -55,6 +210,22 @@ g(x) = \frac{3x^2-8x+1}{7x^3-1}.
 $$
 
 ```julia
+g(x)= (3x^2 -8x +1)/(7x^3-1)
+```
+
+```julia
+function var_dual(x_0::Dual)
+      
+    a= x_0.x
+    b= x
+    
+    return Dual(a,b)
+    
+end
+```
+
+```julia
+var_dual(Dual(5,9))
 ```
 
 ## Ejercicio 4
@@ -64,4 +235,47 @@ $$
 - Al igual que antes, construyan algún conjunto de pruebas que muestren, de manera sencilla, que lo que hicieron da lo que *debería* dar.
 
 ```julia
+import Base: sin, cos, tan, ^, sqrt, exp, log
+```
+
+```julia
+sin(f::Dual)= Dual(sin(f.x), f.x´*cos(f.x))
+cos(f::Dual)= Dual(cos(f.x), f.x´ * -sin(f.x))
+tan(f::Dual)= Dual(tan(f.x), f.x´ * (sec(f.x))^2)
+^(f::Dual, n::Int)= Dual((f.x)^n, n * (f.x)^(n-1) * f.x´)
+sqrt(f::Dual)= Dual(sqrt(f.x), 1/2 * (f.x´ / sqrt(f.x)))
+exp(f::Dual)= Dual(exp(f.x), f.x´ * exp(f.x))
+log(f::Dual)= Dual(log(f.x), f.x´* (1/f.x))
+```
+
+```julia
+a= Dual(1,2)
+```
+
+```julia
+sin(a)
+```
+
+```julia
+cos(a)
+```
+
+```julia
+tan(a)
+```
+
+```julia
+a^3
+```
+
+```julia
+sqrt(a)
+```
+
+```julia
+exp(a)
+```
+
+```julia
+log(0)
 ```
