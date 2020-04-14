@@ -637,40 +637,50 @@ probabilidad $p$, de acuerdo con la siguiente tabla:
 Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
 
 ```julia
-p1 = [0.0,0.1]
-p2 = [0.1,0.86]
-p3 = [0.86,0.93]
-p4 = [0.93,1.0]
-p = [p1,p2,p3,p4]
-vect_a = [0,0.85,0.2,-0.15]
-vect_b = [0,0.04,-0.26,0.28]
-vect_c = [0,-0.04,0.23,0.26]
-vect_d = [0.16,0.85,0.22,0.24]
-vect_e = [0,1.6,1.6,0.44]
-cte_1 = [vect_a,vect_b,vect_c,vect_d,vect_e]
-cte = [[a[1] for a in cte_1],
-    [a[2] for a in cte_1],
-    [a[3] for a in cte_1],
-    [a[4] for a in cte_1]]
+p = [0.1,0.86,0.93,1.0]
+cte = [[0.0,0.0,0.0,0.16,0.0],
+    [0.85,0.04,-0.04,0.85,1.6],
+    [0.2,-0.26,0.23,0.22,1.6],
+    [-0.15,0.28,0.26,0.24,0.44]]
 ```
 
 ```julia
 function mapeo_lineal(cte,p,x;its=1000)
     X = Array{Float64,1}(undef, its)
     Y = Array{Float64,1}(undef, its)
-    ctes = Float64[]
+    ctes = Array{Float64,1}(undef, 5)
     for i in 1:its
         for int in 1:length(cte)
             pro = rand()
             for int in 1:length(p)
-                if pro > p[int][1] && pro <= p[int][2]
+                if pro <= p[int]
                     ctes = cte[int]
                     break
                 end
             end
         end
-        A = [ctes[1] ctes[2];ctes[3] ctes[4]]
-        x = A*x.+[0,ctes[5]]
+        x = [ctes[1]*x[1]+ctes[2]*x[2],ctes[5]+ctes[3]*x[1]+ctes[4]*x[2]]
+        X[i] = x[1]
+        Y[i] = x[2]
+    end
+    return X,Y
+end
+
+function mapeo_lineal_2(cte,p,x;its=1000)
+    X = Array{Float64,1}(undef, its)
+    Y = Array{Float64,1}(undef, its)
+    ctes = Array{Float64,1}(undef, 5)
+    for i in 1:its
+        for int in 1:length(cte)
+            pro = rand()
+            for int in 1:length(p)
+                if pro <= p[int]
+                    ctes .= cte[int]
+                    break
+                end
+            end
+        end
+        x = [ctes[1]*x[1]+ctes[2]*x[2],ctes[5]+ctes[3]*x[1]+ctes[4]*x[2]]
         X[i] = x[1]
         Y[i] = x[2]
     end
@@ -679,8 +689,17 @@ end
 ```
 
 ```julia
+using BenchmarkTools
+```
+
+```julia
 x = [rand(),rand()]
-X,Y = mapeo_lineal(cte,p,x,its=10)
+@benchmark X,Y = mapeo_lineal(cte,p,x,its=500000)
+```
+
+```julia
+x = [rand(),rand()]
+@benchmark X,Y = mapeo_lineal_2(cte,p,x,its=500000)
 ```
 
 ```julia
