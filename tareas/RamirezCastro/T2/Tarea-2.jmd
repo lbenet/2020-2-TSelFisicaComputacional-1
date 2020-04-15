@@ -14,6 +14,7 @@
 using Plots
 using LaTeXStrings
 using LinearAlgebra
+import Test.@test
 ```
 
 ## Ejercicio 1
@@ -205,9 +206,9 @@ F(x) = x^2 -2
 ```
 
 ```julia
-its, its_x, its_y = itera_mapeo(F, 4*rand()-2, 30000)
+its, its_x, its_y = itera_mapeo(F, 4*rand()-2, 20000)
 histogram(its[2:end],leg=false, normed=true, title=latexstring("G(x)"),
-    xlabel="Visita",ylabel="Frecuencia")
+    xlabel="Visita",ylabel="Frecuencia",bin=200)
 ```
 
 (b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\mod 1$, definido en el intervalo $x\in[0,1]$.
@@ -217,27 +218,61 @@ G(x) = mod(2*x,1)
 ```
 
 ```julia
-its, its_x, its_y = itera_mapeo(G,rand(),900)
+its, its_x, its_y = itera_mapeo(G,rand(),20000)
 histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
-    xlabel="Visita",ylabel="Frecuencia")
+    xlabel="Visita",ylabel="Frecuencia",bin=200)
 ```
 
 (c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
 
 <font size=2>
-Del primer histograma observamos que el mapeo visita más los extremos del intervalo, observamos que en los valores centrales pareciera que se tiene la misma frecuencia, lo que indica que el mapeo oscila entre los valores extremos sin detenrse mucho en los centrales. Pero es importante observar que mientras observemos un punto que se encuentra más cercano a los extremos se detiene más el mapeo en estos puntos que en los que se encuentran más alejados.
+Del primer histograma observamos que el mapeo visita más los extremos del intervalo, observamos que en los valores centrales pareciera que se tiene la misma frecuencia, lo que indica que el mapeo oscila entre los valores extremos sin detenrse mucho en los centrales, sin embargo visita todos los puntos del intervalo, esto a pesar de lo que sucede en los extremos. Pero es importante observar que mientras observemos un punto que se encuentra más cercano a los extremos se detiene más el mapeo en estos puntos que en los que se encuentran más alejados.
 
 <font size=2>
 Por otro lado, el segundo histograma pareciera que el mapeo nunca pasa por los demás valores, entre (0,1], y solo se concentra en el punto 0, sin embargo al realizar un histograma con menos interaciones, tenemos que:
 
 ```julia
 its, its_x, its_y = itera_mapeo(G, rand(), 100)
-histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
-    xlabel="Visita",ylabel="Frecuencia")
+histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true,
+    xlabel="Visita",ylabel="Frecuencia",bin=5000 ,xaxis=0:0.1:1)
 ```
 
 <font size=2>
-Por lo que los demás valores sí se visitan, sin embargo dado que en el momento en que se llega a 0, como este es un punto fijo, ya no se sale de éste, esto explica por que desde un cierto punto se converge a 0, y ya no se visitan más puntos.
+Por lo que los demás valores sí se visitan, sin embargo dado que en el momento en que se llega a 0, como este es un punto fijo, ya no se sale de éste, esto explica por que desde un cierto punto se converge a 0, y ya no se visitan más puntos. Sin embargo esto no explica como es que siempre exactamente cae en el número 0.5 para que las iteraciones convergan a 0, y lo más curiosos es que siempre se dé en un número de iteraciones menor a 52:
+
+```julia
+for i in 1:10000
+    its, its_x, its_y = itera_mapeo(G, rand(), 52)
+    if  its[end] != 0
+        print("No converge")
+        break
+    end
+end
+print("Test Finalizado")
+```
+
+<font size=2>
+De esta forma se imprimen los valores de 'its', para ver que está pasando:
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 52)
+for i in 1:length(its)
+    println(its[i])
+end
+```
+
+<font size=2>
+Lo que se observa es que la precisión comienza a disminuir hasta converger a 0.5 y ahí a 0, sin embargo esto sugiere un error de redondeo, o mejor dicho de precisión.
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 52)
+for i in 1:length(its)
+    println(bitstring(its[i]))
+end
+```
+
+<font size=2>
+    Lo que se observa en como con cada iteración la precisión se va perdiendo lo que provoca que dado el número de bits con el que representemos al número con el que iniciamos, sea el número de iteraciones necesarias para llegar 0, de está manera se explica como es tan periodica la convergencia y a menos que se inicie con un 0 o un 0.5 el resultado del mapeo es erróneo.
 
 ## Ejercicio 3
 
@@ -256,7 +291,23 @@ Dual(1.9,2)
 ```
 
 ```julia
-y=x_Dual(8)
+x_Dual(8)
+```
+
+```julia
+pot_rama(1,2,-pi)
+```
+
+```julia
+pot_rama(Dual(1,1),2,-pi)
+```
+
+```julia
+log_rama(Dual(1,1),-pi)
+```
+
+```julia
+log_rama(1,-pi)
 ```
 
 (b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
@@ -281,10 +332,6 @@ function Met_Newton(f::Function,x_0;its=10)
         throw("IteracionesInsuficientes")
     end
 end
-```
-
-```julia
-import Test.@test
 ```
 
 ```julia
@@ -388,7 +435,8 @@ scatter!([cos(2*pi*2/3)], [sin(2*pi*2/3)], markershape=:circle,
 ```julia
 """
     itera_mapeo_2(f, a, x0, n)
-        itera el mapeo f,  n veces, tomando un valor a (para f) y un x0
+        itera el mapeo f,  n veces, tomando un valor a (para f) y un x0, 
+        no verifica si es complejo derivable
 """
 function itera_mapeo_2(f,a,x0, n::Int)
     for i = 1:n
@@ -406,7 +454,7 @@ f(z) = z^3 -1
         
         Clasifica las condiciones iniciales en función a que zero converge.
 """
-function clasifica_x(n,g;a=1,its=1000,dif=0.1)
+function clasifica_x(n,g;a=1,its=1000,dif=0.1,itera=itera_mapeo_2)
     v_0 = cos(2*pi*0/3)+im*sin(2*pi*0/3)
     v_1 = cos(2*pi*1/3)+im*sin(2*pi*1/3)
     v_2 = cos(2*pi*2/3)+im*sin(2*pi*2/3)
@@ -415,7 +463,7 @@ function clasifica_x(n,g;a=1,its=1000,dif=0.1)
     x_2 = [Float64[0],Float64[0]]
     for i in 1:n
         z = rand()*2-1+im*(rand()*2-1)
-        x = itera_mapeo_2(g,a,z,its)
+        x = itera(g,a,z,its)
         if abs(v_0-x) < dif
             push!(x_0[1],real(z))
             push!(x_0[2],imag(z))
@@ -426,7 +474,9 @@ function clasifica_x(n,g;a=1,its=1000,dif=0.1)
             push!(x_2[1],real(z))
             push!(x_2[2],imag(z))
         else
-            println("No converge")
+            println(abs(v_0-x))
+            println(abs(v_1-x))
+            println(abs(v_2-x))
         end
     end
     scatter(x_0[1], x_0[2], markershape=:circle,legend=false,
@@ -434,14 +484,14 @@ function clasifica_x(n,g;a=1,its=1000,dif=0.1)
         yaxis = ("Imaginario",(-1.1,1.1)),
         markerstrokecolor=:blue, markersize=1, alpha=1, label=latexstring("Converge:z_0"))
     scatter!(x_1[1],x_1[2], markershape=:circle,
-        markerstrokecolor=:green, markersize=1, alpha=1, label=latexstring("Converge:z_1"))
+        markerstrokecolor=:yellow, markersize=1, alpha=1, label=latexstring("Converge:z_1"))
     scatter!(x_2[1],x_2[2], markershape=:circle,
         markerstrokecolor=:red, markersize=1, alpha=1, label=latexstring("Converge:z_2"))
     end
 ```
 
 ```julia
-clasifica_x(100,f,its=20)
+clasifica_x(10,f,its=2000)
 ```
 
 ```julia
@@ -459,6 +509,133 @@ para la misma función $f(z)$, con $a=2$.
 clasifica_x(200000,f,a=2,its=20000)
 savefig("clasifica_x_2_200000")
 ```
+
+## Anexo
+
+<font size=2>
+
+Como un simple anexo hablaré sobre los numeros Duales en el campo de los complejos, la pregunta inmediata que surge es si se puede generalizar los numeros Duales en el campo complejo con el mismo significado de derivada. Por definición tenemos que:
+
+Si $f$ es complejo derivable en $z_0$ entonces: $$f'(z_0)=\lim\limits_{z\longrightarrow z_0}\dfrac{f(z)-f(z_0)}{z-z_0}.$$
+
+Cuya definición es la misma que en los números reales, lo cual permite realizar la generalización de los números Duales pero ahora bajo las operaciones definidas en los complejos.
+
+La segunda pregunta aresponder es el como saber si es una función derivable, cosa que se implementa en el modulo `NumDual.jl`, en la funcion ``complex_Dual(f,x0)`` se verifican primero las ecuaciones de Cauchy-Riemman.
+
+Sea $f:U\subset\mathbb{C}\longrightarrow\mathbb{C}$ derivable en $z_0\in U$, $f'(z_0)=a+ib$ y $f=u+iv$, entonces de $\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)}{z-z_0}=f'(z_0)\Rightarrow\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)-f'(z_0)(z-z_0)}{z-z_0}$, si hacemos $z=x+iy$ y $z_0=x_0+iy$, se tiene que $f(z_0)(z-z_0)=(a+ib)(x-x_0)+i(y-y_0)$ que esto lo podemos ver como: $f(z_0)(z-z_0)=\left(\begin{smallmatrix}
+a&&-b\\b&&a
+\end{smallmatrix}\right)\left(\begin{smallmatrix}
+x-x_0\\y-y_0
+\end{smallmatrix}\right)$, que en $\mathbb{R}^2$ el límite es equivalente: $$\lim\limits_{(x,y)\longrightarrow(x_0,y_0)}\dfrac{\left\|(u(x,y),v(x,y))-(u(x_0,y_0),v(x_0,y_0))-\left(\begin{smallmatrix}
+	a&&-b\\b&&a
+	\end{smallmatrix}\right)\left(\begin{smallmatrix}
+	x-x_0\\y-y_0
+	\end{smallmatrix}\right)\right\|}{\left\|(x,y)-(x_0,y_0)\right\|}=0$$ a esta matriz se le llama $Df(x_0,y_0)$ y se dice que f es real diferenciable en $(x_0,y_0)$, en particular se sabe que $Df(x_0,y_0)=\left(\begin{matrix}
+\frac{\delta u}{\delta x}(x_0,y_0)&&\frac{\delta u}{\delta y}(x_0,y_0)\\\frac{\delta v}{\delta x}(x_0,y_0)&&\frac{\delta v}{\delta y}(x_0,y_0)
+\end{matrix}\right)$ de donde por la matriz $\left(\begin{smallmatrix}
+a&&-b\\b&&a
+\end{smallmatrix}\right)$ se deducen las  ecuaciones conocidas como de Cauchy-Riemman: $$\frac{\delta u}{\delta x}(x_0,y_0)=\frac{\delta y}{\delta y}(x_0,y_0)\;y\;\frac{\delta u}{\delta y}(x_0,y_0)=-\frac{\delta v}{\delta x}(x_0,y_0)$$ Lo que hemos demostrado es el siguiente teorema: 
+
+ $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es compleja derivable en $z_0\in U$ sii es real diferenciable en $z_0$ y satisface las ecuaciones de C-R en $z_0$.
+ 
+ Un último 'hoyo' es la implementación de las ramas:
+ 
+ Para cada $z\in\mathbb{C}\setminus\{0\}$ y cada $\varphi\in\mathbb{R}$, definimos el argumento de z respecto a $\varphi$ como $arg_{\varphi}(z)=arg(z)+2\pi k$ donde $k\in\mathbb{Z}$ es el \'unico entero tal que $arg_{\varphi}(z)\in(\varphi,\varphi+2\pi]$.
+ 
+ A los intervalos de la forma $(\varphi,\varphi+2\pi]$ se les llama ramas del argumento.
+ 
+ Ṕara determinar la rama correspondiente buscamos $k\in\mathbb{Z}$ tal que: $y_0<\theta+2\pi k\leq y_0+2\pi\Rightarrow \frac{y_0-\theta}{2\pi}<k\leq\frac{y_0-\theta}{2\pi}+1$.
+ 
+ Cuya idea es la implementada función `rama` del modulo `NumDual.jl`.
+ 
+ Lo que permite definir `angle`. 
+ 
+ En este sentido podemos definir una exponencial compleja que dependa de la rama, sin embargo consideraré solo la rama principal, ya que no aporta nada por su definición:
+ 
+ Si $z=x+iy$, $exp(z)=e^x(\cos(y)+i\sin(y))$ con $|exp(z)|=e^{Re(z)}$ y $Im(z)\in arg_\varphi(exp(z))$.
+ 
+ Pero $\sin$ y $\cos$ son 2$\pi$ periódicos, por lo que en realidad no es interesante ni útil definir está parte, sin embargo con el $\log$ resulta diferente:
+ 
+ Dado $\varphi\in\mathbb{R}$, definimos a la rama de logaritmo respecto a $\varphi$ como $\log_\varphi:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$, $\log_\varphi(z)=\ln|z|+iarg_\varphi(z)$.
+ 
+ En el caso en que $\varphi=-\pi$, escribiremos simplemente: $\log(z)=\ln|z|+iarg(z)$ y la llamamos la rama principal del logaritmo. 
+ 
+ Lo que permite definir la función `log_rama`.
+        
+De esta forma, como en $\mathbb{R}$, para $a>0$ y $b\in\mathbb{R}$; $a^b=e^{b\ln(a)}$.
+
+POdemos definir para $a\in\mathbb{C}\setminus\{0\}$ y $b\in\mathbb{C}$, definimos la exponenciaci\'on $a^b$ como el conjunto: $a^b:=\{exp(b\log_\varphi(a))\;|\;\varphi\in\mathbb{R}\}$.
+
+Si fijamos $\varphi\in\mathbb{R}$ podemos definir una rama de:
+
+- $z^b$ como la función $f:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$ dada por: $f(z)=exp(b\log_\varphi(z))$.
+- $a^z$ como la función $g:\mathbb{C}\longrightarrow\mathbb{C}$ dada por $g(z)=exp(z\log_\varphi(a))$.
+
+De esta forma, dado $z\in\mathbb{C}\setminus\{0\}$ y $n\in\mathbb{Z}$, la exponenciaci\'on compleja toma un único valor, es decir, si $\theta=arg(z)$ entonces $z^n=|z|^n(\cos(n\theta)+i\sin(n\theta))$.
+
+Dem. Sea $\varphi\in\mathbb{R}$, $z^n=exp(n\log_\varphi(z))=exp(n(\ln|z|+iarg_\varphi(z)))=exp(n\ln|z|)$
+$exp(niarg_\varphi(z))=|z|^nexp(niarg_\varphi(z))=|z|^nexp(ni(\theta+2\pi k))$ p.a. $k\in\mathbb{Z}$ $|z|^nexp(n\theta i+2\pi kni)=|z|^nexp(n\theta i)=|z|^n(\cos(\theta)+i\sin(\theta))$. $_\blacksquare$
+
+Lo que permite definir la función `pot_rama`. 
+
+De esta manera solo falta ver si la derivada del $\log_\varphi$ es la misma que en $\mathbb{R}$ para asegurar que no cambiarán nada. 
+
+Para $\exp$ su derivada es la misma que en $\mathbb{R}$, por sus serie de potencias.
+
+Por otro lado:
+
+Sea $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$; $g:V\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ tal que $f[U]\subseteq V$. Si $f$ es continua en $z_0\in U$, $g$ es derivable en $f(z_0)$, $g'(f(z_0))\neq0$ y $\forall z\in U$; $g\circ f(z)=z$ entonces $f$ es derivable en $z_0$ y $f'(z_0)=\frac{1}{g'(f(z_0))}$.
+
+Dem. Por hip\'otesis tenemos que $g'(f(z_0))=\lim\limits_{w\longrightarrow f(z_0)}\frac{g(w)-g(f(z_0))}{w-f(z_0)}=\lim\limits_{h\longrightarrow 0}\frac{g(f(z_0+h))-g(f(z_0))}{f(z_0+h)-f(z_0)}$ este \'ultimo paso dado que $f$ es continua, y dado que son inversas se deduce que: $g'(f(z_0))=\lim\limits_{h\longrightarrow0}\frac{h}{f(z_0+h)-f(z_0)}\Rightarrow f'(z_0)=\lim\limits_{h\longrightarrow0}\frac{f(z_0+h)-f(z_0)}{h}=\dfrac{1}{g'(f(z_0))}.$ $_\blacksquare$
+
+De esta forma, si $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es un logaritmo en $U$ entonces $f$ es anal\'itica en $U$ y $f'(z)=\frac{1}{z}$. En particular $\forall\varphi\in\mathbb{R}$, $\log_\varphi$ es anali\'itica en $\mathbb{C}\setminus\left(D_\varphi\cup\{0\}\right)$, donde $D_\varphi=\{z\in\mathbb{C}\setminus\{0\}\;|\;arg_\varphi(z)=\varphi+2\pi\}$ y $\log_\varphi'(z)=\frac{1}{z}$.
+
+Dem. Como $f$ es logaritmo entonces $f$ es continua en $U$ y $\forall z\in U,\;exp(f(z))=z$; ya que $exp'(z)=exp(z)\neq0$ se sigue que $f'(z)=\frac{1}{z}.\;_\blacksquare$
+
+De esta forma podemos definir la función `itera_mapeo_3` que verifica punto a punto que sea derivable, y en la siguiente linea vemos lo mismo que se hizo en el ejercicio, aunque con con un costo de procesamiento mayor.
+
+```julia
+"""
+    itera_mapeo_3(f, a, x0, n)
+        itera el mapeo f,  n veces, tomando un valor a (para f) y un x0, 
+        verifica si es complejo derivable
+"""
+function itera_mapeo_3(f,a,x0, n::Int)
+    for i = 1:n
+        f_dual=complex_Dual(f,x0)
+        x0 = x0-a*f_dual[1]/f_dual[2]
+    end
+    return x0
+end
+```
+
+```julia
+clasifica_x(20,f,its=20,itera=itera_mapeo_3)
+```
+
+```julia
+clasifica_x(200000,f,its=20000,itera=itera_mapeo_3)
+savefig("clasifica_x_1_200000_checa_punto_a_punto")
+```
+
+Otra forma de verifiar que es correcto nuestros resultados es haciendo g:
+
+```julia
+g(z) = pot_rama(z,3,-pi) - 1
+```
+
+```julia
+clasifica_x(100000,g,its=20000,itera=itera_mapeo_3)
+savefig("clasifica_x_1_200000_checa_punto_a_punto_2")
+```
+
+```julia
+#O más rápido
+clasifica_x(200000,g,its=20000)
+savefig("clasifica_x_1_200000_2")
+```
+
+Y observamos los mismos resultados ya obtenidos.
 
 ## Ejercicio 5
 
