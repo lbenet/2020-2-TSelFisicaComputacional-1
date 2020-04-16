@@ -444,16 +444,16 @@ using Main.NumDual
 
 (b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
 
-Podemos implementar el método de Newton (unidimensional) de la siguiente forma:
+Podemos implementar el método de Newton (real) de la siguiente forma:
 
 ```julia
 """
-    Newton(f::Function, x0::Number, número_iteraciones::Int = 1000)
+    Newton(f::Function, x0::Real, número_iteraciones::Int = 1000)
 
-Implementación del método de Newton unidimensional usando números duales.
+Implementación del método de Newton real usando números duales.
 Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
 """
-function Newton(f::Function, x0::Number, número_iteraciones::Int = 100)
+function Newton(f::Function, x0::Real, número_iteraciones::Int = 100)
     
     x = var_Dual(x0)
     
@@ -461,10 +461,10 @@ function Newton(f::Function, x0::Number, número_iteraciones::Int = 100)
         
         y = f(x)
         
-        x -= y.p/y.d
+        x -= principal(y)/derivada(y)
     end
     
-    return x.p
+    return principal(x)
 end
 ```
 
@@ -581,6 +581,132 @@ tienen la propiedad de que $N(z^*)=z_*$. En este caso concreto los ceros los pod
 
 La idea es considerar *muchas* condiciones iniciales $z_0\in[-1,1]\times[-1,1]$, y para cada condición inicial iteraremos muchas veces el mapeo, por ejemplo, $n=10000$ veces. La idea es asignarle a cada condición inicial un color (azul, verde o rojo) según el punto al que converja, o al punto al que más se acerque $z_n$. Dibujen el mapa de colores que se obtiene.
 
+Para poder usar algo similar a lo desarrollado anteriormente con duales "reales" en los complejos, podemos definir estructuras análogas a los complejos pero con entradas duales.
+La implementación de esto se encuentra en ```tareas/CSGA/ComplexDual.jl``` y está incluído dentro del módulo ```NumDual```, por lo que sólo se requiere extender un poco el método de Newton usando un constructo compleji análogo a ```var_Dual```, ```var_ComplexDual```:
+
+```julia
+"""
+    Newton(f::Function, x0::Complex, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Complex, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+```
+
+Definamos la familia de funciones cuyas raíces corresponden a las raíces $n$-ésimas de la unidad:
+
+```julia
+nfoil(n, z) = z^n - 1
+nfoil(n) = z -> nfoil(n, z)
+raíces_unidad(n) = [exp((2*π*im)*k/n) for k in 0:(n-1)]
+```
+
+(El caso de interés ocurre para $n = 3$.)
+
+Para clasificar más fácilmente los puntos, conviene definir un par de funciones auxiliares:
+
+```julia
+"""
+    pertenencia(clases, dato; rtol = 0.0)
+
+Dado un conjunto de valores ```clases```, devuelve el índice de la clase a la que dato pertenece (definido mediante ```isapprox``` con el parámetro ```rtol```).
+En el caso de que no pertenezca a ninguna clase, devuelve cero.
+"""
+function pertenencia(clases, dato; rtol = 0.0)
+    
+    for index in eachindex(clases)
+        
+        if isapprox(clases[index], dato, rtol = rtol)
+            
+            return index
+        end
+    end
+    
+    return 0
+end
+
+"""
+    convergencia(función, valores_convergencia, condición_inicial, rtol = 0.0)
+
+Dada una ```función``` y un conjunto de ```valores_convergencia``` que definen las clases respectivas,
+aplica la función a la ```condición_inicial``` y devuelve la clasificación de convergencia usando la función ```pertenencia``` con el parámetro ```rtol``` sobre el resultado de la función.
+"""
+function convergencia(función, valores_convergencia, condición_inicial; rtol = 0.0)
+    
+    y = función(condición_inicial)
+        
+    clasificación =  pertenencia(valores_convergencia, y, rtol = rtol)
+        
+    return clasificación
+end
+```
+
+Podemos proceder a realizar el análisis del caso particular. 
+Para poder observar esto gráficamente, podemos usar la función ```contour``` de ```Plots.jl```:
+
+```julia
+#Las condiciones iniciales:
+rango_Re = -2:0.005:2
+rango_Im = -2:0.005:2
+
+#Los valores de convergencia:
+y0s_3 = raíces_unidad(3)
+
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(3), z), y0s_3, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+Por curiosidad, podemos hacer el mismo análisis para otros valores de $n$:
+
+```julia
+#Los valores de convergencia:
+y0s_4 = raíces_unidad(4)
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(4), z), y0s_4, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^4 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_4)
+```
+
+```julia
+#Los valores de convergencia:
+y0s_5 = raíces_unidad(5)
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(5), z), y0s_5, Complex(x, y)),
+        fill = true, nlevels = 5, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^5 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_5)
+```
+
+Obtenemos bonitos fractales "florales", con un número de hojas igual al número de raíces de la unidad para cada valor $n$.
+
+Observemos que dada que la velocidad de convergencia del método de Newton es elevada, no es necesario tomar tantas iteraciones (bastan las que definimos por default, 100), para que prácticamente todos los puntos converjan a una raíz.
+
 (b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
 \begin{equation}
 z_{n+1} = z_n - a\frac{f(z_n)}{f'(z_n)},
@@ -589,8 +715,103 @@ para la misma función $f(z)$, con $a=2$.
 
 *Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
 
+Modifiquemos un poco el método de Newton:
+
 ```julia
+function Newton_modificado(f::Function, x0::Complex, a, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= a*principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
 ```
+
+Para $a = 2$:
+
+```julia
+a = 2
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 1000), y0s_3, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+Inclusive con 1000 iteraciones (10 veces las iteraciones usadas anteriormente), parece ser que las condiciones iniciales no convergen lo suficientemente rápido:
+
+```julia
+convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(1, 0.1))
+```
+
+Una forma de obtener resultados sin elevar "demasiado" el número de iteraciones, es relajando los criterios de convergencia, por ejemplo, usando el parámetro ```rtol```.
+
+```julia
+a = 2
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(x, y), rtol = 0.1),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+¡Se parece al conjunto de Mandelbrot!
+
+¿Qué pasará si variamos el parámetro $a$?
+Para ver esto, se puede [hacer una animación](https://docs.juliaplots.org/latest/animations/):
+
+```julia
+#=
+animación_real = @animate for a in 0:0.01:2
+    contour(rango_Re, rango_Im,
+            (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(x, y), rtol = 0.1),
+            fill = true, nlevels = 4, color = :blues,
+            title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+            xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+    scatter!(y0s_3)
+end
+
+gif(animación_real, "Newton_modificado_3_real.gif", fps = 15)
+=#
+```
+
+Se comenta el código para ahorrar cómputo.
+La animación está disponible como ```Newton_modificado_3_real.gif```.
+se observa un comportamiento como de "zoom"..
+
+Dado que estamos en complejos, ¿qué pasará si hacemos tomamos a un complejo de la forma $1 + ai$ para modificar el método?
+
+```julia
+#=
+animación_compleja = @animate for a in -1:0.01:1
+    contour(rango_Re, rango_Im,
+            (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, Complex(1, a), 500), y0s_3, Complex(x, y), rtol = 0.1),
+            fill = true, nlevels = 4, color = :blues,
+            title = "Convergencia del método de Newton modificado (\$a\$ = 1 + $a im) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+            xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+    scatter!(y0s_3)
+end
+
+gif(animación_compleja, "Newton_modificado_3_compleja.gif", fps = 15)
+=#
+```
+
+La animación está disponible como ```Newton_modificado_3_compleja.gif```.
+se observa un comportamiento como de "rotación" para valores de $a$ pequeños, que conforma aumenta el módulo de $a$, degenera en rotaciones de las ramas cada vez más drásticas, hasta que repentinamente se fusionan.
+
+Estos comportamientos, hasta cierto punto, parecen extrapolar la intuición geométrica de la multiplicación por un complejo: homotecias ("zoom") y rotaciones.
 
 ## Ejercicio 5
 
