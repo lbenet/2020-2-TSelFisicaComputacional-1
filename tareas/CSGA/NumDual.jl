@@ -26,6 +26,7 @@ Devuelve la parte derivada del ``Dual`` suministrado.
 derivada(x::Dual) = x.d
 
 #Constructores:
+Dual(x::Bool) = Dual(Int(x), 0)
 Dual(x::T) where {T <: Real} = Dual(x, zero(x))
 Dual(p::T, d::S) where {T <: Real, S <: Real} = Dual(promote(p, d)...)
 Dual{T}(x::S) where {T <: Real, S <: Real} = Dual(convert(T, x))
@@ -46,7 +47,7 @@ Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones u
 """
 var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
 
-import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log
+import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log, atan, acot
 
 #Display:
 #Para implementar un poco de "eyecandy", conviene colocar el signo de la parte derivada antes del número ϵ. Para hacer esto podemos usar la función ```signbit```:
@@ -54,11 +55,11 @@ function show(io::IO, a::Dual{T}) where {T <: Real}
 
     if signbit(a.d)
 
-        print(io, "$(a.p) - $(abs(a.d))ϵ ")
+        print(io, "$(a.p) - $(abs(a.d))ϵ")
 
     else
 
-        print(io, "$(a.p) + $(abs(a.d))ϵ ")
+        print(io, "$(a.p) + $(abs(a.d))ϵ")
     end
 end
 
@@ -66,6 +67,8 @@ end
 show(io::IO, ::MIME"text/plain", a::Dual{T}) where {T <: Real} = print(io, "Dual{$T}: $a")
 
 #Operaciones aritméticas:
++(a::Dual) = Dual(+principal(a), +derivada(a))
+-(a::Dual) = Dual(-principal(a), -derivada(a))
 +(a::Dual, b::Dual) = Dual(a.p + b.p, a.d + b.d)
 -(a::Dual, b::Dual) = Dual(a.p - b.p, a.d - b.d)
 *(a::Dual, b::Dual) = Dual(a.p * b.p, a.p * b.d + b.p * a.d)
@@ -161,6 +164,11 @@ function exp(a::Dual)
 end
 
 log(a::Dual) = Dual(log(a.p), a.d/a.p)
+cosh(a::Dual) = Dual(cosh(a.p), a.d*sinh(a.p))
+sinh(a::Dual) = Dual(sinh(a.p), a.d*cosh(a.p))
+
+atan(a::Dual) = Dual(atan(a.p), a.d/(1 + a.p^2))
+acot(a::Dual) = Dual(acot(a.p),-a.d/(1 + a.p^2))
 
 #Diferenciación automática:
 """
@@ -171,4 +179,6 @@ Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
 derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
 
 export Dual, var_Dual, principal, derivada
+
+include("ComplexDual.jl")
 end
