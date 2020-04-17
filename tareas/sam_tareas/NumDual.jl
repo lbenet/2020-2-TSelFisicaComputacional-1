@@ -1,4 +1,6 @@
 module NumDual
+export Dual
+export var_dual
 struct Dual{ T <: Real}
 x :: T
 y :: T
