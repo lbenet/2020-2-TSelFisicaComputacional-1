@@ -272,7 +272,7 @@ end
 ```
 
 <font size=2>
-    Lo que se observa en como con cada iteración la precisión se va perdiendo lo que provoca que dado el número de bits con el que representemos al número con el que iniciamos, sea el número de iteraciones necesarias para llegar 0, de está manera se explica como es tan periodica la convergencia y a menos que se inicie con un 0 o un 0.5 el resultado del mapeo es erróneo.
+    Lo que se observa en como con cada iteración la precisión se va perdiendo lo que provoca que dado el número de bits con el que representemos al número con el que iniciamos, sea el número de iteraciones necesarias para llegar 0, de está manera se explica como es tan periódica la convergencia y a menos que en todas las iteraciones se tengan, como resultado del mapeo, numeros perfectamente representables en binario, el resultado del mapeo es erróneo.
 
 ## Ejercicio 3
 
@@ -514,13 +514,13 @@ savefig("clasifica_x_2_200000")
 
 <font size=2>
 
-Como un simple anexo hablaré sobre los numeros Duales en el campo de los complejos, la pregunta inmediata que surge es si se puede generalizar los numeros Duales en el campo complejo con el mismo significado de derivada. Por definición tenemos que:
+Como un simple anexo hablaré sobre los números Duales en el campo de los complejos, la pregunta inmediata que surge es si se puede generalizar los números Duales en el campo complejo con el mismo significado de derivada. Por definición tenemos que:
 
 Si $f$ es complejo derivable en $z_0$ entonces: $$f'(z_0)=\lim\limits_{z\longrightarrow z_0}\dfrac{f(z)-f(z_0)}{z-z_0}.$$
 
 Cuya definición es la misma que en los números reales, lo cual permite realizar la generalización de los números Duales pero ahora bajo las operaciones definidas en los complejos.
 
-La segunda pregunta aresponder es el como saber si es una función derivable, cosa que se implementa en el modulo `NumDual.jl`, en la funcion ``complex_Dual(f,x0)`` se verifican primero las ecuaciones de Cauchy-Riemman.
+La segunda pregunta a responder es cómo saber si es una función derivable, cosa que se implementa en el modulo `NumDual.jl`, en la funcion ``complex_Dual(f,x0)`` se verifican primero las ecuaciones de Cauchy-Riemman.
 
 Sea $f:U\subset\mathbb{C}\longrightarrow\mathbb{C}$ derivable en $z_0\in U$, $f'(z_0)=a+ib$ y $f=u+iv$, entonces de $\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)}{z-z_0}=f'(z_0)\Rightarrow\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)-f'(z_0)(z-z_0)}{z-z_0}$, si hacemos $z=x+iy$ y $z_0=x_0+iy$, se tiene que $f(z_0)(z-z_0)=(a+ib)(x-x_0)+i(y-y_0)$ que esto lo podemos ver como: $f(z_0)(z-z_0)=\left(\begin{smallmatrix}
 a&&-b\\b&&a
@@ -544,55 +544,44 @@ a&&-b\\b&&a
  
  A los intervalos de la forma $(\varphi,\varphi+2\pi]$ se les llama ramas del argumento.
  
- Ṕara determinar la rama correspondiente buscamos $k\in\mathbb{Z}$ tal que: $y_0<\theta+2\pi k\leq y_0+2\pi\Rightarrow \frac{y_0-\theta}{2\pi}<k\leq\frac{y_0-\theta}{2\pi}+1$.
- 
- Cuya idea es la implementada función `rama` del modulo `NumDual.jl`.
- 
- Lo que permite definir `angle`. 
+ Para determinar la rama correspondiente buscamos $k\in\mathbb{Z}$ tal que: $y_0<\theta+2\pi k\leq y_0+2\pi\Rightarrow \frac{y_0-\theta}{2\pi}<k\leq\frac{y_0-\theta}{2\pi}+1$. Cuya idea es la implementada función `rama` del modulo `NumDual.jl`. Lo que permite definir `angle`. 
  
  En este sentido podemos definir una exponencial compleja que dependa de la rama, sin embargo consideraré solo la rama principal, ya que no aporta nada por su definición:
  
- Si $z=x+iy$, $exp(z)=e^x(\cos(y)+i\sin(y))$ con $|exp(z)|=e^{Re(z)}$ y $Im(z)\in arg_\varphi(exp(z))$.
+ Si $z=x+iy$, $exp(z)=e^x(\cos(y)+i\sin(y))$ con $|exp(z)|=e^{Re(z)}$ y $Im(z)\in arg_\varphi(exp(z)).$
+ Las funciones sin y cos son analíticas, lo que hace que sólo haya una rama, y de hecho, no hay cosas raras en el plano complejo, sin embargo con el $\log$ resulta diferente:
  
- Pero $\sin$ y $\cos$ son 2$\pi$ periódicos, por lo que en realidad no es interesante ni útil definir está parte, sin embargo con el $\log$ resulta diferente:
+ Dado $\varphi\in\mathbb{R}$, definimos a la rama de logarítmo respecto a $\varphi$ como $\log_\varphi:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$, $\log_\varphi(z)=\ln|z|+iarg_\varphi(z)$.
  
- Dado $\varphi\in\mathbb{R}$, definimos a la rama de logaritmo respecto a $\varphi$ como $\log_\varphi:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$, $\log_\varphi(z)=\ln|z|+iarg_\varphi(z)$.
- 
- En el caso en que $\varphi=-\pi$, escribiremos simplemente: $\log(z)=\ln|z|+iarg(z)$ y la llamamos la rama principal del logaritmo. 
- 
- Lo que permite definir la función `log_rama`.
+ En el caso en que $\varphi=-\pi$, escribiremos simplemente: $\log(z)=\ln|z|+iarg(z)$ y la llamamos la rama principal del logarítmo. Lo que permite definir la función `log_rama`.
         
 De esta forma, como en $\mathbb{R}$, para $a>0$ y $b\in\mathbb{R}$; $a^b=e^{b\ln(a)}$.
 
-POdemos definir para $a\in\mathbb{C}\setminus\{0\}$ y $b\in\mathbb{C}$, definimos la exponenciaci\'on $a^b$ como el conjunto: $a^b:=\{exp(b\log_\varphi(a))\;|\;\varphi\in\mathbb{R}\}$.
+Podemos definir para $a\in\mathbb{C}\setminus\{0\}$ y $b\in\mathbb{C}$, definimos la exponenciación $a^b$ como el conjunto: $a^b:=\{exp(b\log_\varphi(a))\;|\;\varphi\in\mathbb{R}\}$.
 
 Si fijamos $\varphi\in\mathbb{R}$ podemos definir una rama de:
 
 - $z^b$ como la función $f:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$ dada por: $f(z)=exp(b\log_\varphi(z))$.
 - $a^z$ como la función $g:\mathbb{C}\longrightarrow\mathbb{C}$ dada por $g(z)=exp(z\log_\varphi(a))$.
 
-De esta forma, dado $z\in\mathbb{C}\setminus\{0\}$ y $n\in\mathbb{Z}$, la exponenciaci\'on compleja toma un único valor, es decir, si $\theta=arg(z)$ entonces $z^n=|z|^n(\cos(n\theta)+i\sin(n\theta))$.
+De esta forma, dado $z\in\mathbb{C}\setminus\{0\}$ y $n\in\mathbb{Z}$, la exponenciación compleja toma un único valor, es decir, si $\theta=arg(z)$ entonces: $$z^n=|z|^n(\cos(n\theta)+i\sin(n\theta)).$$
 
 Dem. Sea $\varphi\in\mathbb{R}$, $z^n=exp(n\log_\varphi(z))=exp(n(\ln|z|+iarg_\varphi(z)))=exp(n\ln|z|)$
 $exp(niarg_\varphi(z))=|z|^nexp(niarg_\varphi(z))=|z|^nexp(ni(\theta+2\pi k))$ p.a. $k\in\mathbb{Z}$ $|z|^nexp(n\theta i+2\pi kni)=|z|^nexp(n\theta i)=|z|^n(\cos(\theta)+i\sin(\theta))$. $_\blacksquare$
 
 Lo que permite definir la función `pot_rama`. 
 
-De esta manera solo falta ver si la derivada del $\log_\varphi$ es la misma que en $\mathbb{R}$ para asegurar que no cambiarán nada. 
-
-Para $\exp$ su derivada es la misma que en $\mathbb{R}$, por sus serie de potencias.
-
-Por otro lado:
+De esta manera sólo falta ver si la derivada del $\log_\varphi$ es la misma que en $\mathbb{R}$ para asegurar que no cambiarán nada. Para $\exp$ su derivada es la misma que en $\mathbb{R}$, por sus serie de potencias. Por otro lado:
 
 Sea $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$; $g:V\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ tal que $f[U]\subseteq V$. Si $f$ es continua en $z_0\in U$, $g$ es derivable en $f(z_0)$, $g'(f(z_0))\neq0$ y $\forall z\in U$; $g\circ f(z)=z$ entonces $f$ es derivable en $z_0$ y $f'(z_0)=\frac{1}{g'(f(z_0))}$.
 
-Dem. Por hip\'otesis tenemos que $g'(f(z_0))=\lim\limits_{w\longrightarrow f(z_0)}\frac{g(w)-g(f(z_0))}{w-f(z_0)}=\lim\limits_{h\longrightarrow 0}\frac{g(f(z_0+h))-g(f(z_0))}{f(z_0+h)-f(z_0)}$ este \'ultimo paso dado que $f$ es continua, y dado que son inversas se deduce que: $g'(f(z_0))=\lim\limits_{h\longrightarrow0}\frac{h}{f(z_0+h)-f(z_0)}\Rightarrow f'(z_0)=\lim\limits_{h\longrightarrow0}\frac{f(z_0+h)-f(z_0)}{h}=\dfrac{1}{g'(f(z_0))}.$ $_\blacksquare$
+Dem. Por hipótesis tenemos que $g'(f(z_0))=\lim\limits_{w\longrightarrow f(z_0)}\frac{g(w)-g(f(z_0))}{w-f(z_0)}=\lim\limits_{h\longrightarrow 0}\frac{g(f(z_0+h))-g(f(z_0))}{f(z_0+h)-f(z_0)}$ este \'ultimo paso dado que $f$ es continua, y dado que son inversas se deduce que: $$g'(f(z_0))=\lim\limits_{h\longrightarrow0}\frac{h}{f(z_0+h)-f(z_0)}\Rightarrow f'(z_0)=\lim\limits_{h\longrightarrow0}\frac{f(z_0+h)-f(z_0)}{h}=\dfrac{1}{g'(f(z_0))}._\blacksquare$$
 
-De esta forma, si $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es un logaritmo en $U$ entonces $f$ es anal\'itica en $U$ y $f'(z)=\frac{1}{z}$. En particular $\forall\varphi\in\mathbb{R}$, $\log_\varphi$ es anali\'itica en $\mathbb{C}\setminus\left(D_\varphi\cup\{0\}\right)$, donde $D_\varphi=\{z\in\mathbb{C}\setminus\{0\}\;|\;arg_\varphi(z)=\varphi+2\pi\}$ y $\log_\varphi'(z)=\frac{1}{z}$.
+De esta forma, si $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es un logarítmo en $U$ entonces $f$ es anal\'itica en $U$ y $f'(z)=\frac{1}{z}$. En particular $\forall\varphi\in\mathbb{R}$, $\log_\varphi$ es anali\'itica en $\mathbb{C}\setminus\left(D_\varphi\cup\{0\}\right)$, donde $D_\varphi=\{z\in\mathbb{C}\setminus\{0\}\;|\;arg_\varphi(z)=\varphi+2\pi\}$ y $\log_\varphi'(z)=\frac{1}{z}$.
 
-Dem. Como $f$ es logaritmo entonces $f$ es continua en $U$ y $\forall z\in U,\;exp(f(z))=z$; ya que $exp'(z)=exp(z)\neq0$ se sigue que $f'(z)=\frac{1}{z}.\;_\blacksquare$
+Dem. Como $f$ es logarítmo entonces $f$ es continua en $U$ y $\forall z\in U,\;exp(f(z))=z$; ya que $exp'(z)=exp(z)\neq0$ se sigue que $f'(z)=\frac{1}{z}.\;_\blacksquare$
 
-De esta forma podemos definir la función `itera_mapeo_3` que verifica punto a punto que sea derivable, y en la siguiente linea vemos lo mismo que se hizo en el ejercicio, aunque con con un costo de procesamiento mayor.
+De esta forma podemos definir la función `itera_mapeo_3` que verifica punto a punto que sea derivable, y en la siguiente línea vemos lo mismo que se hizo en el ejercicio, aunque con un costo de procesamiento mayor.
 
 ```julia
 """
