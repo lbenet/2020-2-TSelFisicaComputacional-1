@@ -1,30 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Tarea 3
 
 > Envío inicial del PR: **22 de abril**.
@@ -34,7 +7,7 @@
 
 ## Ejercicio 1
 
-Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$. 
+Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
 
 Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
 
@@ -45,7 +18,7 @@ f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
 La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
 
 
-*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$. 
+*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
 Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
 
 ```julia
@@ -53,9 +26,9 @@ Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de per
 
 ## Ejercicio 2
 
-Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$. 
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
 
-- ¿Cómo se comparan los valores obtenidos de $f_n$? 
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
 
 - ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
 
