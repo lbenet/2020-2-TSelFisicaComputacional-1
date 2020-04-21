@@ -815,18 +815,160 @@ Estos comportamientos, hasta cierto punto, parecen extrapolar la intuición geom
 
 ## Ejercicio 5
 
-Consideremos ahora el triángulo definido por los tres puntos $A=(1, 0)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+Consideremos ahora el triángulo definido por los tres puntos $A=(0, 1)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
 
 (a) Definan una regla, la que quieran, que asigne dos salidas distintas del dado (por ejemplo, 1 y 5) a cada uno de los tres vértices del triángulo.
 
+Para poder hacer esto un poco más interesante, hagamos la elección de la regla de asignación aleatoria.
+Para ello, usemos el paquete `Random.jl`:
+
+```julia
+using Random
+```
+
+Definamos algunas constantes para el ejercicio:
+
+```julia
+número_vértices = 3
+número_caras = 6
+```
+
+Para construir aleatoriamente la regla de asignación, generemos una permutación aleatoria, $\sigma$ de las caras del dado.
+Esta permutación la vamos a mapear a los vértices de forma secuencial usando aritmética modular, de tal forma que para el ejemplo, el primer y cuarto valor de la permutación sean asignados a la primera cara; el segundo y el quinto a la segunda; y, el tercero y sexto a la tercera:
+
+```julia
+permutación(número_caras) = randperm(número_caras)
+asignación(número_vértices, número_caras) = begin perm = permutación(número_caras); Dict(perm[i] => mod1(i, número_vértices) for i in 1:número_caras); end
+
+asignación_triángulo = asignación(número_vértices, número_caras)
+```
+
 (b) A partir de un punto $X$, definan el mapeo que, para cada tiro del dado $d$, hace que el punto $X$ sea mapeado al punto medio de $X$ y el vértice del triángulo asignado en (a).
+
+Definamos los lados del tríangulo.
+Para ello, podemos reutilizar la definición de las raíces de la unidad del ejercicio pasado, rotando las raíces cúbicas de la unidad 90°:
+
+```julia
+triángulo = raíces_unidad(3)*im
+```
+
+Podemos además, reutilizar la forma paramétrica de la recta definida en el ejercicio 1 para definir el mapeo:
+
+```julia
+mapeo_5_explícito(vértices, asignación, dado, x0) = línea_paramétrica(x0, vértices[asignación[dado]])(0.5)
+```
+
+Nos conviene, sin embargo, no requerir de estar dando de antemano el valor de la tirada del dado, sino incluir la tirada en la definición que usaremos para iterar:
+
+```julia
+mapeo_5(número_caras, vértices, asignación, x0) = mapeo_5_explícito(vértices, asignación, rand(1:número_caras), x0)
+mapeo_5(número_caras, vértices, asignación) = x0 -> mapeo_5(número_caras, vértices, asignación, x0)
+```
 
 (c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
 
-(d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
+Usando la forma funcional de `mapeo_5`, podemos usar las herramientas de iteración definidas en el ejercicio 1 con una condición inicial aleatoria en $[-1, 1]\times[-1,1]$:
 
 ```julia
+#Rescatamos también la definición para generar números aleatorios de una distribución uniforme del ejercicio 2:
+@show x0_5 = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5)
 ```
+
+Podemos graficar usando pixeles (para que se aprecie mejor la figura) usando `PyPlot` directamente:
+
+```julia
+PyPlot.scatter(real.(iterados_triángulo), imag.(iterados_triángulo), marker = ",", s = 1)
+```
+
+¡Obtenemos el triángulo de Sierpiński!
+
+(d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
+
+Probemos con algunas condiciones iniciales particulares:
+
+```julia
+x0_5_2 = Complex(2.0, 0)
+iterados_triángulo_2 = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5_2)
+
+PyPlot.scatter(real.(iterados_triángulo_2), imag.(iterados_triángulo_2), marker = ",", s = 1)
+```
+
+```julia
+x0_5_3 = Complex(0, 2.0)
+iterados_triángulo_3 = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5_3)
+
+PyPlot.scatter(real.(iterados_triángulo_3), imag.(iterados_triángulo_3), marker = ",", s = 1)
+```
+
+Eventualmente siempre recuperamos el triángulo de Sierpiński porque al asignar el punto medio entre el punto a iterar y alguno de los vértices, siempre nos acercamos al triángulo. En el peor de los casos, en el que siempre estamos mapeando entre dos vértices y no en todo el triángulo, colapsamos en la arista que los une. (Aunque dado que los tres vértices son equiprobables, esta condición, conforme aumentan las iteraciones, se vuelve cada vez más improbable.)
+
+Para estudiar este caso degenerado, podemos jugar un poco con la equiprobabilidad de elegir un vértice para mapear. 
+Para ello, consideremos un dado que favorezca un vértice particular, asignándole al vértice dos veces más probabilidad que a los otros.
+Podemos implementar esto usando un dado de cuatro caras:
+
+```julia
+número_caras_asimétrico = 4
+#El primer vértice (el que está en el eje y) tiene 1/2 de probabilidad de ser elegido, mientras que los otros sólo 1/4.
+asignación_triángulo_asimétrico = asignación(número_vértices, número_caras_asimétrico)
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_asimétrico = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_asimétrico = iterados(mapeo_5(número_caras_asimétrico, triángulo, asignación_triángulo_asimétrico), 100_000 - 1, x0_5_asimétrico)
+
+PyPlot.scatter(real.(iterados_triángulo_asimétrico), imag.(iterados_triángulo_asimétrico), marker = ",", s = 1)
+```
+
+A pesar de la asimetría inducida, seguimos teniendo el triángulo de Sierpiński.
+Quizá modificando la forma de asignar vértices, permitiendo dar las probabilidades directamente, se puede encontrar un conjunto de parámetros que cambien la dinámica.
+
+Por curiosidad, veamos lo que pasa en un rombo construido análogamente:
+
+```julia
+número_vértices_2 = 4
+número_caras_2 = 8 ##Para mantener la equiprobabilidad
+
+asignación_rombo = asignación(número_vértices_2, número_caras_2)
+```
+
+```julia
+rombo = raíces_unidad(4)*im
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_rombo = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_rombo = iterados(mapeo_5(número_caras_2, rombo, asignación_rombo), 100_000 - 1, x0_5_rombo)
+
+PyPlot.scatter(real.(iterados_triángulo_rombo), imag.(iterados_triángulo_rombo), marker = ",", s = 1)
+```
+
+¡Parece que no se replica el comportamiento observado para el triángulo!
+
+¿Y con un pentágono regular?
+
+```julia
+número_vértices_3 = 5
+número_caras_3 = 10 ##Para mantener la equiprobabilidad
+
+asignación_pentágono = asignación(número_vértices_3, número_caras_3)
+```
+
+```julia
+pentágono = raíces_unidad(5)*im
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_pentágono = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_pentágono = iterados(mapeo_5(número_caras_3, pentágono, asignación_pentágono), 1_000_000 - 1, x0_5_pentágono)
+
+PyPlot.scatter(real.(iterados_triángulo_pentágono), imag.(iterados_triángulo_pentágono), marker = ",", s = 1)
+```
+
+¡Tenemos un "pentágono de Sierpiński"! (A pesar de que tuvimos que aumentar las iteraciones un poco para verlo más claramente)
 
 ## Ejercicio 6
 
