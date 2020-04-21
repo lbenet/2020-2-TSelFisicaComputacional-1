@@ -271,7 +271,7 @@ Por completitud, realicemos el análisis en la rama negativa:
 análisis_gráfico(M₁, n_1, -x0s_1, linecolors = colores_1)
 ```
 
-De las gráficas se observa que hay dos puntos fijos: $x_0 = \pm 1$.
+De las gráficas se observa que hay dos puntos fijos: $x_0 = \pm \frac{\sqrt{3}}{3}$.
 Algebráicamente es sencillo demostrar que éstos son los únicos puntos fijos reales del mapeo:
 
 $$ M_1(x) = x \iff \frac{1}{3x} = x \implies 3x^2 = 1 \iff x_0 = \pm \frac{\sqrt{3}}{3} \approx \pm 0.5773. $$
