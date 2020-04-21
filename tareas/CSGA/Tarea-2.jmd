@@ -994,5 +994,222 @@ probabilidad $p$, de acuerdo con la siguiente tabla:
 
 Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
 
+Para poder hacer el código legible, nos conviene definir algunas funciones auxiliares: una que realice la tranformación afín sobre un vector a partir de la matriz y el vector que determinan la tranformación, una que genere la matriz y el vector asociados a la transformación a partir de los coeficientes y otra que vaya devolviendo las funciones afines de acuerdo a las probabilidades dadas.
+
 ```julia
+#Dada una matriz A y un vector b, devuelve A*x + b
+afín(A, b, x) = A*x + b
+afín(A, b) = x -> afín(A, b, x)
+
+#Dados los parámetros a, b, c, d, e, f, genera la matriz y el vector correspondientes a la tranformación afín que les corresponde:
+matriz_vector_afín(a, b, c, d, e, f) = ([a b; c d], [e, f])
+
+#Definimos una función que devuelve la función afín según la probabilidad de cada evento:
+function mapeo_6(pa = 0.01, pb = 0.85, pc = 0.07, pd = 0.07)
+    
+    @assert sum([pa, pb, pc, pd] .>= 0.0) == 4
+    @assert (pa + pb + pc + pd == 1.0)
+    
+    #Generamos un número aleatorio en [0, 1):
+    r = rand()
+    
+    #Definimos la función por casos:
+    if r < pa #(p = 0.01 = 0.85)
+        
+        return afín(matriz_vector_afín(0.0, 0.0, 0.0, 0.16, 0.0, 0.0)...)
+        
+    elseif pa <= r < (pb + pa) #(p = 0.86 - 0.01 = 0.85)
+        
+        return afín(matriz_vector_afín(0.85, 0.04, -0.04, 0.85, 0.0, 1.6)...)
+        
+    elseif (pb + pa) <= r < (pc + pb + pa) #(p = 0.93 - 0.86 = 0.07)
+        
+        return afín(matriz_vector_afín(0.2, -0.26, 0.23, 0.22, 0.0, 1.6)...)
+        
+    else
+        
+        return afín(matriz_vector_afín(-0.15, 0.28, 0.26, 0.24, 0.0, 0.44)...)
+    end
+    
+end
 ```
+
+Usando estas funciones, podemos proceder a explorar la dinámica.
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6 = iterados(mapeo_6(), 1000).(x0s_6)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6 = scatter(legend = false, title = "Atractor del mapeo aleatorio bidimensional")
+
+for iterados in iterados_6
+
+    mapeo_6_x = broadcast(x -> x[1], iterados)
+    mapeo_6_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6, mapeo_6_x, mapeo_6_y, label = "")
+end
+
+gráfica_6
+```
+
+Parece que el mapeo tiene un único atractor, independientemente de la sucesión de transformaciones afines, ubicado aproximadamente en:
+
+```julia
+using StatsBase
+mean(broadcast(x -> x[end], iterados_6))
+```
+
+Corriendo este mapeo varias veces, al parecer el atractor en efecto se encuentra fijo.
+
+¿Qué pasará si alteramos la probabilidad de elegir una transformación afín determinada, digamos, haciendo todas equiprobables?
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6_2 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6_2 = iterados(mapeo_6(0.25, 0.25, 0.25, 0.25), 1000).(x0s_6_2)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6_2 = scatter(legend = false, title = "Atractor del mapeo aleatorio bidimensional, equiprobables")
+
+for iterados in iterados_6_2
+
+    mapeo_6_2_x = broadcast(x -> x[1], iterados)
+    mapeo_6_2_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6_2, mapeo_6_2_x, mapeo_6_2_y, label = "")
+end
+
+gráfica_6_2
+```
+
+El atractor se encuentra aproximadamente en:
+
+```julia
+mean(broadcast(x -> x[end], iterados_6_2))
+```
+
+En este caso, aunque cada corrida aparenta haber un único atractor, ¡este varía de lugar!
+¿Por qué sucede esto?
+Quizá buscando los atractores de los mapeos deterministas, obtenemos algunas respuestas:
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6_det_1 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6_det_1 = iterados(mapeo_6(1.0, 0, 0, 0), 1000).(x0s_6_det_1)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6_det_1 = scatter(legend = false, title = "Atractor del mapeo determinista, pa = 1.0")
+
+for iterados in iterados_6_det_1
+
+    mapeo_6_det_1_x = broadcast(x -> x[1], iterados)
+    mapeo_6_det_1_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6_det_1, mapeo_6_det_1_x, mapeo_6_det_1_y, label = "")
+end
+
+gráfica_6_det_1
+```
+
+El atractor se encuentra aproximadamente en:
+
+```julia
+mean(broadcast(x -> x[end], iterados_6_det_1))
+```
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6_det_2 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6_det_2 = iterados(mapeo_6(0, 1.0, 0, 0), 1000).(x0s_6_det_2)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6_det_2 = scatter(legend = false, title = "Atractor del mapeo determinista, pb = 1.0")
+
+for iterados in iterados_6_det_2
+
+    mapeo_6_det_2_x = broadcast(x -> x[1], iterados)
+    mapeo_6_det_2_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6_det_2, mapeo_6_det_2_x, mapeo_6_det_2_y, label = "")
+end
+
+gráfica_6_det_2
+```
+
+El atractor se encuentra aproximadamente en:
+
+```julia
+mean(broadcast(x -> x[end], iterados_6_det_2))
+```
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6_det_3 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6_det_3 = iterados(mapeo_6(0, 0, 1.0, 0), 1000).(x0s_6_det_3)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6_det_3 = scatter(legend = false, title = "Atractor del mapeo determinista, pc = 1.0")
+
+for iterados in iterados_6_det_3
+
+    mapeo_6_det_3_x = broadcast(x -> x[1], iterados)
+    mapeo_6_det_3_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6_det_3, mapeo_6_det_3_x, mapeo_6_det_3_y, label = "")
+end
+
+gráfica_6_det_3
+```
+
+El atractor se encuentra aproximadamente en:
+
+```julia
+mean(broadcast(x -> x[end], iterados_6_det_3))
+```
+
+```julia
+#Definimos un ensamble de 20 condiciones iniciales en el rectángulo [-20,20]x[-20,20]:
+x0s_6_det_4 = [[uniforme(-20, 20), uniforme(-20, 20)] for i in 1:20]
+
+#Iteramos 1000 veces usando los parámetros por defecto cada condición inicial.
+iterados_6_det_4 = iterados(mapeo_6(0, 0, 0, 1.0), 1000).(x0s_6_det_4)
+
+#Graficamos cada condición inicial en un color:
+gráfica_6_det_4 = scatter(legend = false, title = "Atractor del mapeo determinista, pd = 1.0")
+
+for iterados in iterados_6_det_4
+
+    mapeo_6_det_4_x = broadcast(x -> x[1], iterados)
+    mapeo_6_det_4_y = broadcast(x -> x[2], iterados)
+    
+    scatter!(gráfica_6_det_4, mapeo_6_det_4_x, mapeo_6_det_4_y, label = "")
+end
+
+gráfica_6_det_4
+```
+
+El atractor se encuentra aproximadamente en:
+
+```julia
+mean(broadcast(x -> x[end], iterados_6_det_4))
+```
+
+¡Resultan ser los atractores que vemos del mapeo aleatorio equiprobable!
+Lo que resulta más curioso es que aunque el mapeo de las condiciones iniciales de cada corrida es independiente, todas colapsan en el mismo atractor.
+
+Es **como si** el mapeo aleatorio fuera "superposición" (¡¿?!) de los mapeos deterministas, por lo que probablemente el atractor del mapeo originalmente definido, dadas suficientes corridas, pudiera no ser el esperado.
+
+Esto es bastante extraño.
