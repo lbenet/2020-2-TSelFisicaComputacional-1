@@ -304,9 +304,39 @@ Observamos inmediatamente que existe un punto fijo atractor en $x_0 = 0$. Sin em
 La recta identidad sólo interseca la función en $x_0 = 0$, por lo que el cambio de comportamiento no se puede entender en términos de un punto fijo (real).
 
 Podemos, sin realizar un análisis en los complejos, determinar la región de atracción del punto fijo fijándonos en la norma del primer iterado.
-Sabemos que una condición necesaria y suficiente para que la sucesión $\{x^n\}$ converja es que $|x| \leq 1$, por lo que la región de atracción del punto fijo es:
+Sabemos que una condición necesaria y suficiente para que la sucesión $\{x^n\}$ converja es que $|x| < 1$, por lo que la región de atracción del punto fijo es:
 
-$$ |M_2(x)| = \frac{|x|^5}{5} \leq 1 \iff |x| \leq 5^\frac{1}{5} \approx 1.3792. $$
+$$ |M_2(x)| = \frac{|x|^5}{5} < 1 \iff |x| \leq 5^\frac{1}{5} \approx 1.3792. $$
+
+Un análisis más útil para entender esto en términos de la dinámica yace en el análisis de los puntos periódicos (en particular de periodo dos).
+Estos puntos existen, intutitivamente, como resultado del cambio del comportamiento de las órbitas como los límites de la zona de convergencia de las órbitas al atractor.
+Si una condición inicial está en el interior del dominio definido por los puntos periódicos, converge, si esta está afuera del conjunto definido por los puntos periódicos, diverge.
+En particular, si la condición inicial es alguno de los dos puntos periódicos, ni converge ni diverge, sino que forma la órbita periódica.
+
+Los puntos de periodo dos deben satisfacer:
+
+$$M_2^{(2)}(x) = - \frac{(M_2(x))^5}{5} = \frac{x^{25}}{5^6} = x \iff x^{25} - 5^6x = x(x^{24} - 5^6) = 0.$$
+
+Automáticamente recuperamos el punto de periodo uno del mapeo ($x_0 = 0$).
+Factorizando el segundo término de la expresión anterior, se tiene:
+
+$$ x^{24} - 5^6 = (x^{12} - 5^3)(x^{12} + 5^3) = (x^{6} - 5^\frac{3}{2})(x^{6} + 5^\frac{3}{2})(x^{12} + 5^3) = (x^{3} - 5^\frac{3}{4})(x^{3} + 5^\frac{3}{4})(x^{6} + 5^\frac{3}{2})(x^{12} + 5^3) = 0,$$
+
+De dónde se observa que los dos únicos puntos reales de periodo mínimo dos son $x_1 = - 5^\frac{1}{4} \approx -1.49534$ y $x_2 = 5^\frac{1}{4} \approx 1.49534$.
+
+Estos puntos satisfacen:
+
+$$M_2'(\pm 5^\frac{1}{4}) = - (\pm5^\frac{1}{4})^4 = \mp 1,$$
+
+lo que implica que son puntos de periodo dos neutrales.
+
+Verifiquemos que en efecto, tomar una condición inicial en $(-5^\frac{1}{4}, 5^\frac{1}{4})$ implica que las órbitas convergen.
+Tenemos que el primer iterado satisface:
+
+$$ |x| < 5^\frac{1}{4} \implies |x|^{5} = |x^{5}| < 5^\frac{5}{4} \implies |M_2(x)| = \left| \frac{x^5}{5} \right| < 5^\frac{1}{4} < 1,$$
+
+lo que fuerza la convergencia por lo discutido en la otra cota.
+La divergencia tomando una condición inicial fuera de la región delimitada por los puntos de periodo dos se puede observar volteando la desigualdad al tomar la quinta potencia y acotando por debajo con uno.
 
 (c) $M_3(x) = \frac{x}{2}-2$.
 
