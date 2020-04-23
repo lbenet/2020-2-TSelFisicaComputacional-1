@@ -548,16 +548,24 @@ function puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteracion
 end
 ```
 
-Usemos lo que acabamos de definir para calcular los puntos de periodo dos. Dado que la segunda iteración define una cuártica, existen cuanto más, cuatro puntos de periodo dos:
+Usemos lo que acabamos de definir para calcular los puntos de periodo dos.
+Dado que la segunda iteración define una cuártica, existen cuanto más, cuatro puntos de periodo dos.
+Más aún, como los puntos de periodo uno son automáticamente de periodo dos, cuanto más hay dos puntos de periodo mínimo dos distintos:
 
 ```julia
 F2 = puntos_periodo(F, 2, [-10, -1, 0, 1, 10])
 ```
 
+Removamos los puntos de periodo uno:
+
+```julia
+F2_mín = filter(x -> !isapprox(iterar(F, 1)(x), x), F2)
+```
+
 Comprobemos que en efecto son puntos de periodo dos:
 
 ```julia
-iterar(F, 2).(F2)
+iterar(F, 2).(F2_mín)
 ```
 
 (e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 - 1.1$ son linealmente estables (atractivos).
@@ -565,10 +573,10 @@ iterar(F, 2).(F2)
 Basta convertir los valores anteriores a sus ```var_Dual```es correspondientes, evaluar $F^{(2)}(x)$ en los duales correspondientes y examinar la derivada:
 
 ```julia
-derivada.(iterar(F, 2).(var_Dual.(F2)))
+derivada.(iterar(F, 2).(var_Dual.(F2_mín)))
 ```
 
-Esto quiere decir que hay un par de puntos atractores y un par de puntos respulsores de periodo 2.
+Como ambos puntos de periodo dos tienen primer derivada con valor absoluto estrictamente menor a uno, son puntos de periodo dos atractores.
 
 ## Ejercicio 4
 
