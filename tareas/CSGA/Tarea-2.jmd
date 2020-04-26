@@ -424,12 +424,25 @@ muestreo_F = iterados(F, 1_000_000)(uniforme(-2, 2))
 histogram(muestreo_F, normalize = :pdf, label = "")
 ```
 
-Se observa que los puntos fijos del mapeo de cierta forma, son "atractivos en estadística" para las órbitas de un punto aleatorio en el dominio.
-El término "atractivo en estadística" se ocupa dado que estrictamente los puntos fijos son repulsores, como lo demuestra el análisis de la primera derivada.
+Se observa que los iterados generados por la condición inicial tienden a visitar más frecuentemente las fronteras del dominio.
+En principio, podríamos esperar de esto que los extremos fueran puntos fijos atractores del mapeo, pero el cálculo analítico revela que éste no es el caso:
+
+- Los puntos fijos del mapeo están dados por:
+
+$$F(x) = x^2 - 2 = x \implies x^2 - x -2 = 0 \iff x = -1, 2. $$
+
+- Adicionalmente, ambos puntos fijos son repulsores:
+
+$$|F'(-1)| = |2(-1)| = 2 > 1 \mathrm{\quad y \quad} |F'(2)| = |2(-2)| = 4 > 1.$$
+
+Por lo que sólo uno de los picos correspondería a un verdadero punto fijo, aunque este es repulsor.
+
+Esto se puede entender un poco mejor considerando que si tuviéramos un atractor y parte de la órbita cayera dentro de la cuenca de atracción de dicho punto, el resto de la órbita tendería a acercarse a dicho punto y no escaparía de la cuenca de atracción.
+Es decir, si en verdad tuviéramos un punto atractor, sólo observaríamos un pico, situado sobre la posición del atractor.
 
 (b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\mod 1$, definido en el intervalo $x\in[0,1]$.
 
-Definimos el mapeo: 
+Definimos el mapeo:
 
 ```julia
 G(x) = begin @assert 0 <= x <= 1; mod(2*x, 1); end
@@ -447,14 +460,163 @@ muestreo_G = iterados(G, 1_000_000)(uniforme(0, 1))
 histogram(muestreo_G, normalize = :pdf, label = "")
 ```
 
-De nuevo, aunque estrictamente los puntos fijos del mapeo (los extremos del dominio) son repulsores, uno de ellos "atrae en estadística" las órbitas de un punto tomado al azar en el dominio.
+Podemos observar que existe un atractor situado en cero.
+Podemos confirmar esto analíticamente, usando la siguiente equivalencia:
+
+$$  G(x) = 2x \mod 1 = \left\{
+\begin{array}{ll}
+      2x & x \in [0, \frac{1}{2}] \\
+      2x - 1 & x \in (\frac{1}{2}, 1].
+\end{array} 
+\right. $$
+
+Esto implica que existen dos puntos fijos, soluciones a la ecuaciones:
+
+$$
+\begin{align}
+    &x \in [0, \frac{1}{2}] \implies G(x) = 2x = x \implies x = 0 \\
+    &x \in (\frac{1}{2}, 1] \implies G(x) = 2x - 1 = x \implies x = 1.
+\end{align}
+$$
+
+Sin embargo, repitiendo este experimento numérico varias veces, observamos que el otro punto fijo no aparece en los histogramas.
+En principio, esto se puede entender por ser $x = 1$ un punto repulsor.
+Sin embargo, este mismo argumento se puede aplicar a $x = 0$ dado que la derivada de $G$, salvo en $x = \frac{1}{2}$, es idéntica a 2.
+Es decir, ¡$x = 0$ es un punto fijo repulsor!
+
+Para entender esta paradoja, nos conviene recordar la forma en la que los números son representados en la computadora: como un número binario.
+
+Para el caso de números de punto flotante de 64 bits (unos o ceros), [la codificación usual](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64) usa 1 bit para el signo (cero para números positivos y uno para números negativos), 11 bits para el exponente (en el que 1023 en base decimal corresponde al cero) y el resto para codificar las cifras significativas del número en binario (en el que si todos los dígitos son cero, se interpreta el valor como uno).
+Es decir, si el flotante de 64 bits está dado por $se_1\ldots e_{11}b_1\ldots b_{52}$, el decimal respectivo estará dado por $(-1)^s 2^{e - 1023}\left(1 + \sum_{k = 1}^{52}b_{k}2^{-k}\right)$, dónde $e$ es el número decimal correspondiente al número binario $e_1\ldots e_{11}$.
+Una forma más sencilla de entender esto, es pensar que el término en paréntesis es el número decimal correspondiente al número binario $1.b_1b_2\ldots b_{52}$.
+
+Para fijar ideas, tomemos un ejemplo sencillo de representar en binario, por ejemplo, 0.5 en decimal (correspondiente a 0.1 en binario).
+
+```julia
+c_1 = 0.5
+
+#La representación en binario de c_1 es:
+bc_1 = bitstring(c_1)
+```
+
+En efecto el primer bit es cero, dado que tenemos un número positivo.
+El exponente binario (en representación decimal) está dado por:
+
+```julia
+parse(Int, bc_1[2:12], base = 2) - 1023
+```
+
+Por lo que en efecto tenemos un número cuya primera cifra significativa está en la posición de las mitades ($2^{-1}$).
+
+Finalmente, el valor de las cifras significativas es uno, dado que los 52 bits restantes son idénticos a cero:
+
+```julia
+bc_1[13:end]
+```
+
+Observemos lo que sucede en binario al aplicar las dos operaciones que conforman el mapeo: la multiplicación por dos y la toma de módulo uno:
+
+- Multiplicación por dos: Para entender lo que sucede, definamos un número un poco más complicado que el ejemplo anterior, por ejemplo, 1.375 en decimal (correspondiente a 1.011 en binario).
+
+```julia
+c_2 = 1+1/4+1/8
+
+#La representación en binario de c_2 es:
+bc_2 = bitstring(c_2)
+```
+
+```julia
+#El exponente binario es:
+parse(Int, bc_2[2:12], base = 2) - 1023
+```
+
+```julia
+#Y la parte fraccionaria del binario es:
+bc_2[13:end]
+```
+
+El resultado de multiplicar por dos es:
+
+```julia
+b2c_2 = bitstring(2*c_2)
+```
+
+El exponente binario aumenta en uno:
+
+```julia
+parse(Int, b2c_2[2:12], base = 2) - 1023
+```
+
+Mientras que las cifras significativas del binario quedan igual:
+
+```julia
+b2c_2[13:end]
+```
+
+Esencialmente, toda la representación se recorre una posición "decimal" a la izquierda, lo que corresponde a aumentar el exponente binario en uno.
+
+Observemos que esto varía, por la finitud de la representación, la "precisión" de un número. Es decir, a diferentes órdenes de magnitud, la distancia entre números mínimamente distintos cambia.
+Esto lo podemos ver usando `nextfloat`:
+
+```julia
+nextfloat(0.625)
+```
+
+```julia
+nextfloat(625.0)
+```
+
+En este ejemplo, la distancia entre números mínimamente distinguibles pasa de 10^{-16} a 10^{-13}.
+
+- Para la toma de módulo uno: Para entender lo que sucede, tomemos por ejemplo a 5.625 (101.101 en binario).
+
+```julia
+c_3 = 4+1+1/2+1/8
+
+#La representación en binario de c_3 es:
+bc_3 = bitstring(c_3)
+```
+
+```julia
+#El exponente binario es:
+parse(Int, bc_3[2:12], base = 2) - 1023
+```
+
+```julia
+#Y la parte fraccionaria del binario es:
+bc_3[13:end]
+```
+
+El resultado de tomar el módulo por uno es:
+
+```julia
+bmc_3 = bitstring(mod(c_3, 1))
+```
+
+El exponente binario pasa a ser el mínimo de la parte fraccionaria, truncando la parte no entera del número:
+
+```julia
+parse(Int, bmc_3[2:12], base = 2) - 1023
+```
+
+Mientras que las cifras significativas se truncan y ajustan con ceros a la derecha para sólo representar la parte no entera:
+
+```julia
+bmc_3[13:end]
+```
+
+Esencialmente, tomar el módulo por uno corresponde a dejar sólamente la parte no entera del número representada en binario del flotante.
+
+El conjugar ambas operaciones, entonces, resulta en primero un aumento del exponente del número en uno y después el eliminar la parte entera del mismo. 
+Esto, si se realiza suficientes veces, tiene el efecto de ir eliminando la precisión del número, eventualmente haciendo que los iterados converjan a cero.
+Esto corresponde a un error de truncamiento.
 
 (c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
 
-Los histogramas que realizamos, al normalizarlos como una función de densidad de probabilidad, nos dice la probabilidad a lo largo de una órbita de explorar el dominio del mapeo (su espacio fase). 
+Los histogramas que realizamos, al normalizarlos como una función de densidad de probabilidad, nos dice (idealmente) la probabilidad a lo largo de una órbita de explorar el dominio del mapeo (su espacio fase).
+En el caso de tener un punto fijo atractor y realizar el histograma con un punto cuya órbita eventualmente es atraída por el atractor, el histograma debe de resultar en una distribución que al aumentar el número de iterados, se localiza más y más en torno al atractor.
 
-Más allá de la curiosidad de que puntos repulsores en un dominio acotado puedan atraer las órbitas de  puntos al azar, que la distribución de probabilidad que obtenemos de los mapeos no sea uniforme a pesar de empezar con una distribución uniforme, nos dice que ¡los mapeos no son ergódicos!
-No todos los puntos del espacio fase tienen igual probabilidad de ser visitados.
+Sin embargo, la finitud de la aritmética al realizar cálculos con números de punto flotante como aproximación a la aritmética de números reales puede inducir, por acumulación, comportamientos que no reflejan fielmente la dinámica del mapeo.
 
 ## Ejercicio 3
 
