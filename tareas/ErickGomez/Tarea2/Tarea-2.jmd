@@ -290,8 +290,6 @@ analisis_grafico!(M3, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
 analisis_grafico!(M3, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
 ```
 
-Se observa que las órbitas con $x_0 > -3$ se ven atraídos por el punto fijo $x = 0$.
-
 ```julia
 n = 5
 X0 = -10*rand(4) .- 5.0 # x0 ∈ [-15,-5]
@@ -307,11 +305,7 @@ analisis_grafico!(M3, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
 analisis_grafico!(M3, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
 ```
 
-De igual manera, los puntos fijos con  $x_0 < -5$ convergen a un punto por lo que se puede concluir que existe un punto atractor en $[-5,-3]$.
-
-Analíticamente, el punto fijo es:
-
-$$ \frac{x}{2} - 2 = x \quad\Rightarrow\quad x = -4. $$
+Se evaluó el comportamiento de las condiciones iniciales para condiciones iniciales menores o mayores al punto fijo ($x/2 - 2 = x \Rightarrow$) $x = -4$, siendo éste último el punto de convergencia de las órbitas. Por lo tanto, $x = -4$ es un punto fijo atractor para las órbitas generadas por cualquier condición inicial.
 
 * $ M_4(x) = x - x^2 $
 
@@ -402,16 +396,25 @@ histogram(mapear(G, x0, n), bin = 100, normalize = :probability, label = "",# yl
 
 En ambos casos, el "bin" con mayores frecuencias son los más "visitados" por la sucesión de iteraciones de la función. Al reproducir numerosas veces con números aleatorios en el dominio de la función éstas regiones son:
 
-* Para $F(x) = x^2 - 2$ y $1000$ bins: $[-2,-1.998]$ (bin 1), $[1.998,2]$ (bin 2).
+* Para $F(x) = x^2 - 2$ y $1000$ bins: $[-2,-1.998]$ (bin 1), $[1.998,2]$ (último bin).
 * Para $G(x) = 2x\text{ mod }1$ y $1000$ bins: $[1.999,1]$ (bin 1).
 
 Podría parecer que las regiones más visitadas contienen puntos fijos atractores, pero:
 
 Los puntos fijos de los mapeos son
 
-$F: \, x^2 - 2 = x      \,\Rightarrow\, x = 2,\,-1$
+* $F(x) = x^2 - 2 = x      \,\Rightarrow\, x = 2,\,-1$
 
-$G: \, 2x = x \quad\,\, \,\Rightarrow\, x = 0$
+* Ya que 
+\begin{equation}
+G(x) = 2x\text{ mod }1 = 
+\left\{ \begin{array}{lcc}
+    2x     & \text{si} & x\in [0,1/2)  \\ 
+    2x - 1 & \text{si} & x\in [1/2,1]
+\end{array} \right.
+\end{equation}
+
+existe un único punto fijo $x = 0$ (cuando $G(x) = 2x$).
 
 Para ver su estabilidad, evaluamos en las derivadas
 
@@ -421,7 +424,7 @@ $G'(0) = 2$,
 
 Es decir, todos los puntos fijos son inestables por lo que no podrían ser atractores, además, $x = -2$ ni siquiera es un punto fijo de $F$
 
-En el caso de $F(x) = x^2 - 2$ se observa que la órbita queda confinada en el intervalo $[-2,2]$ visitándose cada subdivisión del intervalo en porcentajes del mismo orden.
+En el caso de $F(x) = x^2 - 2$ se observa que la órbita queda confinada en el intervalo $[-2,2]$ visitándose cada subdivisión del intervalo aunque con considerablemente mayor frecuencia en los espaciados de los extremos en $2$ y $-2$.
 
 Para $G(x) = 2x\text{ mod }1$ conviene decir que las iteraciones parecen converger a cero por lo siguiente:
 
@@ -618,21 +621,18 @@ per2_1, per2_2 = R1[end], R3[end]
 
 (e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 -1$ son linealmente estables (atractivos).
 
-Sabemos que si $x^*$ es  un punto fijo de $f$ y $|f'(x^*)| < 1$, entonces es linealmente estable. Veamos cómo se comporta la derivada $|(F^2)'(x)| = |2\,F(x)\,F'(x)|$ en los puntos fijos de periodo dos.
+Sabemos que si $x^*$ es  un punto fijo de $f$ y $|f'(x^*)| < 1$, entonces es linealmente estable. Veamos cómo se comporta la derivada $|(F^2)'(x)|$ en los puntos fijos de periodo dos.
 
 ```julia
-# Derivada de F^2
+# F(F(var_dual(x0))) = Dual(F^2, (F^2)')
 
-function D_FF(x0) 
-    F(x) = x^2 - 1
-    Fdual = F(var_dual(x0))
-    return 2*Fdual.x*Fdual.y
-end
+# Derivada de F^2
+D_FF(F::Function, x0) =  F(F(var_dual(x0))).y
 ```
 
 ```julia
 # evaluación de la derivada en los puntos fijos
-deriv1, deriv2 = D_FF(per2_1), D_FF(per2_2)
+deriv1, deriv2 = D_FF(x -> x^2 - 1, per2_1), D_FF(x -> x^2 - 1, per2_2)
 ```
 
 ```julia
@@ -964,7 +964,8 @@ end
 q
 ```
 
-Se observa que, al menos con condiciones iniciales $ x_0 \in [-5,5]^2 - [-1,1]^2 $, los puntos de la órbita aún describen el triángulo de Sierpinski, ya que al tomar los puntos medios, se espera que el mapeo conduzca a las condiciones iniciales fuera de $[-1,1] \times [-1,1]$ hacia adentro de esa región. Después de que sucede, el resto se reduce al caso $X_0 \in [-1,1] \times [-1,1]$
+Se observa que para $ x_0 $ fuera de $ [
+-1,1]\times[-1,1] $, los puntos de la órbita aún describen el triángulo de Sierpinski, ya que al tomar los puntos medios, se espera que el mapeo conduzca a las condiciones iniciales fuera de $[-1,1] \times [-1,1]$ hacia adentro de esa región, por lo que todas las órbitas describen como atractor el tríangulo de Sierpinski.
 
 ## Ejercicio 6
 
