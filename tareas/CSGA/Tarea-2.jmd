@@ -460,8 +460,8 @@ muestreo_G = iterados(G, 1_000_000)(uniforme(0, 1))
 histogram(muestreo_G, normalize = :pdf, label = "")
 ```
 
-Podemos observar que existe un atractor situado en cero.
-Podemos confirmar esto analíticamente, usando la siguiente equivalencia:
+Podemos observar que parece existir un atractor situado en cero.
+Podemos intentar confirmar esto analíticamente, usando la siguiente equivalencia:
 
 $$  G(x) = 2x \mod 1 = \left\{
 \begin{array}{ll}
@@ -553,7 +553,7 @@ Mientras que las cifras significativas del binario quedan igual:
 b2c_2[13:end]
 ```
 
-Esencialmente, toda la representación se recorre una posición "decimal" a la izquierda, lo que corresponde a aumentar el exponente binario en uno.
+Esencialmente, toda la representación se recorre una posición binaria a la izquierda, lo que corresponde a aumentar el exponente binario en uno.
 
 Observemos que esto varía, por la finitud de la representación, la "precisión" de un número. Es decir, a diferentes órdenes de magnitud, la distancia entre números mínimamente distintos cambia.
 Esto lo podemos ver usando `nextfloat`:
@@ -593,7 +593,7 @@ El resultado de tomar el módulo por uno es:
 bmc_3 = bitstring(mod(c_3, 1))
 ```
 
-El exponente binario pasa a ser el mínimo de la parte fraccionaria, truncando la parte no entera del número:
+El exponente binario pasa a ser el mínimo de la parte fraccionaria, truncando para dejar la parte no entera del número:
 
 ```julia
 parse(Int, bmc_3[2:12], base = 2) - 1023
@@ -617,6 +617,8 @@ Los histogramas que realizamos, al normalizarlos como una función de densidad d
 En el caso de tener un punto fijo atractor y realizar el histograma con un punto cuya órbita eventualmente es atraída por el atractor, el histograma debe de resultar en una distribución que al aumentar el número de iterados, se localiza más y más en torno al atractor.
 
 Sin embargo, la finitud de la aritmética al realizar cálculos con números de punto flotante como aproximación a la aritmética de números reales puede inducir, por acumulación, comportamientos que no reflejan fielmente la dinámica del mapeo.
+
+Por otra parte, más allá de ubicar puntos fijos atractores (reales o artificiales por el método de cálculo), el histograma nos permite explorar cuestiones dinámicas de los mapeos no evidentes desde la perspectiva de los puntos fijos: la heterogeneidad de la distribución de los iterados conforme estos exploran el espacio fase del mapeo.
 
 ## Ejercicio 3
 
