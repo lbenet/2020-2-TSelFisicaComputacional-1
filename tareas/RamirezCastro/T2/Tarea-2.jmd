@@ -1,0 +1,877 @@
+
+# Tarea 2
+
+
+
+
+> Envío inicial del PR: **27 de marzo**.
+>
+> Aceptación PR *final*: **3 de abril**.
+
+**NOTA**: Esta tarea incluye generar varias imágenes; no es necesario que las incluyan en su entrega, pero sí debe ser posible generarlas a partir de lo que entreguen.
+
+```julia
+using Plots
+using LaTeXStrings
+using LinearAlgebra
+import Test.@test
+```
+
+## Ejercicio 1
+
+Describan la dinámica de varias órbitas para los siguientes mapeos, usando distintos colores para distintas órbitas, en una misma gráfica. Interesa entre otras cosas saber cuántos puntos fijos tiene el mapeo y cómo es la dinámica cerca de dichos puntos.
+
+```julia
+"""
+    iteramapeo(f, x0, n)
+
+"""
+function itera_mapeo(f, x0, n::Int)
+    its = Float64[x0]
+    its_x = Float64[x0]
+    its_y = Float64[0.0]
+    for i = 1:n
+        push!(its_x,x0)
+        x0 = f(x0)
+        push!(its_x, x0)
+        push!(its,x0)
+        push!(its_y,x0)
+        push!(its_y,x0)
+    end
+    return its, its_x, its_y
+end
+"""
+    Plot_f_i
+    
+        Esta función gráfica a una función f y ala identidad
+        donde podemos observar un pedazo de la grafica con domx y domy.
+"""
+function Plot_f_i(F::Function, domx=0.0:1/128:5.0;title_l = "F(x)", color=:blue,
+        domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]))
+    plot(domx, F, color=:blue,
+        xaxis=("x", (domx[1], domx[end])), 
+        yaxis=(domy,"F(x)"), 
+        legend=false, 
+        title=title_l, 
+        grid=false)
+    plot!(domx, identity, color=:red)
+end
+"""
+    analisis_grafico(F::Function, x0::Float64, n::Int)
+"""
+function analisis_grafico(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0;
+        title_l = "F(x)",color=:blue,  
+        domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]),
+        domx_2=(domx[1],domx[end]))
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot(domx, F, color=:blue,
+        xaxis=("x", domx_2),
+        yaxis=(domy,"F(x)"), legend=false, 
+        title=title_l, grid=false)
+    plot!(domx, identity, color=:red)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.5)
+end
+
+"""
+    analisis_grafico!(F::Function, x0::Float64, n::Int)
+"""
+function analisis_grafico!(F::Function, x0::Float64, 
+        n::Int, domx=0.0:1/128:1.0; color=:blue)
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.4)
+end
+```
+
+(a) $M_1(x) = \frac{1}{3x}$.
+
+```julia
+M₁(x) = 1/(3*x)
+```
+
+```julia
+domx=-5:1/128:5
+domy=(-5,5)
+Plot_f_i(M₁,domx,title_l=latexstring("M_1"),domy=domy)
+```
+
+<font size=2>
+Observamos que la identidad intersecta dos veces a la grafica $M_1$, por lo que se tienen 2 puntos fijos.
+
+```julia
+analisis_grafico(M₁, 1.1, 20, domx, title_l=latexstring("M_1"),domy=domy)
+analisis_grafico!(M₁, 0.1,10 , domx, color=:orange)
+analisis_grafico!(M₁, -1.1, 10, domx, color=:red)
+analisis_grafico!(M₁, -0.1, 10, domx, color=:yellow)
+```
+
+<font size=2>
+Por otro lado cerca de estos puntos fijos; los puntos , como se observa en la gráfica, son puntos de periodo 2 del mapeo $M_1$.
+Y observamos que éstos oscilan, de derecha a izquierda con respecto al punto fijo, que se encuentra entre estos dos puntos.
+
+(b) $M_2(x) = -\frac{x^5}{5}$.
+
+```julia
+M₂(x) = -x^5/5
+```
+
+```julia
+domx=-1:1/128:1
+Plot_f_i(M₂,domx,title_l=latexstring("M_2"))
+```
+
+<font size=2>
+Observamos que la identidad intersecta una vez a la grafica $M_2$, por lo que se tienen 1 punto fijo.
+
+```julia
+analisis_grafico(M₂, 1.0, 5, domx,title_l=latexstring("M_2"),domy=domy,color=:black)
+analisis_grafico!(M₂, -1.0,5 , domx, color=:orange)
+```
+
+<font size=2>
+Al tomar 2 puntos cerca de este punto fijo, observamos como se acercan al punto fijo.
+Por otro lado también observamos como la convergencia es tal que va oscilando, esto es, si elegimos un punto a la derecha del punto fijo, una iteración nos manda a la izquierda, otra después a la derecha y así sucesivamente hasta que se converge al punto fijo.
+
+```julia
+domx=-0.005:1/128:0.005
+domy=(-0.0001,0.0001)
+analisis_grafico(M₂, 1.0, 10, domx,title_l=latexstring("M_2"),
+    domy=domy,color=:black,domx_2=(-0.001,0.001))
+analisis_grafico!(M₂, -1.0,10 , domx, color=:orange)
+```
+
+<font size=2>
+De esta forma si acercamos un poco la gráfica observamos como sigue iterando pero rápidamente converge al punto fijo, por lo que se trata de un punto fijo atractivo.
+
+(c) $M_3(x) = \frac{x}{2}-2$.
+
+```julia
+M₃(x) = x/2-2
+```
+
+```julia
+domx=-10:1/128:2
+Plot_f_i(M₃,domx,title_l=latexstring("M_3"))
+```
+
+<font size=2>
+Observamos que la identidad intersecta una vez a la grafica $M_3$, por lo que se tienen 1 punto fijo.
+
+```julia
+analisis_grafico(M₃, 0.0, 10, domx,title_l=latexstring("M_3"),color=:black)
+analisis_grafico!(M₃, -8.0,10 , domx, color=:orange)
+```
+
+<font size=2>
+Si tomamos dos puntos lejos del punto fijo, observamos como estos convergen a éste. Por lo que se trata de un punto fijo atractivo.
+
+(d) $M_4(x) = x-x^2$.
+
+```julia
+M₄(x) = x-x^2
+```
+
+```julia
+domx=-5:1/128:5
+domy=(-5,5)
+Plot_f_i(M₄,domx,title_l=latexstring("M_4"),domy=domy)
+```
+
+<font size=2>
+Observamos que $M_4$ intersecta una vez a la identidad por lo que se tiene un punto fijo.
+
+```julia
+analisis_grafico(M₄, 0.5, 30, domx,title_l=latexstring("M_4"),color=:purple,
+    domy=domy,domx_2=(-0.1,1.1))
+```
+
+<font size=2>
+Tomando un punto a la derecha del punto fijo observamos como converge a éste.
+
+```julia
+analisis_grafico(M₄, -0.1, 30, domx,title_l=latexstring("M_4"),color=:orange,
+    domy=domy,domx_2=(-2.1,0.1))
+```
+
+<font size=2>
+Por otro lado si tomamos un punto a la izquierda observamos como comienza a diverger, esto es, el punto fijo lo repele. Por lo que observamos que este nodo es inestable.
+
+## Ejercicio 2
+
+(a) Consideren el mapeo $F(x) = x^2-2$ definido en $-2 \leq x \leq 2$. A partir de una condición al azar, construyan una órbita muy larga, por ejemplo, de $20\,000$ iterados o más. Obtengan el histograma de frecuencias (normalizado) que la órbita visita.
+
+```julia
+F(x) = x^2 -2
+```
+
+```julia
+its, its_x, its_y = itera_mapeo(F, 4*rand()-2, 20000)
+histogram(its[2:end],leg=false, normed=true, title=latexstring("G(x)"),
+    xlabel="Visita",ylabel="Frecuencia",bin=200)
+```
+
+(b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\mod 1$, definido en el intervalo $x\in[0,1]$.
+
+```julia
+G(x) = mod(2*x,1)
+```
+
+```julia
+its, its_x, its_y = itera_mapeo(G,rand(),20000)
+histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true, 
+    xlabel="Visita",ylabel="Frecuencia",bin=200)
+```
+
+(c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
+
+<font size=2>
+Del primer histograma observamos que el mapeo visita más los extremos del intervalo, observamos que en los valores centrales pareciera que se tiene la misma frecuencia, lo que indica que el mapeo oscila entre los valores extremos sin detenrse mucho en los centrales, sin embargo visita todos los puntos del intervalo, esto a pesar de lo que sucede en los extremos. Pero es importante observar que mientras observemos un punto que se encuentra más cercano a los extremos se detiene más el mapeo en estos puntos que en los que se encuentran más alejados.
+
+<font size=2>
+Por otro lado, el segundo histograma pareciera que el mapeo nunca pasa por los demás valores, entre (0,1], y solo se concentra en el punto 0, sin embargo al realizar un histograma con menos interaciones, tenemos que:
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 100)
+histogram(its[2:end],leg=false,title=latexstring("G(x)"),normed=true,
+    xlabel="Visita",ylabel="Frecuencia",bin=5000 ,xaxis=0:0.1:1)
+```
+
+<font size=2>
+Por lo que los demás valores sí se visitan, sin embargo dado que en el momento en que se llega a 0, como este es un punto fijo, ya no se sale de éste, esto explica por que desde un cierto punto se converge a 0, y ya no se visitan más puntos. Sin embargo esto no explica como es que siempre exactamente cae en el número 0.5 para que las iteraciones convergan a 0, y lo más curiosos es que siempre se dé en un número de iteraciones menor a 52:
+
+```julia
+for i in 1:10000
+    its, its_x, its_y = itera_mapeo(G, rand(), 52)
+    if  its[end] != 0
+        print("No converge")
+        break
+    end
+end
+print("Test Finalizado")
+```
+
+<font size=2>
+De esta forma se imprimen los valores de 'its', para ver que está pasando:
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 52)
+for i in 1:length(its)
+    println(its[i])
+end
+```
+
+<font size=2>
+Lo que se observa es que la precisión comienza a disminuir hasta converger a 0.5 y ahí a 0, sin embargo esto sugiere un error de redondeo, o mejor dicho de precisión.
+
+```julia
+its, its_x, its_y = itera_mapeo(G, rand(), 52)
+for i in 1:length(its)
+    println(bitstring(its[i]))
+end
+```
+
+<font size=2>
+    Lo que se observa en como con cada iteración la precisión se va perdiendo lo que provoca que dado el número de bits con el que representemos al número con el que iniciamos, sea el número de iteraciones necesarias para llegar 0, de está manera se explica como es tan periódica la convergencia y a menos que en todas las iteraciones se tengan, como resultado del mapeo, numeros perfectamente representables en binario, el resultado del mapeo es erróneo.
+
+## Ejercicio 3
+
+(a) Usando lo que hicieron en la Tarea 1, incluyan lo que desarrollaron para los números `Dual`es en un módulo `NumDual` de Julia ([ver la documentación aquí](https://docs.julialang.org/en/v1.3/manual/modules/)). En particular, el módulo debe exportar el tipo `Dual` y la función `var_dual`, al menos. El archivo con el módulo lo deben incluir en un archivo ".jl" en su propio directorio de tareas. Carguen el módulo en este notebook, usando
+
+```julia
+include("NumDual.jl")
+```
+
+```julia
+using Main.NumDual
+```
+
+```julia
+Dual(1.9,2)
+```
+
+```julia
+x_Dual(8)
+```
+
+```julia
+pot_rama(1,2,-pi)
+```
+
+```julia
+pot_rama(Dual(1,1),2,-pi)
+```
+
+```julia
+log_rama(Dual(1,1),-pi)
+```
+
+```julia
+log_rama(1,-pi)
+```
+
+(b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
+
+```julia
+function Met_Newton(f::Function,x_0;its=10)
+    x_0 = x_Dual(x_0)
+    x_last = x_0
+    for i in 1:its
+        x_last = x_0
+        f_n = f(x_0)
+        x_0 = x_0-f_n[1]/f_n[2]
+        if x_0 == x_last
+            print("iteraciones = ")
+            println(i)
+            break
+        end
+    end
+    if x_0 == x_last
+        return x_0
+    else
+        throw("IteracionesInsuficientes")
+    end
+end
+```
+
+```julia
+f(x) = x^3-8
+@test Met_Newton(f,10,its=12)[1]==2.0
+```
+
+
+(c) Encuentren los puntos fijos del mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
+
+
+```julia
+f(x) = x^2 - 1.1
+```
+
+```julia
+g(x) = f(x) - x #encontramos los ceros de g, lo que implica que son puntos fijos de f
+y1 = Met_Newton(g,1.0)
+y2 = Met_Newton(g,-1.0)
+```
+
+```julia
+y1[1]
+```
+
+```julia
+y2[1]
+```
+
+<font size=2>
+Los puntos fijos del mapeo f son $\approx$ 1.661895003862225 y -0.6618950038622251
+
+(d) Encuentren las puntos *de periodo 2* para el mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
+
+```julia
+g(x) = f(f(x))-x
+y3 = Met_Newton(g,0.01)
+y4 = Met_Newton(g,-2)
+```
+
+```julia
+y3[1]
+```
+
+```julia
+y4[1]
+```
+
+<font size=2>
+Los puntos de periodo 2 del mapeo f son $\approx$ 0.0916079783099617 y -1.0916079783099617
+
+(e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 -1$ son linealmente estables (atractivos).
+
+<font size=2>
+Para mostrar que son linealmente estables veamos que:
+    $$
+    \left|\dfrac{df(f(x_0))}{dx}\right|\leq1
+    $$
+con $x_0$ tal que f(f(x_0))=0. 
+
+```julia
+f(x) = x^2-1
+g(x) = f(f(x))-x
+y3 = Met_Newton(g,0.1,its=1000)
+y4 = Met_Newton(g,-1.2,its=1000)
+@test abs(f(f(x_Dual(y3[1])))[1]) <= 1
+@test abs(f(f(x_Dual(y4[1])))[1]) <= 1
+```
+
+## Ejercicio 4
+
+(a) El método de Newton es iterativo, y en ese sentido se puede considerar como un mapeo dado por
+\begin{equation}
+z_{n+1} = N(z_n) = z_n - \frac{f(z_n)}{f'(z_n)}.
+\end{equation}
+Vamos a considerar la función $f(z) = z^3-1$, e iteraciones del mapeo $N(z)$, con $z\in\mathbb{C}$. Es claro que los ceros de $f(z)$, es decir, las $z^*$ tales que $f(z^*)=0$
+tienen la propiedad de que $N(z^*)=z_*$. En este caso concreto los ceros los podemos escribir como $z^*_r = \exp(i 2\pi r/3)$, con $r=0, 1, 2$.
+
+La idea es considerar *muchas* condiciones iniciales $z_0\in[-1,1]\times[-1,1]$, y para cada condición inicial iteraremos muchas veces el mapeo, por ejemplo, $n=10000$ veces. La idea es asignarle a cada condición inicial un color (azul, verde o rojo) según el punto al que converja, o al punto al que más se acerque $z_n$. Dibujen el mapa de colores que se obtiene.
+
+*Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
+
+Definamos:
+$$
+z_0 = \exp(i 2\pi(0)/3)\\
+z_1 = \exp(i 2\pi(1)/3)\\
+z_2 = \exp(i 2\pi(2)/3)\\
+$$
+
+```julia
+scatter([cos(2*pi*0/3)], [sin(2*pi*0/3)], markershape=:circle,
+    xaxis = ("Real",(-1.1,1.1)),
+    yaxis = ("Imaginario",(-1.1,1.1)),
+    markerstrokecolor=:blue, markersize=1, alpha=1, label=latexstring("z_0"))
+scatter!([cos(2*pi*1/3)], [sin(2*pi*1/3)], markershape=:circle,
+    markerstrokecolor=:green, markersize=1, alpha=1, label=latexstring("z_1"))
+scatter!([cos(2*pi*2/3)], [sin(2*pi*2/3)], markershape=:circle,
+    markerstrokecolor=:red, markersize=1, alpha=1, label=latexstring("z_2"))
+```
+
+```julia
+"""
+    itera_mapeo_2(f, a, x0, n)
+        itera el mapeo f,  n veces, tomando un valor a (para f) y un x0, 
+        no verifica si es complejo derivable
+"""
+function itera_mapeo_2(f,a,x0, n::Int)
+    for i = 1:n
+        f_dual=f(x_Dual(x0))
+        x0 = x0-a*f_dual[1]/f_dual[2]
+    end
+    return x0
+end
+```
+
+```julia
+f(z) = z^3 -1 
+"""
+    clasifica_x_0(n,g;a=1,its=1000)
+        
+        Clasifica las condiciones iniciales en función a que zero converge.
+"""
+function clasifica_x(n,g;a=1,its=1000,dif=0.1,itera=itera_mapeo_2)
+    v_0 = cos(2*pi*0/3)+im*sin(2*pi*0/3)
+    v_1 = cos(2*pi*1/3)+im*sin(2*pi*1/3)
+    v_2 = cos(2*pi*2/3)+im*sin(2*pi*2/3)
+    x_0 = [Float64[0],Float64[0]]
+    x_1 = [Float64[0],Float64[0]]
+    x_2 = [Float64[0],Float64[0]]
+    for i in 1:n
+        z = rand()*2-1+im*(rand()*2-1)
+        x = itera(g,a,z,its)
+        if abs(v_0-x) < dif
+            push!(x_0[1],real(z))
+            push!(x_0[2],imag(z))
+        elseif abs(v_1-x) < dif
+            push!(x_1[1],real(z))
+            push!(x_1[2],imag(z))
+        elseif abs(v_2-x) < dif
+            push!(x_2[1],real(z))
+            push!(x_2[2],imag(z))
+        else
+            println(abs(v_0-x))
+            println(abs(v_1-x))
+            println(abs(v_2-x))
+        end
+    end
+    scatter(x_0[1], x_0[2], markershape=:circle,legend=false,
+        xaxis = ("Real",(-1.1,1.1)),
+        yaxis = ("Imaginario",(-1.1,1.1)),
+        markerstrokecolor=:blue, markersize=1, alpha=1, label=latexstring("Converge:z_0"))
+    scatter!(x_1[1],x_1[2], markershape=:circle,
+        markerstrokecolor=:yellow, markersize=1, alpha=1, label=latexstring("Converge:z_1"))
+    scatter!(x_2[1],x_2[2], markershape=:circle,
+        markerstrokecolor=:red, markersize=1, alpha=1, label=latexstring("Converge:z_2"))
+    end
+```
+
+```julia
+clasifica_x(10,f,its=2000)
+```
+
+```julia
+clasifica_x(200000,f,its=20000)
+savefig("clasifica_x_1_200000")
+```
+
+(b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
+\begin{equation}
+z_{n+1} = z_n - a\frac{f(z_n)}{f'(z_n)},
+\end{equation}
+para la misma función $f(z)$, con $a=2$.
+
+```julia
+clasifica_x(200000,f,a=2,its=20000)
+savefig("clasifica_x_2_200000")
+```
+
+## Anexo
+
+<font size=2>
+
+Como un simple anexo hablaré sobre los números Duales en el campo de los complejos, la pregunta inmediata que surge es si se puede generalizar los números Duales en el campo complejo con el mismo significado de derivada. Por definición tenemos que:
+
+Si $f$ es complejo derivable en $z_0$ entonces: $$f'(z_0)=\lim\limits_{z\longrightarrow z_0}\dfrac{f(z)-f(z_0)}{z-z_0}.$$
+
+Cuya definición es la misma que en los números reales, lo cual permite realizar la generalización de los números Duales pero ahora bajo las operaciones definidas en los complejos.
+
+La segunda pregunta a responder es cómo saber si es una función derivable, cosa que se implementa en el modulo `NumDual.jl`, en la funcion ``complex_Dual(f,x0)`` se verifican primero las ecuaciones de Cauchy-Riemman.
+
+Sea $f:U\subset\mathbb{C}\longrightarrow\mathbb{C}$ derivable en $z_0\in U$, $f'(z_0)=a+ib$ y $f=u+iv$, entonces de $\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)}{z-z_0}=f'(z_0)\Rightarrow\lim\limits_{z\longrightarrow z_0}\frac{f(z)-f(z_0)-f'(z_0)(z-z_0)}{z-z_0}$, si hacemos $z=x+iy$ y $z_0=x_0+iy$, se tiene que $f(z_0)(z-z_0)=(a+ib)(x-x_0)+i(y-y_0)$ que esto lo podemos ver como: $f(z_0)(z-z_0)=\left(\begin{smallmatrix}
+a&&-b\\b&&a
+\end{smallmatrix}\right)\left(\begin{smallmatrix}
+x-x_0\\y-y_0
+\end{smallmatrix}\right)$, que en $\mathbb{R}^2$ el límite es equivalente: $$\lim\limits_{(x,y)\longrightarrow(x_0,y_0)}\dfrac{\left\|(u(x,y),v(x,y))-(u(x_0,y_0),v(x_0,y_0))-\left(\begin{smallmatrix}
+	a&&-b\\b&&a
+	\end{smallmatrix}\right)\left(\begin{smallmatrix}
+	x-x_0\\y-y_0
+	\end{smallmatrix}\right)\right\|}{\left\|(x,y)-(x_0,y_0)\right\|}=0$$ a esta matriz se le llama $Df(x_0,y_0)$ y se dice que f es real diferenciable en $(x_0,y_0)$, en particular se sabe que $Df(x_0,y_0)=\left(\begin{matrix}
+\frac{\delta u}{\delta x}(x_0,y_0)&&\frac{\delta u}{\delta y}(x_0,y_0)\\\frac{\delta v}{\delta x}(x_0,y_0)&&\frac{\delta v}{\delta y}(x_0,y_0)
+\end{matrix}\right)$ de donde por la matriz $\left(\begin{smallmatrix}
+a&&-b\\b&&a
+\end{smallmatrix}\right)$ se deducen las  ecuaciones conocidas como de Cauchy-Riemman: $$\frac{\delta u}{\delta x}(x_0,y_0)=\frac{\delta y}{\delta y}(x_0,y_0)\;y\;\frac{\delta u}{\delta y}(x_0,y_0)=-\frac{\delta v}{\delta x}(x_0,y_0)$$ Lo que hemos demostrado es el siguiente teorema: 
+
+ $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es compleja derivable en $z_0\in U$ sii es real diferenciable en $z_0$ y satisface las ecuaciones de C-R en $z_0$.
+ 
+ Un último 'hoyo' es la implementación de las ramas:
+ 
+ Para cada $z\in\mathbb{C}\setminus\{0\}$ y cada $\varphi\in\mathbb{R}$, definimos el argumento de z respecto a $\varphi$ como $arg_{\varphi}(z)=arg(z)+2\pi k$ donde $k\in\mathbb{Z}$ es el \'unico entero tal que $arg_{\varphi}(z)\in(\varphi,\varphi+2\pi]$.
+ 
+ A los intervalos de la forma $(\varphi,\varphi+2\pi]$ se les llama ramas del argumento.
+ 
+ Para determinar la rama correspondiente buscamos $k\in\mathbb{Z}$ tal que: $y_0<\theta+2\pi k\leq y_0+2\pi\Rightarrow \frac{y_0-\theta}{2\pi}<k\leq\frac{y_0-\theta}{2\pi}+1$. Cuya idea es la implementada función `rama` del modulo `NumDual.jl`. Lo que permite definir `angle`. 
+ 
+ En este sentido podemos definir una exponencial compleja que dependa de la rama, sin embargo consideraré solo la rama principal, ya que no aporta nada por su definición:
+ 
+ Si $z=x+iy$, $exp(z)=e^x(\cos(y)+i\sin(y))$ con $|exp(z)|=e^{Re(z)}$ y $Im(z)\in arg_\varphi(exp(z)).$
+ Las funciones sin y cos son analíticas, lo que hace que sólo haya una rama, y de hecho, no hay cosas raras en el plano complejo, sin embargo con el $\log$ resulta diferente:
+ 
+ Dado $\varphi\in\mathbb{R}$, definimos a la rama de logarítmo respecto a $\varphi$ como $\log_\varphi:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$, $\log_\varphi(z)=\ln|z|+iarg_\varphi(z)$.
+ 
+ En el caso en que $\varphi=-\pi$, escribiremos simplemente: $\log(z)=\ln|z|+iarg(z)$ y la llamamos la rama principal del logarítmo. Lo que permite definir la función `log_rama`.
+        
+De esta forma, como en $\mathbb{R}$, para $a>0$ y $b\in\mathbb{R}$; $a^b=e^{b\ln(a)}$.
+
+Podemos definir para $a\in\mathbb{C}\setminus\{0\}$ y $b\in\mathbb{C}$, definimos la exponenciación $a^b$ como el conjunto: $a^b:=\{exp(b\log_\varphi(a))\;|\;\varphi\in\mathbb{R}\}$.
+
+Si fijamos $\varphi\in\mathbb{R}$ podemos definir una rama de:
+
+- $z^b$ como la función $f:\mathbb{C}\setminus\{0\}\longrightarrow\mathbb{C}$ dada por: $f(z)=exp(b\log_\varphi(z))$.
+- $a^z$ como la función $g:\mathbb{C}\longrightarrow\mathbb{C}$ dada por $g(z)=exp(z\log_\varphi(a))$.
+
+De esta forma, dado $z\in\mathbb{C}\setminus\{0\}$ y $n\in\mathbb{Z}$, la exponenciación compleja toma un único valor, es decir, si $\theta=arg(z)$ entonces: $$z^n=|z|^n(\cos(n\theta)+i\sin(n\theta)).$$
+
+Dem. Sea $\varphi\in\mathbb{R}$, $z^n=exp(n\log_\varphi(z))=exp(n(\ln|z|+iarg_\varphi(z)))=exp(n\ln|z|)$
+$exp(niarg_\varphi(z))=|z|^nexp(niarg_\varphi(z))=|z|^nexp(ni(\theta+2\pi k))$ p.a. $k\in\mathbb{Z}$ $|z|^nexp(n\theta i+2\pi kni)=|z|^nexp(n\theta i)=|z|^n(\cos(\theta)+i\sin(\theta))$. $_\blacksquare$
+
+Lo que permite definir la función `pot_rama`. 
+
+De esta manera sólo falta ver si la derivada del $\log_\varphi$ es la misma que en $\mathbb{R}$ para asegurar que no cambiarán nada. Para $\exp$ su derivada es la misma que en $\mathbb{R}$, por sus serie de potencias. Por otro lado:
+
+Sea $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$; $g:V\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ tal que $f[U]\subseteq V$. Si $f$ es continua en $z_0\in U$, $g$ es derivable en $f(z_0)$, $g'(f(z_0))\neq0$ y $\forall z\in U$; $g\circ f(z)=z$ entonces $f$ es derivable en $z_0$ y $f'(z_0)=\frac{1}{g'(f(z_0))}$.
+
+Dem. Por hipótesis tenemos que $g'(f(z_0))=\lim\limits_{w\longrightarrow f(z_0)}\frac{g(w)-g(f(z_0))}{w-f(z_0)}=\lim\limits_{h\longrightarrow 0}\frac{g(f(z_0+h))-g(f(z_0))}{f(z_0+h)-f(z_0)}$ este \'ultimo paso dado que $f$ es continua, y dado que son inversas se deduce que: $$g'(f(z_0))=\lim\limits_{h\longrightarrow0}\frac{h}{f(z_0+h)-f(z_0)}\Rightarrow f'(z_0)=\lim\limits_{h\longrightarrow0}\frac{f(z_0+h)-f(z_0)}{h}=\dfrac{1}{g'(f(z_0))}._\blacksquare$$
+
+De esta forma, si $f:U\subseteq\mathbb{C}\longrightarrow\mathbb{C}$ es un logarítmo en $U$ entonces $f$ es anal\'itica en $U$ y $f'(z)=\frac{1}{z}$. En particular $\forall\varphi\in\mathbb{R}$, $\log_\varphi$ es anali\'itica en $\mathbb{C}\setminus\left(D_\varphi\cup\{0\}\right)$, donde $D_\varphi=\{z\in\mathbb{C}\setminus\{0\}\;|\;arg_\varphi(z)=\varphi+2\pi\}$ y $\log_\varphi'(z)=\frac{1}{z}$.
+
+Dem. Como $f$ es logarítmo entonces $f$ es continua en $U$ y $\forall z\in U,\;exp(f(z))=z$; ya que $exp'(z)=exp(z)\neq0$ se sigue que $f'(z)=\frac{1}{z}.\;_\blacksquare$
+
+De esta forma podemos definir la función `itera_mapeo_3` que verifica punto a punto que sea derivable, y en la siguiente línea vemos lo mismo que se hizo en el ejercicio, aunque con un costo de procesamiento mayor.
+
+```julia
+"""
+    itera_mapeo_3(f, a, x0, n)
+        itera el mapeo f,  n veces, tomando un valor a (para f) y un x0, 
+        verifica si es complejo derivable
+"""
+function itera_mapeo_3(f,a,x0, n::Int)
+    for i = 1:n
+        f_dual=complex_Dual(f,x0)
+        x0 = x0-a*f_dual[1]/f_dual[2]
+    end
+    return x0
+end
+```
+
+```julia
+clasifica_x(20,f,its=20,itera=itera_mapeo_3)
+```
+
+```julia
+clasifica_x(200000,f,its=20000,itera=itera_mapeo_3)
+savefig("clasifica_x_1_200000_checa_punto_a_punto")
+```
+
+Otra forma de verifiar que es correcto nuestros resultados es haciendo g:
+
+```julia
+g(z) = pot_rama(z,3,-pi) - 1
+```
+
+```julia
+clasifica_x(100000,g,its=20000,itera=itera_mapeo_3)
+savefig("clasifica_x_1_200000_checa_punto_a_punto_2")
+```
+
+```julia
+#O más rápido
+clasifica_x(200000,g,its=20000)
+savefig("clasifica_x_1_200000_2")
+```
+
+Y observamos los mismos resultados ya obtenidos.
+
+## Ejercicio 5
+
+Consideremos ahora el triángulo definido por los tres puntos $A=(0, 1)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+
+```julia
+A = (0,1)
+B = (cos(7*pi/6),sin(7*pi/6))
+C = (cos(11*pi/6),sin(11*pi/6))
+Conj = [A,B,C,A]
+plot([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+        yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
+scatter!(A, markershape=:circle,
+        markerstrokecolor=:yellow, markersize=6, alpha=1, label="A")
+scatter!(B, markershape=:circle,
+        markerstrokecolor=:red, markersize=6, alpha=1, label="B")
+scatter!(C, markershape=:circle,
+        markerstrokecolor=:pink, markersize=6, alpha=1, label="C")
+plot!([1,1,-1,-1,1],[1,-1,-1,1,1], color=:black
+        ,label="[-1,1]×[-1,1]", grid=false)
+```
+
+(a) Definan una regla, la que quieran, que asigne dos salidas distintas del dado (por ejemplo, 1 y 5) a cada uno de los tres vértices del triángulo. 
+
+```julia
+function delete(v::Array,a::Int)
+    i = 1
+    for value in v
+        if value == a
+            deleteat!(v, i)
+            return v
+        end
+        i += 1
+    end
+end
+
+function regla(dado,puntos)
+    vector = []
+    num = length(dado)
+    for i in 1:puntos
+        a = Int64[]
+        for i in 1:num/puntos
+            b = rand(dado)
+            dado = delete(dado, b)
+            push!(a,b)
+        end
+        push!(vector,a)
+    end
+    if length(dado)!=0
+        c = rand(1:length(vector))
+        for i in 1:length(dado)
+            push!(vector[mod(i+c,length(vector))+1],dado[i])
+        end
+    end
+    return vector
+end
+```
+
+```julia
+dado = [1,2,3,4,5,6]
+reglas = regla(dado,3)
+```
+
+Los elementos de reglas[1] son asignados al punto A
+Los elementos de reglas[2] son asignados al punto B
+Los elementos de reglas[3] son asignados al punto C
+
+(b) A partir de un punto $X$, definan el mapeo que, para cada tiro del dado $d$, hace que el punto $X$ sea mapeado al punto medio de $X$ y el vértice del triángulo asignado en (a).
+
+```julia
+function Mapeo_triangulo(x,vertices,reglas;dado=[1,2,3,4,5,6],its=100000)
+    X = [x[1]]
+    Y = [x[2]]
+    num = length(dado) 
+    puntos = length(vertices)
+    for i in 1:its
+        dado = rand(1:num)
+        for i in 1:puntos
+            if dado in reglas[i]
+                x = [(x[1]+vertices[i][1])/2,(x[2]+vertices[i][2])/2]
+                push!(X,x[1])
+                push!(Y,x[2])
+                break
+            end
+        end
+    end
+    return X,Y
+end
+```
+
+```julia
+x = [2*rand()-1,2*rand()-1]
+```
+
+```julia
+num = 10
+plot([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+      yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
+X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
+plot!(X,Y, markershape=:circle,legend=false,
+    markerstrokecolor=:black, markersize=1, alpha=1,dpi=100)
+```
+
+(c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
+
+```julia
+num = 100000
+scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+      yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
+Plot_x = []
+Plot_y = []
+X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
+scatter!(X,Y, markershape=:circle,legend=false,
+    markerstrokecolor=:black, markersize=1, alpha=1)
+savefig("Mapeo_triangulo")
+```
+
+d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
+
+```julia
+x = [2*rand()-1,2*rand()-1]
+num = 100000
+scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+      yaxis=((-1,1),"y"), label="Triangulo ABC", grid=false)
+Plot_x = []
+Plot_y = []
+X,Y = Mapeo_triangulo(x,[A,B,C],reglas,its=num)
+scatter!(X,Y, markershape=:circle,
+    markerstrokecolor=:black, markersize=1, alpha=1,legend=false)
+savefig("Mapeo_triangulo_otra_c")
+```
+
+```julia
+x = [100*rand(),100*rand()-1]
+num = 100000
+scatter([f[1] for f in Conj], [f[2] for f in Conj], color=:blue,
+        xaxis=("x",(-1,1)),
+      yaxis=("y",(-1,1)), label="Triangulo ABC", grid=false)
+Plot_x = []
+Plot_y = []
+X,Y = Mapeo_triangulo([5.0,5.0],[A,B,C],reglas,its=num)
+scatter!(X,Y, markershape=:circle,
+    markerstrokecolor=:black, markersize=1, alpha=1,legend=false)
+savefig("Mapeo_triangular_c_f")
+```
+
+<font size=2>
+    Observamos que sin importar la condición inicial, el atractor tiene la misma forma
+
+## Ejercicio 6
+
+Vamos a considerar el siguiente mapeo lineal, en dos dimensiones, dado por
+
+\begin{equation}
+B(x_{n+1}, y_{n+1} ) =
+\left( \begin{array}{c} x_{n+1} \\ y_{n+1} \end{array} \right) =
+\left(\begin{array}{cc} a & b\\ c & d \end{array}\right)
+\left( \begin{array}{c} x_{n} \\ y_{n} \end{array} \right) +
+\left( \begin{array}{c} 0 \\ f \end{array} \right).
+\end{equation}
+
+Los coeficientes que aparecen en el mapeo se eligirán de manera aleatoria, con
+probabilidad $p$, de acuerdo con la siguiente tabla:
+
+|     p     |     a     |     b     |     c     |     d     |     f     |
+|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
+|   0.01    |     0     |     0     |     0     |    0.16   |   0    |
+|   0.85    |  0.85     |     0.04  |   -0.04   |    0.85   |   1.6     |
+|   0.07    |  0.2      |    -0.26  |    0.23   |    0.22   |   1.6     |
+|   0.07    | -0.15     |     0.28  |    0.26   |    0.24   |   0.44    |
+
+Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
+
+```julia
+p = [0.1,0.86,0.93,1.0]
+cte = [[0.0,0.0,0.0,0.16,0.0],
+    [0.85,0.04,-0.04,0.85,1.6],
+    [0.2,-0.26,0.23,0.22,1.6],
+    [-0.15,0.28,0.26,0.24,0.44]]
+```
+
+```julia
+function mapeo_lineal(cte,p,x;its=1000)
+    X = Array{Float64,1}(undef, its)
+    Y = Array{Float64,1}(undef, its)
+    ctes = Array{Float64,1}(undef, 5)
+    for i in 1:its
+        for int in 1:length(cte)
+            pro = rand()
+            for int in 1:length(p)
+                if pro <= p[int]
+                    ctes = cte[int]
+                    break
+                end
+            end
+        end
+        x = [ctes[1]*x[1]+ctes[2]*x[2],ctes[5]+ctes[3]*x[1]+ctes[4]*x[2]]
+        X[i] = x[1]
+        Y[i] = x[2]
+    end
+    return X,Y
+end
+
+function mapeo_lineal_2(cte,p,x;its=1000)
+    X = Array{Float64,1}(undef, its)
+    Y = Array{Float64,1}(undef, its)
+    ctes = Array{Float64,1}(undef, 5)
+    for i in 1:its
+        for int in 1:length(cte)
+            pro = rand()
+            for int in 1:length(p)
+                if pro <= p[int]
+                    ctes .= cte[int]
+                    break
+                end
+            end
+        end
+        x = [ctes[1]*x[1]+ctes[2]*x[2],ctes[5]+ctes[3]*x[1]+ctes[4]*x[2]]
+        X[i] = x[1]
+        Y[i] = x[2]
+    end
+    return X,Y
+end
+```
+
+```julia
+using BenchmarkTools
+```
+
+```julia
+x = [rand(),rand()]
+@benchmark X,Y = mapeo_lineal(cte,p,x,its=500000)
+```
+
+```julia
+x = [rand(),rand()]
+@benchmark X,Y = mapeo_lineal_2(cte,p,x,its=500000)
+```
+
+```julia
+x = [rand()*30,rand()*30]
+X,Y = mapeo_lineal(cte,p,x,its=500000)
+scatter(X,Y, markershape=:circle,xaxis=("x",(-5,5)),yaxis=("y",(0,10)),
+    markerstrokecolor=:green, markersize=1, alpha=1,legend=false)
+savefig("Mapeo_lineal")
+```

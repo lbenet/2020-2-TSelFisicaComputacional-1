@@ -1,0 +1,1333 @@
+
+# Tarea 2
+
+
+
+
+> Envío inicial del PR: **27 de marzo**.
+>
+> Aceptación PR *final*: **3 de abril**.
+
+**NOTA**: Esta tarea incluye generar varias imágenes; no es necesario que las incluyan en su entrega, pero sí debe ser posible generarlas a partir de lo que entreguen.
+
+## Ejercicio 1
+
+Describan la dinámica de varias órbitas para los siguientes mapeos, usando distintos colores para distintas órbitas, en una misma gráfica. Interesa entre otras cosas saber cuántos puntos fijos tiene el mapeo y cómo es la dinámica cerca de dichos puntos.
+
+Definamos algunas herramientas para poder estudiar mapeos, por ejemplo: 
+
+- una función que calcule el arreglo de $n$ iterados bajo un mapeo $f$ con condición inicial $x_0$; y,
+- una función que calcule la $n$-ésima iteración bajo un mapeo $f$ de una condición inicial $x_0$.
+
+Para tener algo de flexibilidad al momento de aplicar las funciones (pudiendo utilizar mapeos de $\mathbb{R}^n$ o inclusive $\mathbb{C}^n$ en si mismos, pidamos solamente que $f$ sea un mapeo (una función) y $n$ sea un entero no negativo. ($n = 0$, por convención, definamos que corresponde al mapeo identidad.)
+
+```julia
+"""
+    iterados(f::Function, n::T, x0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$ y una condición inicial \$x_0\$, devuelve el vector \$(x_0, f(x_0), \\ldots, f^{(n)}(x_0)\$.
+\$f\$ debe tener dominio y codominio iguales.
+"""
+function iterados(f::Function, n::T, x0) where {T <: Integer}
+    
+    @assert n >= 0
+    
+    iterados = fill(x0, n + 1)
+    
+    for i in 1:n
+        
+        iterados[i + 1] = f(iterados[i])
+    end
+    
+    return iterados
+end
+
+"""
+    iterados(f::Function, n::T) where {T <: Integer}
+
+Forma funcional de ```iterados(f, n, x0)``` que permite variar la condición inicial \$x_0\$.
+"""
+iterados(f::Function, n::T) where {T <: Integer} = x0 -> iterados(f, n, x0)
+
+"""
+    iterar(f::Function, n::T, x0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$ y una condición inicial \$x_0\$, devuelve el resultado de iterar \$f\$ en \$x_0\$, \$n\$ veces.
+Los valores intermedios son  usados para el cálculo, pero no son almacenados.
+"""
+function iterar(f::Function, n::T, x0) where {T <: Integer}
+    
+    @assert n >= 0
+    
+    x = x0
+    
+    for i in 1:n
+        
+        x = f(x) 
+    end
+    
+    return x
+end
+
+"""
+    iterar(f::Function, n::T) where {T <: Integer}
+
+Forma funcional de ```iterar(f, n, x0)``` que permite variar la condición inicial \$x_0\$.
+"""
+iterar(f::Function, n::T) where {T <: Integer} = x0 -> iterar(f, n, x0)
+```
+
+Hagamos algunas pruebas para verificar el funcionamiento de los métodos y compararlos:
+
+```julia
+#Para medir adecuadamente el tiempo de ejecución en Julia, requerimos correr la función por primera vez para quitar el tiempo de compilación.
+#Una herramienta para hacer benchmarks es BenchmarkTools y su correspondiente macro, @benchmark:
+using BenchmarkTools
+
+#Para cuando guardamos los iterados intermedios:
+@benchmark iterados(x -> x*(1 - x), 10, 0.5)
+@benchmark iterados(x -> x*(1 - x), 1000, 0.5)
+```
+
+```julia
+#Y para cuando usamos una variable local que vamos actualizando:
+@benchmark iterar(x -> x*(1 - x), 10, 0.5)
+@benchmark iterar(x -> x*(1 - x), 1000, 0.5)
+```
+
+Como se puede ver del ejemplo, el hecho de guardar la trayectoria del punto inicial bajo las iteraciones con el mapeo aumenta tanto la memoria usada como el tiempo de cómputo. Sin embargo, ésto es a costa de la información que guardamos.
+
+Para poder implementar el análisis gráfico, requerimos cargar un módulo para graficar. Por simplicidad, utilicemos ```Plots.jl``` con el backend ```pyplot```:
+
+```julia
+#Cargamos Plots:
+using Plots; pyplot()
+```
+
+Dado que vamos a graficar varios segmentos de recta, nos conviene poder generarlos de forma sencilla.
+Una manera de hacer ésto es mediante la forma paramétrica de la línea que pasa entre dos puntos:
+
+```julia
+"""
+    línea_paramétrica(x1, x2)
+
+Forma paramétrica de la línea que pasa por \$x_1\$ y \$x_2\$.
+Devuelve una función que depende del parámetro real \$t\$.
+El segmento de recta comprendido entre \$x_1\$ y \$x_2\$ está parametrizado por \$t \\in [0, 1]\$.
+
+Porque esta forma es lineal, la forma paramétrica de las coordenadas de la recta entre ambos puntos se pueden obtener de esta función utilizando las coordenadas de los puntos respectivas en su lugar.
+"""
+línea_paramétrica(x1, x2) = t -> (x2 - x1)*t + x1
+
+"""
+    puntos_línea(x1, x2, ts)
+
+Devuelve el conjunto de puntos de la línea que pasa por \$x_1\$ y \$x_2\$ resultado de evaluar la forma paramétrica de la línea en el conjunto de puntos ```ts```.
+"""
+puntos_línea(x1, x2, ts) = línea_paramétrica(x1, x2).(ts)
+```
+
+Asimismo, nos conviene definir una función que haga un paso del análisis gráfico, correspondiente en graficar las líneas que van del punto de la curva de la función a la identidad y de allí a la imagen del punto original bajo la función:
+
+```julia
+"""
+    análisis_iterado!(gráfica, x, fx, ffx, ts; linecolor = :green)
+
+Dada una ```gráfica```, agrega a la misma los segmentos de línea entre los puntos \$(x, f(x))\$ y \$(f(x), f(x))\$, y \$(f(x), f(x))\$ y \$(f(x), f^{(2)}(x))\$.
+Éstos segmentos corresponden a la representación de una iteración de \$f\$ con condición inicial \$x_0\$ en dos dimensiones.
+Los segmentos incorporados tienen el color ```linecolor```.
+"""
+function análisis_iterado!(gráfica, x, fx, ffx, ts; linecolor = :green)
+    
+    x_fx_x = puntos_línea(x, fx, ts)
+    x_fx_y = puntos_línea(fx, fx, ts)
+    fx_ffx_x = x_fx_y
+    fx_ffx_y = puntos_línea(fx, ffx, ts)
+    
+    plot!(gráfica, x_fx_x, x_fx_y, label = "", linecolor = linecolor, linestyle = :dash)
+    plot!(gráfica, fx_ffx_x, fx_ffx_y, label = "", linecolor = linecolor, linestyle = :dash)
+end
+```
+
+Para poder comparar diferentes condiciones iniciales, nos conviene implementar un método que agregue a una gráfica dada el análisis gráfico de una única condición inicial:
+
+```julia
+"""
+    análisis_gráfico!(gráfica, f, n, x0; ts = 0:0.01:1, linecolor = :green)
+
+Dado un mapeo \$f\$, un número de iteraciones \$n\$ y una condición inicial, \$x_0\$, genera el análisis gráfico correspondiente sobre la ```gráfica``` dada.
+Los segmentos respectivos son mostrados en color ```linecolor``` y son muestreadas en los valores del parámetro ```ts```.
+Se devuelve el máximo y el mínimo de los valores de los iterados para determinar los límites de graficación.
+"""
+function análisis_gráfico!(gráfica, f, n, x0; ts = 0:0.1:1, linecolor = :green)
+    
+    #Calculamos los iterados solicitados:    
+    vector_iterados = iterados(f, n, x0)
+    
+    #Obtenemos el máximo y el mínimo:
+    máx = maximum(vector_iterados)
+    mín = minimum(vector_iterados)
+      
+    #El primer iterado:
+    x = vector_iterados[1]
+    fx = vector_iterados[2]
+    x_fx_x = puntos_línea(x, x, ts)
+    x_fx_y = puntos_línea(0, fx, ts)
+        
+    plot!(gráfica, x_fx_x, x_fx_y, label = "", linecolor = linecolor, linestyle = :dash)
+        
+    #Y los demás, basados en la identidad:
+    for i in 1:(n - 1)
+    
+        análisis_iterado!(gráfica, vector_iterados[i:(i + 2)]..., ts, linecolor = linecolor)
+    end
+        
+    return mín, máx
+end
+```
+
+Finalmente, podemos empaquetar el método anterior, considerar los límites de la gráfica e incorporar las gráficas de la función y de la identidad en un sólo método:
+
+```julia
+"""
+    análisis_gráfico(f, n, x0s; paso = 0.1, linecolors = nothing)
+
+Dado un mapeo \$f\$, un número de iteraciones \$n\$ y un arreglo de condiciones iniciales, ```x0s```, genera el análisis gráfico correspondiente.
+Opcionalmente, se pueden especificar el tamaño de ```paso``` usado y el color de la órbita de cada condición inicial.
+"""
+function análisis_gráfico(f, n, x0s; paso = 0.1, linecolors = nothing)
+    
+    gráfica = plot()
+    
+    #Puntos para calcular las líneas:
+    ts = 0:paso:1
+    
+    #Arrays para guardar valores límites:
+    extremos = []
+    
+    #Definimos los colores de los iterados como fallback:
+    if isnothing(linecolors)
+        
+        linecolors = fill(:green, length(x0s))
+    end
+    
+    #Iteramos sobre las condiciones iniciales:
+    for i in eachindex(x0s)
+        
+        mín, máx = análisis_gráfico!(gráfica, f, n, x0s[i]; ts = ts, linecolor = linecolors[i])
+        
+        push!(extremos, mín)
+        push!(extremos, máx)
+    end
+    
+    #Límites de las gráfica:
+    xmín = minimum(extremos)
+    xmáx = maximum(extremos)
+    
+    #Graficamos las funciones
+    #Incorporamos más pasos al dominio de las funciones:
+    xs = xmín:0.1*paso:xmáx
+    
+    plot!(gráfica, xs, x -> x, label = "Id", legend = :outerright, linecolor = :blue)
+    plot!(gráfica, xs, f, label = "Función", linecolor = :red)
+        
+    return gráfica
+end
+```
+
+(a) $M_1(x) = \frac{1}{3x}$.
+
+Para el primer ejercicio, definamos la función:
+
+```julia
+M₁(x) = 1/(3*x)
+```
+
+Tomemos como condiciones iniciales:
+
+```julia
+n_1 = 4
+x0s_1 = [0.1:0.2:0.9...]
+```
+
+Podemos usar la paleta de colores por [defecto](https://discourse.julialang.org/t/way-to-get-default-color-order-in-plots-jl/12643).
+Para usar ésto posteriormente, definamos una función auxiliar que nos de una paleta del número de colores que requerimos:
+
+```julia
+paleta_colores(l) =  get_color_palette(:auto, plot_color(:white), l)
+```
+
+Usando ésto, podemos proceder al análisis gráfico:
+
+```julia
+colores_1 = paleta_colores(length(x0s_1))
+
+análisis_gráfico(M₁, n_1, x0s_1, linecolors = colores_1)
+```
+
+Por completitud, realicemos el análisis en la rama negativa:
+
+```julia
+análisis_gráfico(M₁, n_1, -x0s_1, linecolors = colores_1)
+```
+
+De las gráficas se observa que hay dos puntos fijos: $x_0 = \pm \frac{\sqrt{3}}{3}$.
+Algebráicamente es sencillo demostrar que éstos son los únicos puntos fijos reales del mapeo:
+
+$$ M_1(x) = x \iff \frac{1}{3x} = x \implies 3x^2 = 1 \iff x_0 = \pm \frac{\sqrt{3}}{3} \approx \pm 0.5773. $$
+
+Adicionalmente, vemos que todo punto del dominio de $f$ menos los puntos fijos generan una órbita estable de periodo 2.
+Esto se puede ver de la siguiente forma:
+
+$$ M_1^{(2)}(x) = M_1(M_1(x)) = \frac{1}{3f(x)} = \frac{1}{3\left(\frac{1}{3x}\right)} = x. $$
+
+Claramente dos es el mínimo periodo.
+
+(b) $M_2(x) = -\frac{x^5}{5}$.
+
+Procedemos análogamente:
+
+```julia
+M₂(x) = -x^5/5
+
+n_2 = 4
+x0s_2 = [-1.5:0.1:1.5...]
+
+colores_2 = paleta_colores(length(x0s_2))
+
+gráfica_2 = análisis_gráfico(M₂, n_2, x0s_2, linecolors = colores_2)
+xlims!(-5, 5)
+ylims!(-5, 5)
+```
+
+Observamos inmediatamente que existe un punto fijo atractor en $x_0 = 0$. Sin embargo, cuando $x_0 = \pm 1.5$, las órbitas cambian de comportamiento y empiezan a diverger.
+La recta identidad sólo interseca la función en $x_0 = 0$, por lo que el cambio de comportamiento no se puede entender en términos de un punto fijo (real).
+
+Podemos, sin realizar un análisis en los complejos, determinar la región de atracción del punto fijo fijándonos en la norma del primer iterado.
+Sabemos que una condición necesaria y suficiente para que la sucesión $\{x^n\}$ converja es que $|x| < 1$, por lo que la región de atracción del punto fijo es:
+
+$$ |M_2(x)| = \frac{|x|^5}{5} < 1 \iff |x| \leq 5^\frac{1}{5} \approx 1.3792. $$
+
+Un análisis más útil para entender esto en términos de la dinámica yace en el análisis de los puntos periódicos (en particular de periodo dos).
+Estos puntos existen, intutitivamente, como resultado del cambio del comportamiento de las órbitas como los límites de la zona de convergencia de las órbitas al atractor.
+Si una condición inicial está en el interior del dominio definido por los puntos periódicos, converge, si esta está afuera del conjunto definido por los puntos periódicos, diverge.
+En particular, si la condición inicial es alguno de los dos puntos periódicos, ni converge ni diverge, sino que forma la órbita periódica.
+
+Los puntos de periodo dos deben satisfacer:
+
+$$M_2^{(2)}(x) = - \frac{(M_2(x))^5}{5} = \frac{x^{25}}{5^6} = x \iff x^{25} - 5^6x = x(x^{24} - 5^6) = 0.$$
+
+Automáticamente recuperamos el punto de periodo uno del mapeo ($x_0 = 0$).
+Factorizando el segundo término de la expresión anterior, se tiene:
+
+$$ x^{24} - 5^6 = (x^{12} - 5^3)(x^{12} + 5^3) = (x^{6} - 5^\frac{3}{2})(x^{6} + 5^\frac{3}{2})(x^{12} + 5^3) = (x^{3} - 5^\frac{3}{4})(x^{3} + 5^\frac{3}{4})(x^{6} + 5^\frac{3}{2})(x^{12} + 5^3) = 0,$$
+
+De dónde se observa que los dos únicos puntos reales de periodo mínimo dos son $x_1 = - 5^\frac{1}{4} \approx -1.49534$ y $x_2 = 5^\frac{1}{4} \approx 1.49534$.
+
+Estos puntos satisfacen:
+
+$$M_2'(\pm 5^\frac{1}{4}) = - (\pm5^\frac{1}{4})^4 = \mp 1,$$
+
+lo que implica que son puntos de periodo dos neutrales.
+
+Verifiquemos que en efecto, tomar una condición inicial en $(-5^\frac{1}{4}, 5^\frac{1}{4})$ implica que las órbitas convergen.
+Tenemos que el primer iterado satisface:
+
+$$ |x| < 5^\frac{1}{4} \implies |x|^{5} = |x^{5}| < 5^\frac{5}{4} \implies |M_2(x)| = \left| \frac{x^5}{5} \right| < 5^\frac{1}{4} < 1,$$
+
+lo que fuerza la convergencia por lo discutido en la otra cota.
+La divergencia tomando una condición inicial fuera de la región delimitada por los puntos de periodo dos se puede observar volteando la desigualdad al tomar la quinta potencia y acotando por debajo con uno.
+
+(c) $M_3(x) = \frac{x}{2}-2$.
+
+Análogamente:
+
+```julia
+M₃(x) = x/2 - 2
+
+n_3 = 4
+x0s_3 = [-10:0.5:1...]
+
+colores_3 = paleta_colores(length(x0s_3))
+
+gráfica_3 = análisis_gráfico(M₃, n_3, x0s_3, linecolors = colores_3)
+```
+
+Observamos que existe un único punto atractor, $x_0 = 4$.
+La unicidad se desprende inmediatamente de aplicar la definición de punto fijo y el teorema fundamental del álgebra:
+
+$$M_3(x) = x \iff \frac{x}{2} - 2 = x \iff x_0 = 4.$$
+
+
+La región de atracción del punto fijo es infinita. Esto se puede ver acotando la distancia entre el primer iterado y el punto atractor con la distancia de la condición inicial al punto atractor:
+
+$$ d(M_3(x), -4) = |M_3(x) - (-4)| = \left|\frac{x}{2} - 2 + 4\right| = \left|\frac{x}{2} + 2 \right| = \frac{|x + 4|}{2} \leq |x - (-4)| = d(x, -4).$$
+
+(I.e. el iterado siempre queda tan lejos o tan cerca como la condición inicial. 
+Dado que la única forma en que la mitad de un número sea exactamente igual al número es  que el número sea cero, quitando el punto atractor, la desigualdad se vuelve estricta lo que fuerza la convergencia.)
+
+(d) $M_4(x) = x-x^2$.
+
+Análogamente:
+
+```julia
+M₄(x) = x - x^2
+
+n_4 = 2
+x0s_4 = [-1:0.2:2...]
+
+colores_4 = paleta_colores(length(x0s_4))
+
+gráfica_4 = análisis_gráfico(M₄, n_4, x0s_4, linecolors = colores_4)
+xlims!(-2, 2)
+ylims!(-2, 1)
+```
+
+Se observan dos regímenes: uno cuando las condiciones iniciales están afuera del interior de la parábola, en el que las órbitas divergen y el otro, al interior de y en la parábola en el que el único punto fijo funje de atractor. Esto significa que el punto fijo es neutral.
+
+Que el punto fijo es único se encuentra inmediatamente de aplicar la definición:
+
+$$ M_4(x) = x \iff x - x^2 = x \iff x^2 = 0 \iff x_0 = 0. $$
+
+## Ejercicio 2
+
+(a) Consideren el mapeo $F(x) = x^2-2$ definido en $-2 \leq x \leq 2$. A partir de una condición al azar, construyan una órbita muy larga, por ejemplo, de $20\,000$ iterados o más. Obtengan el histograma de frecuencias (normalizado) que la órbita visita.
+
+Definamos el mapeo:
+
+```julia
+F(x) = begin @assert (abs(x) <= 2); x^2 - 2 end
+```
+
+Podemos demostrar que en efecto está bien definido utilizando aritmética de intervalos:
+
+$$f[[-2, 2]] = [-2, 2]^2 - 2 = [0, 4] - 2 = [-2, 2]$$
+
+Para muestrear una distribución homogénea en el intervalo $[-2, 2)$, podemos utilizar la función ```rand```.
+Ésta función devuelve un número aleatorio tomado de una distribución homogénea en $[0, 1)$.
+Multiplicando el resultado por cuatro y restando a éste 2, tenemos una distribución homogénea en $[-2, 2)$. 
+Esta distribución es idéntica a la homogénea en $[-2, 2]$ salvo por un conjunto de medida cero. ({2})
+
+Una generalización ligera es la distribución uniforme en el intervalo $[a, b)$, en el que se multiplica al resultado de ```rand``` por $b - a$ y a éste se le suma $a$.
+
+```julia
+uniforme(a, b) = (b - a)*rand() + a
+```
+
+Podemos utilizar la paquetería ```Plots``` para realizar histogramas sencillos;
+
+```julia
+#Tomemos un millón de iteraciones:
+muestreo_F = iterados(F, 1_000_000)(uniforme(-2, 2))
+
+#Y se puede normalizar el histograma a una función de distribución de probabilidad mediante ```normalize = :pdf```:
+histogram(muestreo_F, normalize = :pdf, label = "")
+```
+
+Se observa que los iterados generados por la condición inicial tienden a visitar más frecuentemente las fronteras del dominio.
+En principio, podríamos esperar de esto que los extremos fueran puntos fijos atractores del mapeo, pero el cálculo analítico revela que éste no es el caso:
+
+- Los puntos fijos del mapeo están dados por:
+
+$$F(x) = x^2 - 2 = x \implies x^2 - x -2 = 0 \iff x = -1, 2. $$
+
+- Adicionalmente, ambos puntos fijos son repulsores:
+
+$$|F'(-1)| = |2(-1)| = 2 > 1 \mathrm{\quad y \quad} |F'(2)| = |2(-2)| = 4 > 1.$$
+
+Por lo que sólo uno de los picos correspondería a un verdadero punto fijo, aunque este es repulsor.
+
+Esto se puede entender un poco mejor considerando que si tuviéramos un atractor y parte de la órbita cayera dentro de la cuenca de atracción de dicho punto, el resto de la órbita tendería a acercarse a dicho punto y no escaparía de la cuenca de atracción.
+Es decir, si en verdad tuviéramos un punto atractor, sólo observaríamos un pico, situado sobre la posición del atractor.
+
+(b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\mod 1$, definido en el intervalo $x\in[0,1]$.
+
+Definimos el mapeo:
+
+```julia
+G(x) = begin @assert 0 <= x <= 1; mod(2*x, 1); end
+```
+
+El mapeo está bien definido por la inclusión de la aritmética modular.
+
+Realicemos el análisis:
+
+```julia
+#Tomemos un millón de iteraciones:
+muestreo_G = iterados(G, 1_000_000)(uniforme(0, 1))
+
+#Y hagamos el histograma:
+histogram(muestreo_G, normalize = :pdf, label = "")
+```
+
+Podemos observar que parece existir un atractor situado en cero.
+Podemos intentar confirmar esto analíticamente, usando la siguiente equivalencia:
+
+$$  G(x) = 2x \mod 1 = \left\{
+\begin{array}{ll}
+      2x & x \in [0, \frac{1}{2}] \\
+      2x - 1 & x \in (\frac{1}{2}, 1].
+\end{array} 
+\right. $$
+
+Esto implica que existen dos puntos fijos, soluciones a la ecuaciones:
+
+$$
+\begin{align}
+    &x \in [0, \frac{1}{2}] \implies G(x) = 2x = x \implies x = 0 \\
+    &x \in (\frac{1}{2}, 1] \implies G(x) = 2x - 1 = x \implies x = 1.
+\end{align}
+$$
+
+Sin embargo, repitiendo este experimento numérico varias veces, observamos que el otro punto fijo no aparece en los histogramas.
+En principio, esto se puede entender por ser $x = 1$ un punto repulsor.
+Sin embargo, este mismo argumento se puede aplicar a $x = 0$ dado que la derivada de $G$, salvo en $x = \frac{1}{2}$, es idéntica a 2.
+Es decir, ¡$x = 0$ es un punto fijo repulsor!
+
+Para entender esta paradoja, nos conviene recordar la forma en la que los números son representados en la computadora: como un número binario.
+
+Para el caso de números de punto flotante de 64 bits (unos o ceros), [la codificación usual](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64) usa 1 bit para el signo (cero para números positivos y uno para números negativos), 11 bits para el exponente (en el que 1023 en base decimal corresponde al cero) y el resto para codificar las cifras significativas del número en binario (en el que si todos los dígitos son cero, se interpreta el valor como uno).
+Es decir, si el flotante de 64 bits está dado por $se_1\ldots e_{11}b_1\ldots b_{52}$, el decimal respectivo estará dado por $(-1)^s 2^{e - 1023}\left(1 + \sum_{k = 1}^{52}b_{k}2^{-k}\right)$, dónde $e$ es el número decimal correspondiente al número binario $e_1\ldots e_{11}$.
+Una forma más sencilla de entender esto, es pensar que el término en paréntesis es el número decimal correspondiente al número binario $1.b_1b_2\ldots b_{52}$.
+
+Para fijar ideas, tomemos un ejemplo sencillo de representar en binario, por ejemplo, 0.5 en decimal (correspondiente a 0.1 en binario).
+
+```julia
+c_1 = 0.5
+
+#La representación en binario de c_1 es:
+bc_1 = bitstring(c_1)
+```
+
+En efecto el primer bit es cero, dado que tenemos un número positivo.
+El exponente binario (en representación decimal) está dado por:
+
+```julia
+parse(Int, bc_1[2:12], base = 2) - 1023
+```
+
+Por lo que en efecto tenemos un número cuya primera cifra significativa está en la posición de las mitades ($2^{-1}$).
+
+Finalmente, el valor de las cifras significativas es uno, dado que los 52 bits restantes son idénticos a cero:
+
+```julia
+bc_1[13:end]
+```
+
+Observemos lo que sucede en binario al aplicar las dos operaciones que conforman el mapeo: la multiplicación por dos y la toma de módulo uno:
+
+- Multiplicación por dos: Para entender lo que sucede, definamos un número un poco más complicado que el ejemplo anterior, por ejemplo, 1.375 en decimal (correspondiente a 1.011 en binario).
+
+```julia
+c_2 = 1+1/4+1/8
+
+#La representación en binario de c_2 es:
+bc_2 = bitstring(c_2)
+```
+
+```julia
+#El exponente binario es:
+parse(Int, bc_2[2:12], base = 2) - 1023
+```
+
+```julia
+#Y la parte fraccionaria del binario es:
+bc_2[13:end]
+```
+
+El resultado de multiplicar por dos es:
+
+```julia
+b2c_2 = bitstring(2*c_2)
+```
+
+El exponente binario aumenta en uno:
+
+```julia
+parse(Int, b2c_2[2:12], base = 2) - 1023
+```
+
+Mientras que las cifras significativas del binario quedan igual:
+
+```julia
+b2c_2[13:end]
+```
+
+Esencialmente, toda la representación se recorre una posición binaria a la izquierda, lo que corresponde a aumentar el exponente binario en uno.
+
+Observemos que esto varía, por la finitud de la representación, la "precisión" de un número. Es decir, a diferentes órdenes de magnitud, la distancia entre números mínimamente distintos cambia.
+Esto lo podemos ver usando `nextfloat`:
+
+```julia
+nextfloat(0.625)
+```
+
+```julia
+nextfloat(625.0)
+```
+
+En este ejemplo, la distancia entre números mínimamente distinguibles pasa de 10^{-16} a 10^{-13}.
+
+- Para la toma de módulo uno: Para entender lo que sucede, tomemos por ejemplo a 5.625 (101.101 en binario).
+
+```julia
+c_3 = 4+1+1/2+1/8
+
+#La representación en binario de c_3 es:
+bc_3 = bitstring(c_3)
+```
+
+```julia
+#El exponente binario es:
+parse(Int, bc_3[2:12], base = 2) - 1023
+```
+
+```julia
+#Y la parte fraccionaria del binario es:
+bc_3[13:end]
+```
+
+El resultado de tomar el módulo por uno es:
+
+```julia
+bmc_3 = bitstring(mod(c_3, 1))
+```
+
+El exponente binario pasa a ser el mínimo de la parte fraccionaria, truncando para dejar la parte no entera del número:
+
+```julia
+parse(Int, bmc_3[2:12], base = 2) - 1023
+```
+
+Mientras que las cifras significativas se truncan y ajustan con ceros a la derecha para sólo representar la parte no entera:
+
+```julia
+bmc_3[13:end]
+```
+
+Esencialmente, tomar el módulo por uno corresponde a dejar sólamente la parte no entera del número representada en binario del flotante.
+
+El conjugar ambas operaciones, entonces, resulta en primero un aumento del exponente del número en uno y después el eliminar la parte entera del mismo. 
+Esto, si se realiza suficientes veces, tiene el efecto de ir eliminando la precisión del número, eventualmente haciendo que los iterados converjan a cero.
+Esto corresponde a un error de truncamiento.
+
+(c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
+
+Los histogramas que realizamos, al normalizarlos como una función de densidad de probabilidad, nos dice (idealmente) la probabilidad a lo largo de una órbita de explorar el dominio del mapeo (su espacio fase).
+En el caso de tener un punto fijo atractor y realizar el histograma con un punto cuya órbita eventualmente es atraída por el atractor, el histograma debe de resultar en una distribución que al aumentar el número de iterados, se localiza más y más en torno al atractor.
+
+Sin embargo, la finitud de la aritmética al realizar cálculos con números de punto flotante como aproximación a la aritmética de números reales puede inducir, por acumulación, comportamientos que no reflejan fielmente la dinámica del mapeo.
+
+Por otra parte, más allá de ubicar puntos fijos atractores (reales o artificiales por el método de cálculo), el histograma nos permite explorar cuestiones dinámicas de los mapeos no evidentes desde la perspectiva de los puntos fijos: la heterogeneidad de la distribución de los iterados conforme estos exploran el espacio fase del mapeo.
+
+## Ejercicio 3
+
+(a) Usando lo que hicieron en la Tarea 1, incluyan lo que desarrollaron para los números `Dual`es en un módulo `NumDual` de Julia ([ver la documentación aquí](https://docs.julialang.org/en/v1.3/manual/modules/)). En particular, el módulo debe exportar el tipo `Dual` y la función `var_dual`, al menos. El archivo con el módulo lo deben incluir en un archivo ".jl" en su propio directorio de tareas. Carguen el módulo en este notebook, usando
+
+```julia
+include("nombre_archivo.jl")
+using NumDual
+```
+
+El módulo respectivo está contenido en el directorio ```tareas/CSGA``` con el nombre ```NumDual.jl```:
+
+```julia
+include("NumDual.jl")
+using Main.NumDual
+```
+
+(b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
+
+Podemos implementar el método de Newton (real) de la siguiente forma:
+
+```julia
+"""
+    Newton(f::Function, x0::Real, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Real, número_iteraciones::Int = 100)
+    
+    x = var_Dual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+```
+
+Probemos calculando una raíz de $f(x)$:
+
+```julia
+#Definiendo la función:
+f(x) = x^3 - 8
+
+#Calculando un cero:
+x0 = Newton(f, 10)
+```
+
+Comprobemos que en realidad es raíz:
+
+```julia
+f(x0)
+```
+
+(c) Encuentren los puntos fijos del mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
+
+Podemos implementar una función que calcule los puntos fijos:
+
+```julia
+"""
+    puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+
+Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos fijos (i.e. soluciones a la ecuación \$ f(x) - x = 0\$) usando el método de Newton.
+Devuelve un arreglo de los puntos fijos encontrados con las condiciones iniciales dadas.
+"""
+function puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    
+    puntos_fijos = x -> f(x) - x
+    
+    convergencia = [Newton(puntos_fijos, x0, número_iteraciones) for x0 in x0s]
+    unique!(convergencia)
+    
+    return convergencia
+end
+```
+
+Definimos la función:
+
+```julia
+F(x) = x^2 - 1.1
+```
+
+Y calculamos los puntos fijos. En principio, al este mapeo definir una ecuación cuadrática, sólo existen, cuanto más, dos puntos fijos; por lo que sólo dos condiciones  iniciales (adecuadas) deberían de bastar para encontrar los puntos:
+
+```julia
+F1 = puntos_fijos(x->x^2 - 1.1, [-1, 1])
+```
+
+Verifiquemos que son puntos fijos:
+
+```julia
+F.(F1)
+```
+
+(d) Encuentren los puntos *de periodo 2* para el mapeo $F(x) = x^2 - 1.1$ usando la función que implementaron para el método de Newton.
+
+De manera análoga, podemos definir una función que calcule los puntos de periodo arbitrario. (La función anterior es un caso especial de este, para cuando el orden del periodo de los puntos es uno.)
+
+```julia
+"""
+    puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+
+Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos de periodo \$n\$ (i.e. soluciones a la ecuación \$ f^{(n)}(x) - x = 0\$) usando el método de Newton.
+Devuelve un arreglo de los puntos de periodo \$n\$ encontrados con las condiciones iniciales dadas.
+"""
+function puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    
+    @assert n > 0
+    
+    puntos_periodo_n = x -> iterar(f, n, x) - x
+    
+    convergencia = [Newton(puntos_periodo_n, x0, número_iteraciones) for x0 in x0s]
+    unique!(convergencia)
+    
+    return convergencia
+end
+```
+
+Usemos lo que acabamos de definir para calcular los puntos de periodo dos.
+Dado que la segunda iteración define una cuártica, existen cuanto más, cuatro puntos de periodo dos.
+Más aún, como los puntos de periodo uno son automáticamente de periodo dos, cuanto más hay dos puntos de periodo mínimo dos distintos:
+
+```julia
+F2 = puntos_periodo(F, 2, [-10, -1, 0, 1, 10])
+```
+
+Removamos los puntos de periodo uno:
+
+```julia
+F2_mín = filter(x -> !isapprox(iterar(F, 1)(x), x), F2)
+```
+
+Comprobemos que en efecto son puntos de periodo dos:
+
+```julia
+iterar(F, 2).(F2_mín)
+```
+
+(e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 - 1.1$ son linealmente estables (atractivos).
+
+Basta convertir los valores anteriores a sus ```var_Dual```es correspondientes, evaluar $F^{(2)}(x)$ en los duales correspondientes y examinar la derivada:
+
+```julia
+derivada.(iterar(F, 2).(var_Dual.(F2_mín)))
+```
+
+Como ambos puntos de periodo dos tienen primer derivada con valor absoluto estrictamente menor a uno, son puntos de periodo dos atractores.
+
+## Ejercicio 4
+
+(a) El método de Newton es iterativo, y en ese sentido se puede considerar como un mapeo dado por
+\begin{equation}
+z_{n+1} = N(z_n) = z_n - \frac{f(z_n)}{f'(z_n)}.
+\end{equation}
+Vamos a considerar la función $f(z) = z^3-1$, e iteraciones del mapeo $N(z)$, con $z\in\mathbb{C}$. Es claro que los ceros de $f(z)$, es decir, las $z^*$ tales que $f(z^*)=0$
+tienen la propiedad de que $N(z^*)=z_*$. En este caso concreto los ceros los podemos escribir como $z^*_r = \exp(i 2\pi r/3)$, con $r=0, 1, 2$.
+
+La idea es considerar *muchas* condiciones iniciales $z_0\in[-1,1]\times[-1,1]$, y para cada condición inicial iteraremos muchas veces el mapeo, por ejemplo, $n=10000$ veces. La idea es asignarle a cada condición inicial un color (azul, verde o rojo) según el punto al que converja, o al punto al que más se acerque $z_n$. Dibujen el mapa de colores que se obtiene.
+
+Para poder usar algo similar a lo desarrollado anteriormente con duales "reales" en los complejos, podemos definir estructuras análogas a los complejos pero con entradas duales.
+La implementación de esto se encuentra en ```tareas/CSGA/ComplexDual.jl``` y está incluído dentro del módulo ```NumDual```, por lo que sólo se requiere extender un poco el método de Newton usando un constructo compleji análogo a ```var_Dual```, ```var_ComplexDual```:
+
+```julia
+"""
+    Newton(f::Function, x0::Complex, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Complex, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+```
+
+Definamos la familia de funciones cuyas raíces corresponden a las raíces $n$-ésimas de la unidad:
+
+```julia
+nfoil(n, z) = z^n - 1
+nfoil(n) = z -> nfoil(n, z)
+raíces_unidad(n) = [exp((2*π*im)*k/n) for k in 0:(n-1)]
+```
+
+(El caso de interés ocurre para $n = 3$.)
+
+Para clasificar más fácilmente los puntos, conviene definir un par de funciones auxiliares:
+
+```julia
+"""
+    pertenencia(clases, dato; rtol = 0.0)
+
+Dado un conjunto de valores ```clases```, devuelve el índice de la clase a la que dato pertenece (definido mediante ```isapprox``` con el parámetro ```rtol```).
+En el caso de que no pertenezca a ninguna clase, devuelve cero.
+"""
+function pertenencia(clases, dato; rtol = 0.0)
+    
+    for index in eachindex(clases)
+        
+        if isapprox(clases[index], dato, rtol = rtol)
+            
+            return index
+        end
+    end
+    
+    return 0
+end
+
+"""
+    convergencia(función, valores_convergencia, condición_inicial, rtol = 0.0)
+
+Dada una ```función``` y un conjunto de ```valores_convergencia``` que definen las clases respectivas,
+aplica la función a la ```condición_inicial``` y devuelve la clasificación de convergencia usando la función ```pertenencia``` con el parámetro ```rtol``` sobre el resultado de la función.
+"""
+function convergencia(función, valores_convergencia, condición_inicial; rtol = 0.0)
+    
+    y = función(condición_inicial)
+        
+    clasificación =  pertenencia(valores_convergencia, y, rtol = rtol)
+        
+    return clasificación
+end
+```
+
+Podemos proceder a realizar el análisis del caso particular. 
+Para poder observar esto gráficamente, podemos usar la función ```contour``` de ```Plots.jl```:
+
+```julia
+#Las condiciones iniciales:
+rango_Re = -2:0.005:2
+rango_Im = -2:0.005:2
+
+#Los valores de convergencia:
+y0s_3 = raíces_unidad(3)
+
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(3), z), y0s_3, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+Por curiosidad, podemos hacer el mismo análisis para otros valores de $n$:
+
+```julia
+#Los valores de convergencia:
+y0s_4 = raíces_unidad(4)
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(4), z), y0s_4, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^4 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_4)
+```
+
+```julia
+#Los valores de convergencia:
+y0s_5 = raíces_unidad(5)
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton(nfoil(5), z), y0s_5, Complex(x, y)),
+        fill = true, nlevels = 5, color = :blues,
+        title = "Convergencia del método de Newton como función \n de la condición inicial para las raíces de \$z^5 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_5)
+```
+
+Obtenemos bonitos fractales "florales", con un número de hojas igual al número de raíces de la unidad para cada valor $n$.
+
+Observemos que dada que la velocidad de convergencia del método de Newton es elevada, no es necesario tomar tantas iteraciones (bastan las que definimos por default, 100), para que prácticamente todos los puntos converjan a una raíz.
+
+(b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
+\begin{equation}
+z_{n+1} = z_n - a\frac{f(z_n)}{f'(z_n)},
+\end{equation}
+para la misma función $f(z)$, con $a=2$.
+
+*Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
+
+Modifiquemos un poco el método de Newton:
+
+```julia
+function Newton_modificado(f::Function, x0::Complex, a, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= a*principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+```
+
+Para $a = 2$:
+
+```julia
+a = 2
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 1000), y0s_3, Complex(x, y)),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+Inclusive con 1000 iteraciones (10 veces las iteraciones usadas anteriormente), parece ser que las condiciones iniciales no convergen lo suficientemente rápido:
+
+```julia
+convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(1, 0.1))
+```
+
+Una forma de obtener resultados sin elevar "demasiado" el número de iteraciones, es relajando los criterios de convergencia, por ejemplo, usando el parámetro ```rtol```.
+
+```julia
+a = 2
+#El diagrama de contorno de las regiones de convergencia:
+contour(rango_Re, rango_Im,
+        (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(x, y), rtol = 0.1),
+        fill = true, nlevels = 4, color = :blues,
+        title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+        xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+#Y las raíces:
+scatter!(y0s_3)
+```
+
+¡Se parece al conjunto de Mandelbrot!
+
+¿Qué pasará si variamos el parámetro $a$?
+Para ver esto, se puede [hacer una animación](https://docs.juliaplots.org/latest/animations/):
+
+```julia
+#=
+animación_real = @animate for a in 0:0.01:2
+    contour(rango_Re, rango_Im,
+            (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, a, 500), y0s_3, Complex(x, y), rtol = 0.1),
+            fill = true, nlevels = 4, color = :blues,
+            title = "Convergencia del método de Newton modificado (\$a\$ = $a) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+            xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+    scatter!(y0s_3)
+end
+
+gif(animación_real, "Newton_modificado_3_real.gif", fps = 15)
+=#
+```
+
+Se comenta el código para ahorrar cómputo.
+La animación está disponible como ```Newton_modificado_3_real.gif```.
+se observa un comportamiento como de "zoom"..
+
+Dado que estamos en complejos, ¿qué pasará si hacemos tomamos a un complejo de la forma $1 + ai$ para modificar el método?
+
+```julia
+#=
+animación_compleja = @animate for a in -1:0.01:1
+    contour(rango_Re, rango_Im,
+            (x,y) -> convergencia(z -> Newton_modificado(nfoil(3), z, Complex(1, a), 500), y0s_3, Complex(x, y), rtol = 0.1),
+            fill = true, nlevels = 4, color = :blues,
+            title = "Convergencia del método de Newton modificado (\$a\$ = 1 + $a im) como función \n de la condición inicial para las raíces de \$z^3 - 1 \$",
+            xlabel = "Re(z)", ylabel = "Im(z)", legend = false, aspectratio = :equal, titlefont = 10)
+    scatter!(y0s_3)
+end
+
+gif(animación_compleja, "Newton_modificado_3_compleja.gif", fps = 15)
+=#
+```
+
+La animación está disponible como ```Newton_modificado_3_compleja.gif```.
+se observa un comportamiento como de "rotación" para valores de $a$ pequeños, que conforma aumenta el módulo de $a$, degenera en rotaciones de las ramas cada vez más drásticas, hasta que repentinamente se fusionan.
+
+Estos comportamientos, hasta cierto punto, parecen extrapolar la intuición geométrica de la multiplicación por un complejo: homotecias ("zoom") y rotaciones.
+
+## Ejercicio 5
+
+Consideremos ahora el triángulo definido por los tres puntos $A=(0, 1)$, $B=(\cos(7\pi/6), \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0$ en $[-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+
+(a) Definan una regla, la que quieran, que asigne dos salidas distintas del dado (por ejemplo, 1 y 5) a cada uno de los tres vértices del triángulo.
+
+Para poder hacer esto un poco más interesante, hagamos la elección de la regla de asignación aleatoria.
+Para ello, usemos el paquete `Random.jl`:
+
+```julia
+using Random
+```
+
+Definamos algunas constantes para el ejercicio:
+
+```julia
+número_vértices = 3
+número_caras = 6
+```
+
+Para construir aleatoriamente la regla de asignación, generemos una permutación aleatoria, $\sigma$ de las caras del dado.
+Esta permutación la vamos a mapear a los vértices de forma secuencial usando aritmética modular, de tal forma que para el ejemplo, el primer y cuarto valor de la permutación sean asignados a la primera cara; el segundo y el quinto a la segunda; y, el tercero y sexto a la tercera:
+
+```julia
+permutación(número_caras) = randperm(número_caras)
+asignación(número_vértices, número_caras) = begin perm = permutación(número_caras); Dict(perm[i] => mod1(i, número_vértices) for i in 1:número_caras); end
+
+asignación_triángulo = asignación(número_vértices, número_caras)
+```
+
+(b) A partir de un punto $X$, definan el mapeo que, para cada tiro del dado $d$, hace que el punto $X$ sea mapeado al punto medio de $X$ y el vértice del triángulo asignado en (a).
+
+Definamos los lados del tríangulo.
+Para ello, podemos reutilizar la definición de las raíces de la unidad del ejercicio pasado, rotando las raíces cúbicas de la unidad 90°:
+
+```julia
+triángulo = raíces_unidad(3)*im
+```
+
+Podemos además, reutilizar la forma paramétrica de la recta definida en el ejercicio 1 para definir el mapeo:
+
+```julia
+mapeo_5_explícito(vértices, asignación, dado, x0) = línea_paramétrica(x0, vértices[asignación[dado]])(0.5)
+```
+
+Nos conviene, sin embargo, no requerir de estar dando de antemano el valor de la tirada del dado, sino incluir la tirada en la definición que usaremos para iterar:
+
+```julia
+mapeo_5(número_caras, vértices, asignación, x0) = mapeo_5_explícito(vértices, asignación, rand(1:número_caras), x0)
+mapeo_5(número_caras, vértices, asignación) = x0 -> mapeo_5(número_caras, vértices, asignación, x0)
+```
+
+(c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
+
+Usando la forma funcional de `mapeo_5`, podemos usar las herramientas de iteración definidas en el ejercicio 1 con una condición inicial aleatoria en $[-1, 1]\times[-1,1]$:
+
+```julia
+#Rescatamos también la definición para generar números aleatorios de una distribución uniforme del ejercicio 2:
+@show x0_5 = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5)
+```
+
+Podemos graficar usando pixeles (para que se aprecie mejor la figura) usando `PyPlot` directamente:
+
+```julia
+PyPlot.scatter(real.(iterados_triángulo), imag.(iterados_triángulo), marker = ",", s = 1)
+```
+
+¡Obtenemos el triángulo de Sierpiński!
+
+(d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
+
+Probemos con algunas condiciones iniciales particulares:
+
+```julia
+x0_5_2 = Complex(2.0, 0)
+iterados_triángulo_2 = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5_2)
+
+PyPlot.scatter(real.(iterados_triángulo_2), imag.(iterados_triángulo_2), marker = ",", s = 1)
+```
+
+```julia
+x0_5_3 = Complex(0, 2.0)
+iterados_triángulo_3 = iterados(mapeo_5(número_caras, triángulo, asignación_triángulo), 100_000 - 1, x0_5_3)
+
+PyPlot.scatter(real.(iterados_triángulo_3), imag.(iterados_triángulo_3), marker = ",", s = 1)
+```
+
+Eventualmente siempre recuperamos el triángulo de Sierpiński porque al asignar el punto medio entre el punto a iterar y alguno de los vértices, siempre nos acercamos al triángulo. En el peor de los casos, en el que siempre estamos mapeando entre dos vértices y no en todo el triángulo, colapsamos en la arista que los une. (Aunque dado que los tres vértices son equiprobables, esta condición, conforme aumentan las iteraciones, se vuelve cada vez más improbable.)
+
+Para estudiar este caso degenerado, podemos jugar un poco con la equiprobabilidad de elegir un vértice para mapear. 
+Para ello, consideremos un dado que favorezca un vértice particular, asignándole al vértice dos veces más probabilidad que a los otros.
+Podemos implementar esto usando un dado de cuatro caras:
+
+```julia
+número_caras_asimétrico = 4
+#El primer vértice (el que está en el eje y) tiene 1/2 de probabilidad de ser elegido, mientras que los otros sólo 1/4.
+asignación_triángulo_asimétrico = asignación(número_vértices, número_caras_asimétrico)
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_asimétrico = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_asimétrico = iterados(mapeo_5(número_caras_asimétrico, triángulo, asignación_triángulo_asimétrico), 100_000 - 1, x0_5_asimétrico)
+
+PyPlot.scatter(real.(iterados_triángulo_asimétrico), imag.(iterados_triángulo_asimétrico), marker = ",", s = 1)
+```
+
+A pesar de la asimetría inducida, seguimos teniendo el triángulo de Sierpiński.
+Quizá modificando la forma de asignar vértices, permitiendo dar las probabilidades directamente, se puede encontrar un conjunto de parámetros que cambien la dinámica.
+
+Por curiosidad, veamos lo que pasa en un rombo construido análogamente:
+
+```julia
+número_vértices_2 = 4
+número_caras_2 = 8 ##Para mantener la equiprobabilidad
+
+asignación_rombo = asignación(número_vértices_2, número_caras_2)
+```
+
+```julia
+rombo = raíces_unidad(4)*im
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_rombo = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_rombo = iterados(mapeo_5(número_caras_2, rombo, asignación_rombo), 100_000 - 1, x0_5_rombo)
+
+PyPlot.scatter(real.(iterados_triángulo_rombo), imag.(iterados_triángulo_rombo), marker = ",", s = 1)
+```
+
+¡Parece que no se replica el comportamiento observado para el triángulo!
+
+¿Y con un pentágono regular?
+
+```julia
+número_vértices_3 = 5
+número_caras_3 = 10 ##Para mantener la equiprobabilidad
+
+asignación_pentágono = asignación(número_vértices_3, número_caras_3)
+```
+
+```julia
+pentágono = raíces_unidad(5)*im
+```
+
+```julia
+#Igualmente, iniciemos con una condición inicial aleatoria:
+x0_5_pentágono = Complex(uniforme(-1, 1), uniforme(-1, 1))
+iterados_triángulo_pentágono = iterados(mapeo_5(número_caras_3, pentágono, asignación_pentágono), 1_000_000 - 1, x0_5_pentágono)
+
+PyPlot.scatter(real.(iterados_triángulo_pentágono), imag.(iterados_triángulo_pentágono), marker = ",", s = 1)
+```
+
+¡Tenemos un "pentágono de Sierpiński"! (A pesar de que tuvimos que aumentar las iteraciones un poco para verlo más claramente)
+
+## Ejercicio 6
+
+Vamos a considerar el siguiente mapeo lineal, en dos dimensiones, dado por
+
+\begin{equation}
+B(x_{n+1}, y_{n+1} ) =
+\left( \begin{array}{c} x_{n+1} \\ y_{n+1} \end{array} \right) =
+\left(\begin{array}{cc} a & b\\ c & d \end{array}\right)
+\left( \begin{array}{c} x_{n} \\ y_{n} \end{array} \right) +
+\left( \begin{array}{c} 0 \\ f \end{array} \right).
+\end{equation}
+
+Los coeficientes que aparecen en el mapeo se eligirán de manera aleatoria, con
+probabilidad $p$, de acuerdo con la siguiente tabla:
+
+|     p     |     a     |     b     |     c     |     d     |     f     |
+|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
+|   0.01    |     0     |     0     |     0     |    0.16   |   0    |
+|   0.85    |  0.85     |     0.04  |   -0.04   |    0.85   |   1.6     |
+|   0.07    |  0.2      |    -0.26  |    0.23   |    0.22   |   1.6     |
+|   0.07    | -0.15     |     0.28  |    0.26   |    0.24   |   0.44    |
+
+Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
+
+Para poder hacer el código legible, nos conviene definir algunas funciones auxiliares: una que realice la tranformación afín sobre un vector a partir de la matriz y el vector que determinan la tranformación, una que genere la matriz y el vector asociados a la transformación a partir de los coeficientes y otra que vaya devolviendo las funciones afines de acuerdo a las probabilidades dadas.
+
+```julia
+#Dada una matriz A y un vector b, devuelve A*x + b
+afín(A, b, x) = A*x + b
+afín(A, b) = x -> afín(A, b, x)
+
+#Dados los parámetros a, b, c, d, e, f, genera la matriz y el vector correspondientes a la tranformación afín que les corresponde:
+matriz_vector_afín(a, b, c, d, e, f) = ([a b; c d], [e, f])
+
+#Definimos una función que devuelve la función afín según la probabilidad de cada evento:
+function mapeo_6(r, pa = 0.01, pb = 0.85, pc = 0.07, pd = 0.07)
+    
+    @assert sum([pa, pb, pc, pd] .>= 0.0) == 4
+    @assert (pa + pb + pc + pd == 1.0)
+    
+    #Definimos la función por casos:
+    if r < pa #(p = 0.01 = 0.85)
+        
+        return afín(matriz_vector_afín(0.0, 0.0, 0.0, 0.16, 0.0, 0.0)...)
+        
+    elseif pa <= r < (pb + pa) #(p = 0.86 - 0.01 = 0.85)
+        
+        return afín(matriz_vector_afín(0.85, 0.04, -0.04, 0.85, 0.0, 1.6)...)
+        
+    elseif (pb + pa) <= r < (pc + pb + pa) #(p = 0.93 - 0.86 = 0.07)
+        
+        return afín(matriz_vector_afín(0.2, -0.26, 0.23, 0.22, 0.0, 1.6)...)
+        
+    else
+        
+        return afín(matriz_vector_afín(-0.15, 0.28, 0.26, 0.24, 0.0, 0.44)...)
+    end
+    
+end
+```
+
+Usando estas funciones, podemos proceder a explorar la dinámica:
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6 = iterados(x -> mapeo_6(rand())(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_x = broadcast(x -> x[1], iterados_6)
+mapeo_6_y = broadcast(x -> x[2], iterados_6)
+gráfica_6 = scatter(mapeo_6_x, mapeo_6_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional")
+```
+
+¡Obtenemos un conjunto atractor en forma de hoja de helecho!
+
+¿Qué pasará si alteramos la probabilidad de elegir una transformación afín determinada, digamos, haciendo todas equiprobables?
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6_2 = iterados(x -> mapeo_6(rand(), 0.25, 0.25, 0.25, 0.25)(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_2_x = broadcast(x -> x[1], iterados_6_2)
+mapeo_6_2_y = broadcast(x -> x[2], iterados_6_2)
+gráfica_6_2 = scatter(mapeo_6_2_x, mapeo_6_2_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional")
+```
+
+Obtenemos algo menos bonito, más parecido a una aproximación burda de la hoja anterior.
+
+Este ejemplo, sin embargo, nos hace pensar que si bien la probabilidad de los mapeos sí puede cambiar las características del conjunto de atractores, "bastante" de la información geométrica está contenida en las funciones afines.
+
+La primera observación importante es ver que este mapeo aleatorio, en general, es acotado en el sentido de que la norma del vector $B(x)$ es en general más pequeña que la de $x$. (Ya que todas las matrices A tienen determinante menor a uno, junto con la adición de un desplazamiento "pequeño" de norma menor a uno).
+
+La segunda observación importante corresponde a los atractores de los mapeos deterministas que componen al mapeo aleatorio:
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6_1p = iterados(x -> mapeo_6(rand(), 1, 0, 0, 0)(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_1p_x = broadcast(x -> x[1], iterados_6_1p)
+mapeo_6_1p_y = broadcast(x -> x[2], iterados_6_1p)
+gráfica_6_1p = scatter(mapeo_6_1p_x, mapeo_6_1p_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional, pa = 1", xlims = (-2, 2), ylims = (-2, 2))
+```
+
+```julia
+#El atractor está dado por:
+iterados_6_1p[end]
+```
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6_2p = iterados(x -> mapeo_6(rand(), 0, 1, 0, 0)(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_2p_x = broadcast(x -> x[1], iterados_6_2p)
+mapeo_6_2p_y = broadcast(x -> x[2], iterados_6_2p)
+gráfica_6_2p = scatter(mapeo_6_2p_x, mapeo_6_2p_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional, pb = 1", xlims = (-2, 2), ylims = (-2, 2))
+```
+
+```julia
+#El atractor está dado por:
+iterados_6_2p[end]
+```
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6_3p = iterados(x -> mapeo_6(rand(), 0, 0, 1, 0)(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_3p_x = broadcast(x -> x[1], iterados_6_3p)
+mapeo_6_3p_y = broadcast(x -> x[2], iterados_6_3p)
+gráfica_6_3p = scatter(mapeo_6_3p_x, mapeo_6_3p_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional, pc = 1", xlims = (-2, 2), ylims = (-2, 2))
+```
+
+```julia
+#El atractor está dado por:
+iterados_6_3p[end]
+```
+
+```julia
+#Iteramos 1000 veces usando los parámetros por defecto con una condición inicial aleatoria en [-1, 1]x[-1,1]
+iterados_6_4p = iterados(x -> mapeo_6(rand(), 0, 0, 0, 1)(x), 100000)([uniforme(-1, 1), uniforme(-1, 1)])
+
+#Graficamos cada condición inicial en un color:
+mapeo_6_4p_x = broadcast(x -> x[1], iterados_6_4p)
+mapeo_6_4p_y = broadcast(x -> x[2], iterados_6_4p)
+gráfica_6_4p = scatter(mapeo_6_4p_x, mapeo_6_4p_y, legend = false, title = "Atractor del mapeo aleatorio bidimensional, pd = 1", xlims = (-2, 2), ylims = (-2, 2))
+```
+
+```julia
+#El atractor está dado por:
+iterados_6_4p[end]
+```
+
+Estos mapeos, al ser cambiados aleatoriamente, van cambiando dinámicamente (dependiendo de la sucesión particular de mapeos) la ubicación del atractor del mapeo generado, que resulta de la rotación, homotecia y desplazamiento de los atractores de los mapeos posteriores aplicados.
+
+Que en general los atractores de los mapeos sean distintos, generan que los iterados no converjan uniformemente a ningún punto en particular, sino que se vayan desplazando, aproximándose al atractor del mapeo compuesto correspondiente.
+
