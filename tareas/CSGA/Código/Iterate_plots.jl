@@ -115,7 +115,7 @@ end
 """
     paleta_colores(l)
 
-Devuelve la paleta de los primeros $l$ colores usada por defecto.
+Devuelve la paleta de los primeros \$l\$ colores usada por defecto.
 """
 paleta_colores(l) =  get_color_palette(:auto, plot_color(:white), l)
 

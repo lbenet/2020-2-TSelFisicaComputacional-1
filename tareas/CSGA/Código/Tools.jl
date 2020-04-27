@@ -8,7 +8,7 @@ end
 module Plotting_tools
 
 using Plots; pyplot()
-using Tools
+using Main.Tools
 
 include("Iterate_plots.jl")
 
