@@ -1,0 +1,1056 @@
+
+# TEMAS SELECTOS DE FÍSICA COMPUTACIONAL 1, 2020-2
+### Erick Alexis Gómez Hernández
+
+# Tarea 2
+
+
+
+
+> Envío inicial del PR: **27 de marzo**.
+>
+> Aceptación PR *final*: **3 de abril**.
+
+**NOTA**: Esta tarea incluye generar varias imágenes; no es necesario que las incluyan en su entrega, pero sí debe ser posible generarlas a partir de lo que entreguen.
+
+## Ejercicio 1
+
+Describan la dinámica de varias órbitas para los siguientes mapeos, usando distintos colores para distintas órbitas, en una misma gráfica. Interesa entre otras cosas saber cuántos puntos fijos tiene el mapeo y cómo es la dinámica cerca de dichos puntos.
+
+(a) $M_1(x) = \frac{1}{3x}$.
+
+(b) $M_2(x) = -\frac{x^5}{5}$.
+
+(c) $M_3(x) = \frac{x}{2}-2$.
+
+(d) $M_4(x) = x-x^2$.
+
+```julia
+using Plots, LaTeXStrings
+gr(grid = false)
+```
+
+```julia
+# Definición de las funciones
+M1(x) = 1/(3x)
+M2(x) = - x^5/5
+M3(x) = x/2 - 2
+M4(x) = x - x^2
+```
+
+```julia
+"""
+`mapear(F :: Function, x0 :: T, n :: Int) `**`where`**` {T <: Real}` \n
+
+Devuelve un vector de `n` iteraciones de la función `F` con condición inicial `x0`. 
+"""
+function mapear(F::Function, x0::T, n::Int) where {T <: Real}
+    
+    iteraciones = [x0]
+    
+    for i in 1:n
+        x0 = F(x0)
+        push!(iteraciones, x0)
+    end
+    
+    return iteraciones
+    
+end
+```
+
+```julia
+"""
+`analisis_grafico(F :: Function, x0 :: Float64, n :: Int, limx = (-20,20), limy = (-20,20);  titulo = "F(x)", lab = "")` \n
+
+Dibuja los primeros `n` (núm. de iteraciones) elementos  de
+la órbita de la función `F` con condición inicial `x0`.
+"""
+
+function analisis_grafico(F::Function, x0::Float64, n::Int, limx = (-20,20), limy = (-20,20);  titulo = "F(x)", lab = "", leg = :best)    
+    
+    x1 = F(x0)    # primera iteración
+    I = limx[1]:1/100:limx[end] # intervalo de evaluación de F
+    X = Float64[]               # vector abcisas de la órbita
+    Y = Float64[]               # vector ordenadas de la órbita
+    
+    p = plot(I, F.(I), title = titulo, l = 1.5, xlims = limx, ylims = limy, label = "F(x)") # gráfica de F
+        plot!(x -> x, l = 1.5, grid = false, label = "x", legend = leg) # gráfica de la identidad
+
+    push!(X, x0)
+    push!(Y, zero(x0))
+    
+    push!(X, x0)
+    push!(Y, x1)
+    
+    push!(X, x1)
+    push!(Y, x1)
+    
+    for i in 1 : n-1
+        # Actualización de la siguiente iteración
+        x0 = x1
+        x1 = F(x0)
+    
+        push!(X, x0)
+        push!(Y, x1)
+        
+        push!(X, x1)     
+        push!(Y, x1)
+    end
+    
+    plot!(X,Y, m = :circle, ms = 3, mc = :orange,
+        l = :dash, lc = :orange, label = lab) 
+    
+    #for j in 1:3:length(X)
+     #   scatter!([X[j]], [Y[j]], label = "", m = :circle) # gráfica de los elementos de la órbita
+    #end
+    
+    return p
+
+end
+```
+
+```julia
+"""
+`analisis_grafico!(F :: Function, x0 :: Float64, n :: Int, col = :red1; lab = "x0")` \n
+
+Similar a analisis_grafico pero que además permite permite sobreponer una órbita sobre otra.
+"""
+
+function analisis_grafico!(F::Function, x0::Float64, n::Int, col = :red1; lab = "x0")    
+    
+    x1 = F(x0)   
+    X = Float64[]
+    Y = Float64[]
+    
+    push!(X, x0)
+    push!(Y, zero(x0))
+    
+    push!(X, x0)
+    push!(Y, x1)
+ 
+    push!(X, x1)
+    push!(Y, x1)
+    
+    for i in 1 : n-1
+        x0 = x1
+        x1 = F(x0)
+     
+        push!(X, x0)
+        push!(Y, x1)
+        
+        push!(X, x1)
+        push!(Y, x1)
+    end
+    
+    p = plot!(X,Y, m = :circle, ms = 3, mc = col, l = :dash, lc = col, label = lab)
+    
+    #for j in 1:3:length(X)
+     #   scatter!([X[j]], [Y[j]], label = "", m = :circle) # gráfica de los elementos de la órbita
+    #end
+    
+    return p
+    
+end
+```
+
+* Órbitas para $ M_1(x) = \frac{1}{3x} $
+
+```julia
+n = 20          # iteraciones
+X0 = 10*rand(4) # x0 ∈ [0,10] 
+c = maximum(X0)
+
+analisis_grafico(M1, X0[1], n, # función, condicion inicial, iteraciones  
+    (-0.15c, 1.3c),        # límites en x
+    (-0.15c, 1.1c);        # límites en y
+    titulo = L"Orbs. \,\,de\,\,F(x) = \frac{1}{3x}, \,\, x_0 \in [0,10]", # título de todo el plot
+    lab    = "$(trunc(X0[1], digits = 3))")                 # etiqueta de condción inicial   
+analisis_grafico!(M1, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M1, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+analisis_grafico!(M1, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
+```
+
+```julia
+n = 15           # iteraciones
+X0 = -10*rand(4) # x0 ∈ [-10,0]
+
+c = minimum(X0)
+analisis_grafico(M1, X0[1], n, 
+    (1.35c, -0.15c), 
+    (1.15c, -0.15c); 
+    titulo = L"Orbs. \,\,de\,\, F(x) = \frac{1}{3x}, \,\,x_0 \in [-10,0]",
+    lab    = "$(trunc(X0[1], digits = 3))",
+    leg = :bottomleft)
+analisis_grafico!(M1, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M1, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+analisis_grafico!(M1, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
+```
+
+Se nota que todos los puntos son de periodo dos (excepto los puntos fijos que se observan), por lo que serán mapeados solamente a dos valores y no es posible converger gráficamente a algún punto. Analíticamente  los puntos fijos son:
+
+$$ \frac{1}{3x} = x \quad\Rightarrow\quad x = \pm \frac{1}{\sqrt{3}} $$
+
+* $ M_2(x) = -\frac{x^5}{5} $
+
+```julia
+n = 20 # iteraciones
+t = sqrt(sqrt(5))
+X0 = (2*rand(4) .- 1)*t # x0 ∈ [-1,1]
+c = 1.8
+
+analisis_grafico(M2, X0[1], n, 
+    (-c, c), 
+    (M2(c),M2(-c)); 
+    titulo = L"Orbs.\,\, de\,\, F(x) = - \frac{x^5}{5}, \,\,|x_0|\leq 5^{1/4}",
+    lab    = "$(trunc(X0[1], digits = 3))")
+analisis_grafico!(M2, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M2, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+plot!(aspectratio = 0.6)
+vline!([-t,t], l = :dash, lc = :purple, label = "")
+```
+
+```julia
+n = 10
+X01 = (2*rand(2) .- 3)*t # x0 ∈ [-4,-t]
+X02 = (2*rand(2) .+ 1)*t # x0 ∈ [t,4]
+c = 205
+
+analisis_grafico(M2, X01[1], n, 
+    (-c, c), 
+    (-c, c); 
+    titulo = L"Orbs.\,\, de\,\, F(x) = - \frac{x^5}{5}, \,\,|x_0|\geq 5^{1/4}",
+    lab    = "$(trunc(X01[1], digits = 3))",
+    leg    = :bottomright)
+analisis_grafico!(M2, X01[2], n, :red2;   lab = "$(trunc(X01[2], digits = 3))")
+analisis_grafico!(M2, X02[1], n, :green;  lab = "$(trunc(X02[1], digits = 3))")
+analisis_grafico!(M2, X02[2], n, :purple; lab = "$(trunc(X02[2], digits = 3))")
+plot!(aspectratio = 0.8)
+vline!([-t,t], l = :dash, lc = :purple, label = "")
+```
+
+De manera general se observa que
+
+* Si $ |x_0| < t$ las órbitas convergen a cero,
+* Si $ |x_0| > t$, las órbitas divergen.
+
+Pero, ¿por qué $t = 5^{1/4}$?
+
+$M_2(x)$ es una función impar. 
+En la siguiete gráfica observemos que:
+
+* $ |x| > |M_2(x)|$ para $|x|<t \quad (1)$
+
+* $ |x| < |M_2(x)|$ para $|x|>t \quad (2)$
+
+donde $t$ es el punto en el cual la identidad intersecta a -es un punto fijo de- $|M_2(x)|$, pues:
+
+$$ |M_2(x)| = \frac{x^5}{5} = x \quad \Leftrightarrow \quad
+   x^4 = 5 \quad \Leftrightarrow \quad x = 5^{1/4}. 
+$$
+
+Así que al mapear $M_2(x)$ (en el análisis gráfico) a la identidad para reevaluar la función:
+
+* En $(1)$: los valores de $M_2^n(x), \,\,n>1$ se quedan en $[-t,t]$
+
+* En $(2)$: los valores de $M_2^n(x), \,\,n>1$ caen en $[-t,t]^c$
+
+
+
+```julia
+n = 20                # iteraciones
+x0 = sqrt(sqrt(5))*rand() # x0 ∈ [-1,1]
+c = 2
+
+analisis_grafico(M2, t, n, 
+    (-c, c), 
+    (M2(c),M2(-c)); 
+    titulo = L"Orb.\,\, de\,\, F(x) = -\frac{x^5}{5}, \,\ x_0 = -5^{1/4}",
+    lab    = L"5^{1/4}")
+plot!(x -> -M2(x), lab = "-F(x)", l = :dash)
+plot!(x -> -x, l = :dash,  lab = "")
+plot!(x -> 0, l = :dash, lc = :black, aspectratio = 0.4, label = "")
+```
+
+Las órbitas con $x_0\in[-5^{1/4},5^{1/4}]$ convergen al punto $x=0$ por lo que este es un punto fijo atractor de éstas órbitas.
+
+* $ M_3(x) = \frac{x}{2} - 2 $
+
+```julia
+n = 10
+X0 = 13*rand(4) .- 3.0 # x0 ∈ [-3,13]
+
+analisis_grafico(M3, X0[1], n, 
+    (-6, 1.2*maximum(X0)), 
+    (-5, 2*maximum(M3.(X0))); 
+    titulo = L"Orbs.\,\, de\,\, F(x) = \frac{x}{2} - 2",
+    lab = "$(trunc(X0[1], digits = 3))",
+    leg = :bottomright)
+analisis_grafico!(M3, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M3, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+analisis_grafico!(M3, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
+```
+
+```julia
+n = 5
+X0 = -10*rand(4) .- 5.0 # x0 ∈ [-15,-5]
+
+analisis_grafico(M3, X0[1], n, 
+    (1.1*minimum(X0), -2.0), 
+    (1.2*minimum(M3.(X0)), 1.0); 
+    titulo = "Órbitas de F(x) = -x/2 - 2",
+    lab    = "$(trunc(X0[1], digits = 3))",
+    leg = :bottomright)
+analisis_grafico!(M3, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M3, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+analisis_grafico!(M3, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
+```
+
+Se evaluó el comportamiento de las condiciones iniciales para condiciones iniciales menores o mayores al punto fijo ($x/2 - 2 = x \Rightarrow$) $x = -4$, siendo éste último el punto de convergencia de las órbitas. Por lo tanto, $x = -4$ es un punto fijo atractor para las órbitas generadas por cualquier condición inicial.
+
+* $ M_4(x) = x - x^2 $
+
+```julia
+n = 15
+X0 = rand(4) # x0 ∈ [0,1]
+
+analisis_grafico(M4, X0[1], n, 
+    (-0.3, 1.1),               
+    (-0.2, 0.3);               
+    titulo = "Órbitas de F(x) = x - x2", 
+    lab    = "$(trunc(X0[1], digits = 3))")                 
+analisis_grafico!(M4, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M4, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+analisis_grafico!(M4, X0[4], n, :purple; lab = "$(trunc(X0[4], digits = 3))")
+```
+
+Se observa que las órbitas con $x_0 \in [0,1]$ se ven atraídos por el punto fijo $x = 0$.
+
+```julia
+n = 15
+X0 = -5*rand(4) # x0 ∈ [-5,0]
+
+analisis_grafico(M4, X0[1], n, 
+    (-40, 30), 
+    (-200, 20); 
+    titulo = "Órbitas de F(x) = x - x2",
+    lab    = "$(trunc(X0[1], digits = 3))")
+analisis_grafico!(M4, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M4, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+```
+
+Para condiciones iniciales $x_0 > 1$ el valor de la función vuelve a ser negativo, por lo que como en el caso anterior, el siguiente iterado será "más negativo" y estas órbitas divergen a $-\infty$.
+
+```julia
+n = 15
+X0 = 1.0 .+ 5*rand(4) # x0 ∈ [0,6]
+
+analisis_grafico(M4, X0[1], n, 
+    (-40, 30), 
+    (-200, 20); 
+    titulo = "Órbitas de F(x) = x - x^2",
+    lab    = "$(trunc(X0[1], digits = 3))")
+analisis_grafico!(M4, X0[2], n, :red2;   lab = "$(trunc(X0[2], digits = 3))")
+analisis_grafico!(M4, X0[3], n, :green;  lab = "$(trunc(X0[3], digits = 3))")
+```
+
+Si la condición inicial es $x_0 < 0$, el primer iterado es negativo y para $x < 0$ la función es creciente, entonces un nuevo iterado dará un resultado "más negativo" que el anterior, por lo que la órbita diverge a $-\infty$ como se observa en la gráfica por lo que no se puede converger a otro punto fijo posiblemente atractor
+
+El punto fijo es
+$$ x - x^2 = x \quad\Rightarrow\quad x = 0$$
+
+Gráficamente se nota que $x = 0$ es el único punto de intersección con la identidad por lo que es el único punto fijo. Asimismo, este punto es atractor para $x_0 \in [0,1]$ y repulsor para el resto.
+
+## Ejercicio 2
+
+(a) Consideren el mapeo $F(x) = x^2-2$ definido en $-2 \leq x \leq 2$. A partir de una condición al azar, construyan una órbita muy larga, por ejemplo, de $20\,000$ iterados o más. Obtengan el histograma de frecuencias (normalizado) que la órbita visita.
+
+```julia
+F(x) = x^2 - 2
+```
+
+```julia
+x0 = 4*rand() .- 2   # x0 ∈ [-2,2] fijo
+```
+
+```julia
+n = 30000 # iteraciones
+histogram(mapear(F, x0, n), bin = 300, normalize = :probability,
+    title = L"Histograma.\,\, F(x) = x^2 - 2.\,\,n = 30\,000.",  label = "",
+    xlabel = L"x", ylabel = L"Frecuencia \,\, normalizada")
+```
+
+(b) Repitan el ejercicio anterior para el mapeo $G(x) = 2x\text{ mod } 1$, definido en el intervalo $x\in[0,1]$.
+
+```julia
+G(x) = 2x%1
+```
+
+```julia
+n = 30000 # iteraciones
+histogram(mapear(G, x0, n), bin = 100, normalize = :probability, label = "",# ylims = (0,10),
+    title = L"Histograma.\,\, F(x) = 2x\,\,mod\,\, 1. \,\,n = 30\,000.",
+    xlabel = L"x", ylabel = L"Frecuencia \,\, normalizada")
+```
+
+(c) ¿Qué conclusión podemos sacar de los histogramas para ambos mapeos?
+
+En ambos casos, el "bin" con mayores frecuencias son los más "visitados" por la sucesión de iteraciones de la función. Al reproducir numerosas veces con números aleatorios en el dominio de la función éstas regiones son:
+
+* Para $F(x) = x^2 - 2$ y $1000$ bins: $[-2,-1.998]$ (bin 1), $[1.998,2]$ (último bin).
+* Para $G(x) = 2x\text{ mod }1$ y $1000$ bins: $[1.999,1]$ (bin 1).
+
+Podría parecer que las regiones más visitadas contienen puntos fijos atractores, pero:
+
+Los puntos fijos de los mapeos son
+
+* $F(x) = x^2 - 2 = x      \,\Rightarrow\, x = 2,\,-1$
+
+* Ya que 
+\begin{equation}
+G(x) = 2x\text{ mod }1 = 
+\left\{ \begin{array}{lcc}
+    2x     & \text{si} & x\in [0,1/2)  \\ 
+    2x - 1 & \text{si} & x\in [1/2,1]
+\end{array} \right.
+\end{equation}
+
+existe un único punto fijo $x = 0$ (cuando $G(x) = 2x$).
+
+Para ver su estabilidad, evaluamos en las derivadas
+
+$F'(2) = 2(2) = 4. \,\,F'(-1) = 2(-1) = -2$
+
+$G'(0) = 2$,
+
+Es decir, todos los puntos fijos son inestables por lo que no podrían ser atractores, además, $x = -2$ ni siquiera es un punto fijo de $F$
+
+En el caso de $F(x) = x^2 - 2$ se observa que la órbita queda confinada en el intervalo $[-2,2]$ visitándose cada subdivisión del intervalo aunque con considerablemente mayor frecuencia en los espaciados de los extremos en $2$ y $-2$.
+
+Para $G(x) = 2x\text{ mod }1$ conviene decir que las iteraciones parecen converger a cero por lo siguiente:
+
+Al elegir $x \in [1,0]$ con una expansión binaria infinita como $x = 0.2$ 
+
+$$ (0.2)_2 = 0.00110011001100110011... $$ 
+
+en la computadora tenemos precisión finita, digamos, hasta 10 cifras después del punto (64 para un `Float64`): 
+
+$$ (0.2)_{compu} = 0.0011001100 $$
+
+Al hacer la operación de multiplicar por dos ($2x$), en base 2, el punto se recorre un lugar a la derecha:
+
+$$(2*0.2)_2 = 0.0110011001100110011... \quad (1) $$
+
+Aunque la expansión sigue siendo infinita, en la computadora sucede que:
+
+$$ (2*0.2)_{compu} = 0.0110011000 $$
+
+Observamos que la décima cifra después del punto es `0`, cuando, según (1) debería ser `1`.
+
+La operación `mod 1`simplemente conserva las cifras después del punto. El resultado final es $0.4$ pero las representacones difieren incluso al truncar hasta la cifra 10:
+
+\begin{align*} (0.4)_2 &= 0.0110011001 \\
+         (0.4)_{compu} &= 0.0110011000 \end{align*}
+
+En conclusión, con cada iteración de `2x mod 1`se va perdiendo una cifra de precisión (la computadora "no sabe" si la cifra que viene es `1` o `0`, siempre pone ceros, en caso contrario se evitaría converger a `0` aún con precisión finita) hasta obtener ceros en todas las cifras, por lo que todos los resultados numéricos convergen a cero aunque teóricamente sea incorrecto.
+
+## Ejercicio 3
+
+(a) Usando lo que hicieron en la Tarea 1, incluyan lo que desarrollaron para los números `Dual` en un módulo `NumDual` de Julia ([ver la documentación aquí](https://docs.julialang.org/en/v1.3/manual/modules/)). En particular, el módulo debe exportar el tipo `Dual` y la función `var_dual`, al menos. El archivo con el módulo lo deben incluir en un archivo ".jl" en su propio directorio de tareas. Carguen el módulo en este notebook, usando
+
+```julia
+include("NumDual.jl")
+```
+
+```julia
+using Main.NumDual
+```
+
+(b) Escriban una función que implemente el método de Newton para funciones en una dimensión. La derivada que se requiere debe ser calculada a través de los números duales. Obtengan un cero de $f(x) = x^3 - 8$, como test de que la implementación es correcta.
+
+De la tarea 1 se tiene que `f(var_dual(x)) = (f(x), f'(x))`, así que `f'(x) = f(var_dual(x)).y`.
+
+```julia
+"""
+`newton(F::Function, x0::T; δ = 1/1000)` **`where`** `{T <: Real}` \n
+
+Calcula las raíces de `f` por el método de newton desde un
+punto inicial `x0`; devuelve un vector de todas las 
+aproximaciones hasta una tolerancia `δ`.
+"""
+function newton(F::Function, x0::T, δ = 1e-15) where {T <: Real} 
+   
+    # Vector de aproximaciones a la raiz de la función
+    r = [x0]
+    Fdual = F(var_dual(x0))
+    
+    x1 = x0 - Fdual.x/Fdual.y
+    push!(r, x1)
+   
+    j = 1 
+    
+    while abs(x1 - x0) > δ || j > 5000 # Si las aproximaciones no convergen, el
+        x0 = x1                        # contador 'j' detiene el ciclo while
+        Fdual = F(var_dual(x0))
+        x1 = x0 - Fdual.x/Fdual.y
+        push!(r, x1)
+        j += 1
+    end
+    
+    return r
+    
+end
+```
+
+```julia
+"""
+`graph_newton(F::Function, R, xlim = (-20,20))` **`where`** `{T <: Real}` \n
+
+Hace una gráfica de la función y las aproximaciones sucesivas a la raíz.
+"""
+
+function graph_newton(F::Function, R, xlim = (-20,20)) where {T <: Real} 
+   
+    # Vector de aproximaciones a la raiz de la función
+    vx = Float64[]
+    vy = Float64[]
+    raiz = Float64[]
+    
+    for i in 1 : length(R)-1
+        push!(vx, R[i])
+        push!(vx, R[i])
+        push!(vx, R[i+1])
+        push!(vy, zero(R[i]))
+        push!(vy, F(R[i]))
+        push!(vy, zero(R[i+1]))
+    end
+
+    p = plot(vx, vy, l = :dash, lc = :red, xlims = xlim, label = "")
+    plot!(xlim[1]:1/100:xlim[2], F.(xlim[1]:1/100:xlim[2]), lc = :blue, l = 1.5, label = "f(x)")
+    plot!(x -> 0, lc = :black, l = :dash, label = "")
+    scatter!(R, zeros(length(R)), label = "aproxs. a la raíz")
+    
+    return p
+    
+end
+```
+
+```julia
+# Punto inicial del método de Newton
+x0 = 13.9
+# Raíces de f(x) = x^3 - 8
+graph_newton(x -> x^3 - 8, newton(x -> x^3 - 8, x0), (-5,15))
+```
+
+```julia
+# Cero de la función
+raiz = newton(x -> x^3 - 8, x0)[end]
+```
+
+(c) Encuentren los puntos fijos del mapeo $F(x) = x^2 - 1$ usando la función que implementaron para el método de Newton.
+
+Los puntos fijos satisfacen $F(x) = x^2 - 1 = x$, esto es equivalente a calcular los ceros de $F_1(x) = x^2 - x - 1$.
+
+```julia
+# Graficamos la función para ver en dónde se encuentran los ceros para elegir x0.
+F1(x) = x^2 - x - 1
+plot(F1, xlims = (-4,5), label = "F(x)")
+plot!(x -> 0, l = :dash, label = "")
+```
+
+```julia
+R = newton(F1, 4.0)
+raiz2 = R[end] # raíz
+
+# Raíz positiva, x0 = 4 
+graph_newton(F1, R, (-2,5))
+```
+
+```julia
+R = newton(F1, -3.0)
+raiz1 = R[end]
+
+# Raíz negativa # x0 = -3
+graph_newton(F1, R, (-4,3))
+```
+
+```julia
+# Puntos fijos de F(x) = x^2 - 1
+raiz1, raiz2
+```
+
+(d) Encuentren las puntos *de periodo 2* para el mapeo $F(x) = x^2 - 1$ usando la función que implementaron para el método de Newton.
+
+Los puntos de periodo 2 satisfacen $F^2(x) = x \; \Leftrightarrow \; (x^2 - 1)^2 - 1 = x$. Para hallar éstos hay que resolver $F_2(x) = 0 \; \Leftrightarrow \; x^4 - 2x^2 - x = 0$.
+
+```julia
+F2(x) = x^4 - 2x^2 - x 
+X = -2.0:1/100:2 # parámetro de ayuda para los límites del plot
+
+plot(X, F2.(X), xlims = (-2.0,2.0), label = "")
+plot!(x -> 0, l = :dash, label = "")
+```
+
+* Raíces
+
+```julia
+# condiciones iniciales del método de newton
+x01 = -1.8
+x02 = -0.4
+x03 = -0.15
+x04 = 2.0
+
+# método de newton
+R1 = newton(F2, x01)
+R2 = newton(F2, x02)
+R3 = newton(F2, x03)
+R4 = newton(F2, x04);
+```
+
+Observemos que 
+
+```julia
+isapprox(R2[end], raiz1), isapprox(R4[end], raiz2)
+```
+
+Así que las únicas raíces que corresponden a puntos de periodo dos son
+
+```julia
+# Puntos de periodo dos de F(x) = x^2 - 1
+per2_1, per2_2 = R1[end], R3[end]
+```
+
+(e) Usen números duales para mostrar que los puntos de periodo 2 para el mapeo $F(x) = x^2 -1$ son linealmente estables (atractivos).
+
+Sabemos que si $x^*$ es  un punto fijo de $f$ y $|f'(x^*)| < 1$, entonces es linealmente estable. Veamos cómo se comporta la derivada $|(F^2)'(x)|$ en los puntos fijos de periodo dos.
+
+```julia
+# F(F(var_dual(x0))) = Dual(F^2, (F^2)')
+
+# Derivada de F^2
+D_FF(F::Function, x0) =  F(F(var_dual(x0))).y
+```
+
+```julia
+# evaluación de la derivada en los puntos fijos
+deriv1, deriv2 = D_FF(x -> x^2 - 1, per2_1), D_FF(x -> x^2 - 1, per2_2)
+```
+
+```julia
+# Comprobando estabilidad
+abs(deriv1) < 1, abs(deriv2) < 1
+```
+
+Los puntos fijos de periodo dos son linealmente estables.
+
+## Ejercicio 4
+
+(a) El método de Newton es iterativo, y en ese sentido se puede considerar como un mapeo dado por
+\begin{equation}
+z_{n+1} = N(z_n) = z_n - \frac{f(z_n)}{f'(z_n)}.
+\end{equation}
+Vamos a considerar la función $f(z) = z^3-1$, e iteraciones del mapeo $N(z)$, con $z\in\mathbb{C}$. Es claro que los ceros de $f(z)$, es decir, las $z^*$ tales que $f(z^*)=0$
+tienen la propiedad de que $N(z^*)=z_*$. En este caso concreto los ceros los podemos escribir como $z^*_r = \exp(i 2\pi r/3)$, con $r=0, 1, 2$.
+
+La idea es considerar *muchas* condiciones iniciales $z_0\in[-1,1]\times[-1,1]$, y para cada condición inicial iteraremos muchas veces el mapeo, por ejemplo, $n=10000$ veces. La idea es asignarle a cada condición inicial un color (azul, verde o rojo) según el punto al que converja, o al punto al que más se acerque $z_n$. Dibujen el mapa de colores que se obtiene.
+
+```julia
+# Definimos el mapeo generalizado del inciso b)
+# N(z, a) = z - a*F(z)/'(z) para F(z) = z^3 - 1.
+N(z, a) = (1 - a/3)*z + a/(3z^2)
+```
+
+```julia
+# Raices (como vectores en R^2)
+z1 = [1.0, 0.0]
+z2 = [-0.5, sin(2*π/3)]
+z3 = [-0.5, sin(4*π/3)]
+
+# Para graficar el triángulo
+zx = [z1[1], z2[1], z3[1], z1[1]]
+zy = [z1[2], z2[2], z3[2], z1[2]]
+
+# Para la frontera de [-1,1]×[-1,1]
+cx = [-1.0, 1.0, 1.0, -1.0, -1.0]
+cy = [1.0, 1.0, -1.0, -1.0, 1.0];
+```
+
+```julia
+"""
+`orb_complex(F :: Function, z0 :: Complex, n :: Int)` \n
+
+Devuelve un vector de la órbita que surge de `n` iteraciones de la
+función compleja `F` con condición inicial `z0`.
+"""
+function orb_complex(F::Function, z0::Complex, n::Int)
+    Z = [z0]
+    
+    for i in 1:n
+        z0 = F(z0)
+        push!(Z, z0)
+    end
+    
+    return Z
+end
+```
+
+```julia
+using LinearAlgebra # para la función norm()
+```
+
+```julia
+"""
+`graf_orb_complex!(F :: Function, z0 :: Complex, n :: Int)` \n
+
+Permite sobreponer sobre una gráfica a la gráfica de un mapeo de `n`
+iteraciones  de la función compleja `F` con condición inicial `z0`.
+"""
+function graf_orb_complex!(F::Function, z0::Complex, n::Int, lin = :line) # lin es para el tipo de línea
+    Z = orb_complex(F, z0, n)
+    X = real.(Z)
+    Y = imag.(Z)
+    
+    # iteración final
+    zf = [X[end], Y[end]]
+    
+    if norm(zf-z1) < norm(zf-z2) && norm(zf-z1) < norm(zf-z3)
+        color = :blue
+    elseif norm(zf-z2) < norm(zf-z3)
+        color = :red
+    else
+        color = :green
+    end
+    
+    p = plot!(X, Y, lc = color, l = lin, label = "")
+    scatter!([X[1]], [Y[1]], m = :star, mc = color, ms = 5, label = "")
+    scatter!([zf[1]], [zf[2]], mc = color, ms = 7, label = "")
+    
+    return p
+end
+```
+
+```julia
+# m condiciones iniciales en [-1,1]×[-1,1]
+m = 50
+Z0 = [2*rand() - 1 + im*(2*rand() - 1) for i in 1:m];
+```
+
+```julia
+α = 2.5 # para los intervalos de graficación
+
+# Número de iteraciones
+n = 25000
+
+p = plot(zx, zy, l = 3, lc = :green1, grid = false, xlims = (-α, α), ylims = (-α, α), # triángulo
+    label = "", xlabel = "Parte real", ylabel = "Parte imaginaria", aspectratio = 1,
+     title = "Órbitas de N(z, a=1), f(z) = z^3 - 1")  
+plot!(cx, cy, c = :yellow, l = 2, label = "")
+
+for i in 1:m
+    graf_orb_complex!(z -> N(z, 1), Z0[i], n)
+end
+p
+```
+
+En la gráfica anterior se muestra un triángulo con vértices las raíces de $f(z) = z^3 - 1$ y las distintas órbitas del mapeo $N(z)$. Las condiciones iniciales $z_0 \in [-1,1]\times[-1,1]$ están indicadas con estrellas y las iteraciones finales con círculos.
+
+Las $40$ órbitas de prueba convergen a alguna de las raíces de $f(z)$.
+
+Ahora observemos cómo se dividen los puntos del plano complejo de acuerdo a qué punto convergen.
+
+```julia
+"""
+`fractal_1(x::T, y::T, a, n = 1000)` **`where`** `{T <: Real}` \n
+
+Colorea una región del plano complejo z = x + iy en función del 
+punto de convergencia de z como condición inicial de la órbita 
+de `N(z;a) = z - a*F(z)/F'(z)` para `F(z) = z^3 - 1`. `n` es 
+el número iteraciones de `N`. \n
+
+Si la órbita converge a: \n
+
+* z1: `fractal_1(...) = 1`. \n
+* z2: `fractal_1(...) = 2`. \n
+* z3: `fractal_1(...) = 3`. \n
+"""
+
+function fractal_1(x::T, y::T, a = 1.0, n = 1000) where {T <: Real}
+    
+    zf = orb_complex(z -> N(z,a), x + y*im, n)[end]
+    zf = [real(zf), imag(zf)]
+    
+    if norm(zf - z1) < norm(zf - z2)
+        return 1
+    elseif norm(zf - z2) < norm(zf - z3)
+        return 2
+    else
+        return 3
+    end
+    
+end
+```
+
+Construyamos una función que ayude a visualizar las regiones según el punto de convergencia.
+
+```julia
+"""
+`mapeo_frac1(a = 1, ℓ = 1, n = 5000, Δ = 1/300)` \n
+
+Evalúa `fractal_1` en el cuadrado `[-ℓ,ℓ]×[-ℓ,ℓ]` (con espaciado mínimo `Δ`).
+"""
+
+function mapeo_frac1(a = 1, ℓ = 1, n = 5000, Δ = 1/300)
+
+    X = -ℓ:Δ:ℓ
+    Y = -ℓ:Δ:ℓ
+    
+    # Matriz de valores de fractal_1([-1,1]×[-1,1]), se inicializa en ceros.
+    M = zeros(length(X), length(Y));
+
+    for i in 1:length(X)
+        for j in 1:length(Y)
+            M[i, j] = fractal_1(X[i], Y[j], a, n)
+        end
+    end
+    
+    return X, Y, M
+    
+end
+```
+
+```julia
+# n = 5000
+a, ℓ = 1, 1
+X1, Y1, A1 = mapeo_frac1();
+```
+
+```julia
+using Colors
+```
+
+```julia
+heatmap(X1, Y1, A1, aspectratio = 1, c = cgrad([:darkblue, :purple, :aqua]), grid = false,
+    title = "Mapa de colores para z en [-$ℓ,$ℓ]×[-$ℓ,$ℓ], a = $a")
+```
+
+(b) En el mismo espíritu que en el inciso (a), iteren muchas condiciones iniciales para el mapeo
+\begin{equation}
+z_{n+1} = N(z_n;\, a) = z_n - a\frac{f(z_n)}{f'(z_n)},
+\end{equation}
+para la misma función $f(z)$, con $a=2$.
+
+*Nota:* Conviene guardar tres vectores (de condiciones iniciales), y a cada uno se le asignará un color. Para graficar, dado que estamos en los complejos, se graficará la parte real y la parte imaginaria de cada condición inicial.
+
+Se observa que los puntos de convergencia vuelven a ser laas raíces de $z^3 -1$.
+
+```julia
+# a = 2, ℓ = 5, n = 2000
+a, ℓ, n, Δ = 2, 6, 2000, 1/100
+X2, Y2, A2 = mapeo_frac1(a, ℓ, n, Δ);
+```
+
+```julia
+heatmap(X2, Y2, A2, aspectratio = 1, c = cgrad([:brown4, :brown1, :yellow]), grid = false,
+    title = "Mapa de colores para z en [-$ℓ,$ℓ]×[-$ℓ,$ℓ], a = $a")
+```
+
+Se observa una estructura fractal con las proporciones de un triángulo equilátero.
+
+## Ejercicio 5
+
+Consideremos ahora el triángulo definido por los tres puntos $A=(0,1)$, $B=(\cos(7\pi/6),\, \sin(7\pi/6))$ y $C=(\cos(11\pi/6), \sin(11\pi/6))$, y *cualquier* otro punto $X_0 \, \in \, [-1,1]\times[-1,1]$. Consideraremos además un dado (no cargado) que usaremos para generar números aleatorios del 1 al 6 (con `rand(1:6)`).
+
+(a) Definan una regla, la que quieran, que asigne dos salidas distintas del dado (por ejemplo, 1 y 5) a cada uno de los tres vértices del triángulo.
+
+Regla de asignación: $1$ y $2$ para $A$, $3$ y $4$ para $B$, $5$ y $6$ para $C$.
+
+(b) A partir de un punto $X$, definan el mapeo que, para cada tiro del dado $d$, hace que el punto $X$ sea mapeado al punto medio de $X$ y el vértice del triángulo asignado en (a).
+
+```julia
+"""
+`map_dado(x0, A, B, C)` \n
+
+Calcula el punto medio entre x0 y A, B o C dependiendo del valor de
+`dado = rand(1:6)`.\n
+
+A: dado = 1, 2; B: dado = 3, 4; C: dado = 5, 6.
+"""
+function map_dado(X0, A, B, C) 
+    
+    dado = rand(1:6)
+    
+    if dado == 1 || dado == 2
+        return [0.5*(X0[1] + A[1]), 0.5*(X0[2] + A[2])]
+    elseif dado == 3 || dado == 4
+        return [0.5*(X0[1] + B[1]), 0.5*(X0[2] + B[2])]
+    elseif dado == 5 || dado == 6
+        return [0.5*(X0[1] + C[1]), 0.5*(X0[2] + C[2])]
+    end
+    
+end
+```
+
+(c) Obtengan *el atractor* del mapeo para una sola condición inicial, esto es, iteren muchísimas veces el mapeo ($n=100000$) y pinten la secuencia de los iterados.
+
+```julia
+# sin(7*π/6) = -0.5 = sin(11*π/6)
+A, B, C = [0,1], [cos(7*π/6), -0.5], [cos(11*π/6), -0.5]
+X0 = [2*rand().-1, 2*rand().-1]; # (x,y) ∈ [-1,1]×[-1,1]
+```
+
+```julia
+# Gráfica del triángulo y del primer iterado
+p = plot([A[1], B[1], C[1], A[1]], [A[2], B[2], C[2], A[2]],
+    l = 3, lc = :green2, label = "", grid = false,
+    xlims = (-1.1,1.1), ylims = (-1.1,1.1), aspectratio = 1, 
+    title = "Atractor 'Triángulo de Sierpinski'")
+plot!(cx, cy, l = 2, lc = :yellow, label = "")
+scatter!([X0[1]], [X0[2]], m = :star, ms = 8, label = "\$ X_0 \$")
+```
+
+```julia
+# Gráfica de las iteraciones en 2D
+n = 15000
+for i in 1:n
+    Q = map_dado(X0, A, B, C)
+    plot!([Q[1]], [Q[2]], label = "", m = (1, :green, stroke(0, :green)), l = 0)
+    X0 = Q
+end
+p
+```
+
+El atractor es una estructura fractal conocida como el *triángulo de Sierpinski*.
+
+(d) ¿Qué pasa si empiezan con otras condiciones iniciales, incluso fuera de $[-1,1]\times[-1,1]$?
+
+```julia
+"""
+X0_5() \n
+
+Devuelve un vector [x,y] elegido aleatoriamente en [-5,5]^2 - [-1,1]^2
+"""
+function X0_5()
+    x, y = 10*rand() .- 5, 10*rand() .- 5
+    
+    while -1 < x && x < 1 && -1 < y && y < 1
+        x, y = 10*rand() .- 5, 10*rand() .- 5
+    end
+    
+    return [x,y]
+end
+```
+
+```julia
+X0 = X0_5()
+```
+
+```julia
+# Gráfica del triángulo y la condición inicial
+q = plot([A[1], B[1], C[1], A[1]], [A[2], B[2], C[2], A[2]],
+    l = 2, lc = :green2, label = "", grid = false,
+    xlims = (-1.5,1.5), ylims = (-1.5,1.5), aspectratio = 1, 
+    title = "Atractor 'Triángulo de Sierpinski'")
+plot!(cx, cy, l = 2, lc = :yellow, label = "")
+scatter!([X0[1]], [X0[2]], m = :star, ms = 8, label = "\$ X_0 \$")
+```
+
+```julia
+##### Gráfica de las iteraciones en 2D
+n = 15000
+for i in 1:n
+    Q = map_dado(X0, A, B, C)
+    plot!([Q[1]], [Q[2]], label = "", m = (1, :brown, stroke(0, :green)), l = 0)
+    X0 = Q
+end
+q
+```
+
+Se observa que para $ x_0 $ fuera de $ [
+-1,1]\times[-1,1] $, los puntos de la órbita aún describen el triángulo de Sierpinski, ya que al tomar los puntos medios, se espera que el mapeo conduzca a las condiciones iniciales fuera de $[-1,1] \times [-1,1]$ hacia adentro de esa región, por lo que todas las órbitas describen como atractor el tríangulo de Sierpinski.
+
+## Ejercicio 6
+
+Vamos a considerar el siguiente mapeo lineal, en dos dimensiones, dado por
+
+\begin{equation}
+B(x_{n}, y_{n} ) =
+\left( \begin{array}{c} x_{n+1} \\ y_{n+1} \end{array} \right) =
+\left(\begin{array}{cc} a & b\\ c & d \end{array}\right)
+\left( \begin{array}{c} x_{n} \\ y_{n} \end{array} \right) +
+\left( \begin{array}{c} 0 \\ f \end{array} \right) = 
+\left( \begin{array}{c} a\,x_n + b\,y_n \\ c\,x_n + d\,y_n + f \end{array} \right).
+\end{equation}
+
+Los coeficientes que aparecen en el mapeo se eligirán de manera aleatoria, con
+probabilidad $p$, de acuerdo con la siguiente tabla:
+
+|     p     |     a     |     b     |     c     |     d     |     f     |
+|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
+|   0.01    |     0     |     0     |     0     |    0.16   |   0    |
+|   0.85    |  0.85     |     0.04  |   -0.04   |    0.85   |   1.6     |
+|   0.07    |  0.2      |    -0.26  |    0.23   |    0.22   |   1.6     |
+|   0.07    | -0.15     |     0.28  |    0.26   |    0.24   |   0.44    |
+
+Dibujen (en verde, usando `markerstrokecolor=:green`) el atractor del mapeo.
+
+```julia
+using StatsBase # para usar sample()
+```
+
+```julia
+# Guarda las probabilidades p
+proba = ProbabilityWeights([0.01, 0.85, 0.07, 0.07]);
+```
+
+```julia
+"""
+`it_2D(F::Function, X0, n::Int)` \n
+
+Itera `n` veces la función 2D `F`a partir de un vector inicial `x0`.
+Devuelve vectores de coordenadas `X`y `Y`de las iteraciones.
+
+"""
+function it_2D(F::Function, X0, n::Int)
+    
+    X, Y = [X0[1]], [X0[2]]
+
+    for i in 1:n
+        X0 = F(X0)
+        push!(X, X0[1])
+        push!(Y, X0[2])
+    end
+    
+    return X, Y
+    
+end
+```
+
+```julia
+# Definición del mapeo
+function B_2D(X)
+   
+    proba = ProbabilityWeights([0.01, 0.85, 0.07, 0.07]) 
+    
+    # elegimos los coeficientes del mapeo entre
+    # las 4 combinaciones de valores posibles
+    a, b, c, d, f = sample([[ 0.0 ,  0.0 ,  0.0 , 0.16, 0.0 ], 
+                            [ 0.85,  0.04, -0.04, 0.85, 1.6 ], 
+                            [ 0.2 , -0.26,  0.23, 0.22, 1.6 ],
+                            [-0.15,  0.28,  0.26, 0.24, 0.44]],
+                            proba # vector de probabilidades
+                            ) 
+
+    return [a*X[1] + b*X[2], c*X[1] + d*X[2] + f] 
+    
+end
+```
+
+```julia
+X0 = 10*[rand(), rand()] .- 5 # X0 ∈ [-5,5]×[-5,5]
+n = 25000
+X, Y = it_2D(B_2D, X0, n);
+```
+
+```julia
+plot(label = "", title = "Atractor 'Helecho'. $n iteraciones", aspectratio = 0.5)
+scatter!(X, Y, m = (1, :green, stroke(0, :green)), label = "")
+```
