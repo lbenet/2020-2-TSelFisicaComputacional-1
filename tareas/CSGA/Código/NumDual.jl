@@ -1,5 +1,3 @@
-module NumDual
-
 """
     Dual{T <: Real}
 
@@ -178,7 +176,46 @@ Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
 """
 derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
 
-export Dual, var_Dual, principal, derivada
-
 include("ComplexDual.jl")
+
+"""
+    Newton(f::Function, x0::Real, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Real, número_iteraciones::Int = 100)
+    
+    x = var_Dual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
 end
+
+"""
+    Newton(f::Function, x0::Complex, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Complex, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+
+export Dual, var_Dual, principal, derivada, Newton
