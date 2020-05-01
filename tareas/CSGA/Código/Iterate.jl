@@ -53,12 +53,12 @@ Forma funcional de ```iterar(f, n, x0)``` que permite variar la condición inici
 iterar(f::Function, n::T) where {T <: Integer} = x0 -> iterar(f, n, x0)
 
 """
-    puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    puntos_fijos(f::Function, x0s::AbstractArray{T}, número_iteraciones::Int = 1000) where {T <: Number}
 
 Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos fijos (i.e. soluciones a la ecuación \$ f(x) - x = 0\$) usando el método de Newton.
 Devuelve un arreglo de los puntos fijos encontrados con las condiciones iniciales dadas.
 """
-function puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+function puntos_fijos(f::Function, x0s::AbstractArray{T}, número_iteraciones::Int = 1000) where {T <: Number}
     
     puntos_fijos = x -> f(x) - x
     
@@ -69,12 +69,12 @@ function puntos_fijos(f::Function, x0s::Array{T, 1}, número_iteraciones::Int = 
 end
 
 """
-    puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+    puntos_periodo(f::Function, n::Int, x0s::AbstractArray{T}, número_iteraciones::Int = 1000) where {T <: Number}
 
 Dada una función \$f\$ y un arreglo de condiciones iniciales, ```x0s```, busca los puntos de periodo \$n\$ (i.e. soluciones a la ecuación \$ f^{(n)}(x) - x = 0\$) usando el método de Newton.
 Devuelve un arreglo de los puntos de periodo \$n\$ encontrados con las condiciones iniciales dadas.
 """
-function puntos_periodo(f::Function, n::Int, x0s::Array{T, 1}, número_iteraciones::Int = 1000) where {T <: Number}
+function puntos_periodo(f::Function, n::Int, x0s::AbstractArray{T}, número_iteraciones::Int = 1000) where {T <: Number}
     
     @assert n > 0
     
