@@ -1,69 +1,66 @@
-#' 
-#' # Tarea 3
-#' 
-#' > Envío inicial del PR: **22 de abril**.
-#' >
-#' > Aceptación PR *final*: **30 de abril**.
-#' 
-#' 
-#' ## Ejercicio 1
-#' 
-#' Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
-#' 
-#' Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
-#' 
-#' \begin{equation}
-#' f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
-#' \end{equation}
-#' 
-#' La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
-#' 
-#' 
-#' *Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
-#' Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
-#' #' 
-#' Iniciamos cargando nuestras herramientas de las tareas pasadas: el módulo de duales, los duales complejificados, los métodos de Newton real y complejo así como las herramientas de iteración:
-#' 
-#+ 
 
+# Tarea 3
+
+> Envío inicial del PR: **22 de abril**.
+>
+> Aceptación PR *final*: **30 de abril**.
+
+
+## Ejercicio 1
+
+Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
+
+Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
+
+\begin{equation}
+f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
+\end{equation}
+
+La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
+
+
+*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
+Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
+
+Iniciamos cargando nuestras herramientas de las tareas pasadas: el módulo de duales, los duales complejificados, los métodos de Newton real y complejo así como las herramientas de iteración:
+
+```julia
 include("Código/Tools.jl")
 using Main.Tools
+```
 
-#' 
-#' Definimos el mapeo que nos interesa:
-#' 
-#+ 
+Definimos el mapeo que nos interesa:
 
+```julia
 Q(c) = x -> x^2 + c
+```
 
-#' 
-#' Nuestra estrategia será seguir las ramas atractivas de los mapeos $Q^n_c(x)$ con $n = 2^k$ como función de $c$, verificando que la rama del mapeo que seguimos siga siendo atractiva (o neutra) mediante diferenciación automática.
-#' 
-#' El algoritmo usado es ejemplificado con el primer paso:
-#' 
-#' 1. Para comenzar, iniciamos buscando $c_1$ desde la derecha con el mapeo en el que $k = 0$ ($n = 1$).
-#' 2. Fijamos una condición inicial, $c'$, (sabemos de lo realizado anteriormente que $ -\frac{3}{4} < c' < \frac{1}{4}$) y un paso $dc < 0$ (sabemos que la bifurcación de doblamiento de periodo se da a la izquierda de $c_0$), así como una adivinanza de la ubicación del punto fijo atractor para $c'$, $x_0$.
-#' 3. Con estos parámetros, damos un paso a la izquierda en $c'$ de tamaño $dc$, y usamos $x_0$ para buscar la posición del punto fijo atractor en $c' + dc$ para $Q^1_{c' + dc}(x)$, $y_0$.
-#' 4. Revisamos si $y_0$ en efecto es de punto fijo del mapeo $C^n_c(x)$ y verificamos el valor de la derivada del mapeo $Q^n_{c' + dc}(x)$ evaluada en $y_0$. 
-#'     - Si el punto que encontramos es punto fijo y su el valor absoluto de la derivada del mapeo en ese punto es menor o igual a uno, aceptamos $c' + dc$ como el nuevo valor de $c'$ y comenzamos el proceso en (2) con el nuevo valor de c'.
-#'     - Si el punto que encontramos no es punto fijo o el valor absoluto de la derivada del mapeo en ese punto es mayor a uno, comenzamos de nuevo el proceso en (2) con $c'$ y $x_0$ de nuevo, pero con un tamaño de paso de $\frac{dc}{2}$. (Quizá conviene alterar $x_0$ para aumentar la velocidad de convergencia al punto fijo real).
-#'     
-#' Esto, a priori, se puede realizar analíticamente de forma infinita, acercándose arbitrariamente al valor real de $c_1$.
-#' Computacionalmente nos conviene definir una cota para el número de iteraciones que se realizan en el proceso: esto se hace de dos formas complementarias:
-#' 
-#' - Por un número límite de iteraciones.
-#' - Por una velocidad de convergencia, dada por la distancia entre valores de iterados subsecuentes de $c'$.
-#' 
-#' Una vez se consigue obtener un valor final aproximado de $c_1$, se realiza un procedimiento semejante para obtener $c_{k+1}$ usando el valor de $c_{k}$ como $c'$ con el mapeo $C^n_c(x)$. La única salvedad no (estrictamente) presente en el algoritmo anterior es el caso en el que el punto $y_0$ no tenga periodo mínimo $n$, por lo que es necesario revisar que el punto fijo encontrado del mapeo $Q^n_c(x)$ sea de periodo mínimo $n$.
-#' Dado que estamos interesados en las bifurcaciones de doblamiento de periodo, en principio basta sólo examinar dos cosas del punto $y_0$ para el caso general:
-#' 
-#' - Que en efecto sea punto fijo del mapeo $Q^n_c(x)$, y,
-#' - Que no sea de periodo $1, 2, 2^2, \ldots, 2^{k-1}$ bajo el mapeo $Q_c(x)$ (es decir, punto fijo de algún mapeo $Q^m_c(x)$ con $m \in \{1, 2, 2^2, \ldots, 2^{k - 1}\}$. (Ya que los únicos puntos de periodo $a$ que son automáticamente, independientemente del mapeo, de periodo $b > a$, son aquellos tales que $ b \mod a = 0$.)
-#' 
-#' Para poder hacer esto, nos conviene definir una función que dado un entero no negativo, $k$, un mapeo $f$ parametrizado por $c$ y una condición inicial $x_0$ determine la potencia de $2$ menor o igual que $2^k$, $s$, tales que $x_0$ es punto de periodo mínimo $s$ (dentro de las potencias de dos).
-#' 
-#+ 
+Nuestra estrategia será seguir las ramas atractivas de los mapeos $Q^n_c(x)$ con $n = 2^k$ como función de $c$, verificando que la rama del mapeo que seguimos siga siendo atractiva (o neutra) mediante diferenciación automática.
 
+El algoritmo usado es ejemplificado con el primer paso:
+
+1. Para comenzar, iniciamos buscando $c_1$ desde la derecha con el mapeo en el que $k = 0$ ($n = 1$).
+2. Fijamos una condición inicial, $c'$, (sabemos de lo realizado anteriormente que $ -\frac{3}{4} < c' < \frac{1}{4}$) y un paso $dc < 0$ (sabemos que la bifurcación de doblamiento de periodo se da a la izquierda de $c_0$), así como una adivinanza de la ubicación del punto fijo atractor para $c'$, $x_0$.
+3. Con estos parámetros, damos un paso a la izquierda en $c'$ de tamaño $dc$, y usamos $x_0$ para buscar la posición del punto fijo atractor en $c' + dc$ para $Q^1_{c' + dc}(x)$, $y_0$.
+4. Revisamos si $y_0$ en efecto es de punto fijo del mapeo $C^n_c(x)$ y verificamos el valor de la derivada del mapeo $Q^n_{c' + dc}(x)$ evaluada en $y_0$.
+    - Si el punto que encontramos es punto fijo y su el valor absoluto de la derivada del mapeo en ese punto es menor o igual a uno, aceptamos $c' + dc$ como el nuevo valor de $c'$ y comenzamos el proceso en (2) con el nuevo valor de c'.
+    - Si el punto que encontramos no es punto fijo o el valor absoluto de la derivada del mapeo en ese punto es mayor a uno, comenzamos de nuevo el proceso en (2) con $c'$ y $x_0$ de nuevo, pero con un tamaño de paso de $\frac{dc}{2}$. (Quizá conviene alterar $x_0$ para aumentar la velocidad de convergencia al punto fijo real).
+
+Esto, a priori, se puede realizar analíticamente de forma infinita, acercándose arbitrariamente al valor real de $c_1$.
+Computacionalmente nos conviene definir una cota para el número de iteraciones que se realizan en el proceso: esto se hace de dos formas complementarias:
+
+- Por un número límite de iteraciones.
+- Por una velocidad de convergencia, dada por la distancia entre valores de iterados subsecuentes de $c'$.
+
+Una vez se consigue obtener un valor final aproximado de $c_1$, se realiza un procedimiento semejante para obtener $c_{k+1}$ usando el valor de $c_{k}$ como $c'$ con el mapeo $C^n_c(x)$. La única salvedad no (estrictamente) presente en el algoritmo anterior es el caso en el que el punto $y_0$ no tenga periodo mínimo $n$, por lo que es necesario revisar que el punto fijo encontrado del mapeo $Q^n_c(x)$ sea de periodo mínimo $n$.
+Dado que estamos interesados en las bifurcaciones de doblamiento de periodo, en principio basta sólo examinar dos cosas del punto $y_0$ para el caso general:
+
+- Que en efecto sea punto fijo del mapeo $Q^n_c(x)$, y,
+- Que no sea de periodo $1, 2, 2^2, \ldots, 2^{k-1}$ bajo el mapeo $Q_c(x)$ (es decir, punto fijo de algún mapeo $Q^m_c(x)$ con $m \in \{1, 2, 2^2, \ldots, 2^{k - 1}\}$. (Ya que los únicos puntos de periodo $a$ que son automáticamente, independientemente del mapeo, de periodo $b > a$, son aquellos tales que $ b \mod a = 0$.)
+
+Para poder hacer esto, nos conviene definir una función que dado un entero no negativo, $k$, un mapeo $f$ parametrizado por $c$ y una condición inicial $x_0$ determine la potencia de $2$ menor o igual que $2^k$, $s$, tales que $x_0$ es punto de periodo mínimo $s$ (dentro de las potencias de dos).
+
+```julia
 """
     periodo_mínimo_potencia2(f, c, k, x0; atol = 0.0)
 
@@ -71,33 +68,32 @@ Dado un mapeo \$f(c)\$ y un entero no negativo \$k\$, buscamos entre las potenci
 En caso de que no sea punto fijo entre estas potencias, devolvemos cero.
 """
 function periodo_mínimo_potencia2(f, c, k, x0; atol = 0.0)
-    
+
     #Iteramos la condición inicial x0, 2^k veces, guardando todos los iterados:
     xs = iterados(f(c), 2^k, x0)
-    
+
     #Filtramos sobre las potencias de dos menores o iguales a 2^k
     for i in 0:k
-        
+
         m = 2^i
-        
+
         #Revisamos si x0 es punto fijo de f^m(c) dentro de la tolerancia especificada.
         #Se indiza con m + 1 dado que la primer entrada de x0s es x0.
         if isapprox(xs[m + 1], x0, atol = atol)
-            
+
             #Devolvemos m = 2^k = s
             return m
         end
     end
-    
+
     #Si el punto dado no es de periodo s = 1, 2,..., 2^k, devolvemos cero.
     return 0
 end
+```
 
-#' 
-#' Una vez implementado lo anterior, podemos implementar un paso de la sección de seguimiento de la rama atractiva para cualquier valor de $n = 2^k$:
-#' 
-#+ 
+Una vez implementado lo anterior, podemos implementar un paso de la sección de seguimiento de la rama atractiva para cualquier valor de $n = 2^k$:
 
+```julia
 """
     paso_parámetro(f, c, dc, k, x0; número_iteraciones_Newton = 100, atol = 0.0)
 
@@ -106,7 +102,7 @@ Posteriormente, revisa que el periodo mínimo de este punto sea \$2^k\$. Si este
 En cualquier otro caso, devuelve \$c\$, \$\frac{dc}{2}\$ y \$x_0\$.
 """
 function paso_parámetro(f, c, dc, k, x0; número_iteraciones_Newton = 100, atol = 0.0)
-    
+
     #Definimos la potencia de dos de interés.
     n = 2^k
 
@@ -116,7 +112,7 @@ function paso_parámetro(f, c, dc, k, x0; número_iteraciones_Newton = 100, atol
     #Buscamos el valor del punto de periodo n correspondiente:
     #(Ser punto de periodo n del mapeo original es equivalente a ser punto fijo del mapeo iterado n veces)
     y0 = puntos_fijos(F, [x0], número_iteraciones_Newton)[1]
-    
+
     #Revisamos si la raíz en efecto es de periodo n:
     if n == periodo_mínimo_potencia2(f, c +  dc, k, y0, atol = atol)
 
@@ -135,19 +131,17 @@ function paso_parámetro(f, c, dc, k, x0; número_iteraciones_Newton = 100, atol
         else #Si no, caímos en una raíz de otro periodo, lo que indica que nos pasamos, intentamos un paso de la mitad del dado.
 
         return c, dc/2, x0
-    end  
+    end
 end
+```
 
-
-#+ 
-
+```julia
 paso_parámetro(Q, 0, -1, 1, -1.0)
+```
 
-#' 
-#' Integramos lo anterior en un iterador que considere un límite máximo de las iteraciones del proceso para encontrar el valor de convergencia y una tolerancia para finalizar el proceso:
-#' 
-#+ 
+Integramos lo anterior en un iterador que considere un límite máximo de las iteraciones del proceso para encontrar el valor de convergencia y una tolerancia para finalizar el proceso:
 
+```julia
 """
     buscar_doblamiento_periodo(f, c, dc, k, x0; número_iteraciones_punto_periódico = 100, atol_punto_periódico = 0.0, iteraciones_máximas_paso_c = 100, ϵ = 1e-8)
 
@@ -159,52 +153,48 @@ Se considera que el valor ha convergido si la diferencia entre iterados sucesivo
 En caso de que no se converja a un valor, se devuelve un error.
 """
 function buscar_doblamiento_periodo(f, c, dc, k, x0; número_iteraciones_punto_periódico = 100, atol_punto_periódico = 0.0, iteraciones_máximas_paso_c = 100, ϵ = 1e-8)
-    
+
     #Inicializamos el contador de iteraciones_proceso
     iteraciones = 0
-    
+
     #Mientras no excedamos el número de iteraciones máximas, intentamos dar un paso:
     while iteraciones <= iteraciones_máximas_paso_c
-        
+
         #Obtenemos el valor temporal del nuevo parámetro, del nuevo tamaño de paso y la nueva condición inicial.
         c_temp, dc_temp, x0_temp = paso_parámetro(f, c, dc, k, x0, número_iteraciones_Newton = número_iteraciones_punto_periódico, atol = atol_punto_periódico)
-        
+
         #Revisamos si no hemos convergido al valor, es decir, la diferencia entre el parámetro anterior y el temporal es menor que la tolerancia y el tamaño de paso actual es menos de la mitad de la misma.
         #Si sí, devolvemos el último valor que calculamos. Esto nos saca del loop y devuelve algo.
         if (abs(c - c_temp) < ϵ) & (abs(2*dc_temp) < ϵ)
 
             return c_temp, dc_temp, x0_temp
         end
-        
+
         #Si no, actualizamos el contador y usamos lo que calculamos como nuevos puntos iniciales.
         c, dc, x0 = c_temp, dc_temp, x0_temp
         iteraciones += 1
     end
-    
+
     #Si ya no tenemos más iteraciones qué usar y no hemos devuelto nada, mandamos un error.
     error("Iteraciones máximas excedidas sin convergencia.")
 end
+```
 
-
-#+ 
-
+```julia
 buscar_doblamiento_periodo(Q, -0.6, -0.1, 0, -rand(), iteraciones_máximas_paso_c = 1000)
+```
 
-
-#+ 
-
+```julia
 buscar_doblamiento_periodo(Q, -0.75, -0.1, 1, -rand(), iteraciones_máximas_paso_c = 1000)
+```
 
-
-#+ 
-
+```julia
 buscar_doblamiento_periodo(Q, -1.25, -0.1, 2, -rand(), iteraciones_máximas_paso_c = 1000)
+```
 
-#' 
-#' Finalmente, podemos automatizar el proceso de encontrar los parámetros en los que se da la bifurcación de doblamiento de periodo usando los valores encontrados del periodo anterior.
-#' 
-#+ 
+Finalmente, podemos automatizar el proceso de encontrar los parámetros en los que se da la bifurcación de doblamiento de periodo usando los valores encontrados del periodo anterior.
 
+```julia
 """
     buscar_doblamientos_periodo(f, c, dc, k_máx, x0; número_iteraciones_punto_periódico = 100, atol_punto_periódico = 0.0, iteraciones_máximas_paso_c = 100, ϵ = 1e-8, multiplicador_k = k -> 2^k, iteraciones_máximas_siguiente_bifurcación = 10)
 
@@ -216,130 +206,120 @@ Para poder aumentar el número de veces que se puede repetir el proceso de búsq
 En caso de que los valores de \$c_k\$ y \$c_{k+1}\$ sean iguales para \$k \\geq 1\$, se puede controlar el número máximo de veces que se repite la búsqueda del valor \$c_{k+1}\$ hasta que sea diferente de \$c_k\$ usando `iteraciones_máximas_siguiente_bifucación`.
 """
 function buscar_doblamientos_periodo(f, c, dc, k_máx, x0; número_iteraciones_punto_periódico = 100, atol_punto_periódico = 0.0, iteraciones_máximas_paso_c = 1000, ϵ = 1e-8, multiplicador_k = k -> 2^k, iteraciones_máximas_siguiente_bifurcación = 2)
-    
+
     #Generamos un array vacío para almacenar los parámetros en los que se dan las bifurcaciones de doblamiento de periodo.
     cs = Array{typeof(c), 1}()
-    
+
     #Para cada periodo de la forma 2^k:
     for k in 0:k_máx
-        
+
         #Intentamos buscar la bifurcación de doblamiento de periodo correspondiente:
         #Para poder aumentar el número de iteraciones máximas como función de k, multiplicamos las iteraciones_máximas_paso_c por el valor de evaluar multiplicador_k en k.
-        c, dc_temp, x0 = buscar_doblamiento_periodo(f, c, dc, k, x0, 
-                            número_iteraciones_punto_periódico = número_iteraciones_punto_periódico, 
-                            atol_punto_periódico = atol_punto_periódico, 
-                            iteraciones_máximas_paso_c = multiplicador_k(k)*iteraciones_máximas_paso_c, 
+        c, dc_temp, x0 = buscar_doblamiento_periodo(f, c, dc, k, x0,
+                            número_iteraciones_punto_periódico = número_iteraciones_punto_periódico,
+                            atol_punto_periódico = atol_punto_periódico,
+                            iteraciones_máximas_paso_c = multiplicador_k(k)*iteraciones_máximas_paso_c,
                             ϵ = ϵ)
-        
+
         #Para los periodos distintos al primero:
-        if k >= 1            
-            
+        if k >= 1
+
             contador = 1
-            
+
             #Si el valor que encontramos es igual al que conseguimos el periodo anterior, intentamos recalcular el nuevo valor,
-            while (cs[end] == c) & (contador <= iteraciones_máximas_siguiente_bifurcación)                
-                
+            while (cs[end] == c) & (contador <= iteraciones_máximas_siguiente_bifurcación)
+
                 #para ello, usamos un número real aleatorio como nueva condición inicial:
                 x0 = rand([-1, 1])*rand()/rand()
-                
+
                 #Usamos el procedimiento anterior pero con la nueva adivinanza del punto de periodo 2^k en f(c).
-                c, dc_temp, x0 = buscar_doblamiento_periodo(f, c, dc, k, x0, 
-                            número_iteraciones_punto_periódico = número_iteraciones_punto_periódico, 
-                            atol_punto_periódico = atol_punto_periódico, 
-                            iteraciones_máximas_paso_c = multiplicador_k(k)*iteraciones_máximas_paso_c, 
+                c, dc_temp, x0 = buscar_doblamiento_periodo(f, c, dc, k, x0,
+                            número_iteraciones_punto_periódico = número_iteraciones_punto_periódico,
+                            atol_punto_periódico = atol_punto_periódico,
+                            iteraciones_máximas_paso_c = multiplicador_k(k)*iteraciones_máximas_paso_c,
                             ϵ = ϵ)
             end
-        end        
-        
+        end
+
         #Guardamos el valor obtenido en el array.
         @show c
         push!(cs, c)
     end
-    
+
     return cs
 end
+```
 
-#' 
-#' Finalmente, podemos buscar los valores de los parámetros $\{c_1, \ldots, c_k\}$, digamos, para $k \geq 10$, usando una condición inicial aleatoria en (-1, 0]:
-#' 
-#+ 
+Finalmente, podemos buscar los valores de los parámetros $\{c_1, \ldots, c_k\}$, digamos, para $k \geq 10$, usando una condición inicial aleatoria en (-1, 0]:
 
+```julia
 cs_1 = buscar_doblamientos_periodo(Q, -0.6, -0.1, 10, -rand())
+```
 
-#' 
-#' Usando la definición de $f$:
-#' 
-#' \begin{equation}
-#' f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} = \frac{c_{n + 1}-c_{n}}{c_{n+2}-c_{n+1}}.
-#' \end{equation}
-#' 
-#+ 
+Usando la definición de $f$:
 
+\begin{equation}
+f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} = \frac{c_{n + 1}-c_{n}}{c_{n+2}-c_{n+1}}.
+\end{equation}
+
+```julia
 function f(cs)
-    
+
     #Calcula el vector de diferencias (cs[k + 1] - cs[k]):
     δcs = diff(cs)
-    
+
     #Calcula los valores de f_k:
     fs = [δcs[i - 1]/δcs[i] for i in 2:length(δcs)]
-    
+
     return fs
 end
+```
 
-#' 
-#' Obtenemos que:
-#' 
-#+ 
+Obtenemos que:
 
+```julia
 fs_1 = f(cs_1)
+```
 
-#' 
-#' Que aparenta converger a algo parecido a 4.7...
-#' Podemos robustecer nuestra cota usando una tolerancia más estricta:
-#' 
-#+ 
+Que aparenta converger a algo parecido a 4.7...
+Podemos robustecer nuestra cota usando una tolerancia más estricta:
 
+```julia
 cs_2 = buscar_doblamientos_periodo(Q, -0.6, -0.1, 11, -rand(), ϵ = 1e-10, iteraciones_máximas_paso_c = 10000, multiplicador_k = k -> 5^k)
+```
 
-
-#+ 
-
+```julia
 fs_2 = f(cs_2)
+```
 
-#' 
-#' Se puede observar que la convergencia con periodos superiores se alenta significativamente. Podemos intentar lo anterior con `BigFloat`s inclusive:
-#' 
-#+ 
+Se puede observar que la convergencia con periodos superiores se alenta significativamente. Podemos intentar lo anterior con `BigFloat`s inclusive:
 
+```julia
 cs_3 = buscar_doblamientos_periodo(Q, BigFloat(-0.6), BigFloat(-0.1), 12, -rand(BigFloat), ϵ = 1e-50, iteraciones_máximas_paso_c = 10000, multiplicador_k = k -> 10^k)
+```
 
-
-#+ 
-
+```julia
 fs_3 = f(cs_3)
+```
+
+## Ejercicio 2
+
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
+
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
+
+- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+```julia
+```
+
+## Ejercicio 3
+
+Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece a un ciclo de periodo $2^n$ para ciertos valores $C_n$ del parámetro. Dichos valores son *especiales*, ya que el hecho de que $x=0$ pertenezca a un ciclo de periodo $2^n$ define los llamados *ciclos superestable*, donde tenemos $(Q^{2^p}_{C_n})'(0)=0$.
+
+- ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
 
 - De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
-#' 
-#' ## Ejercicio 2
-#' 
-#' Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
-#' 
-#' - ¿Cómo se comparan los valores obtenidos de $f_n$?
-#' 
-#' - ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
-#' 
-#+ 
-
-
-#' 
-#' ## Ejercicio 3
-#' 
-#' Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece a un ciclo de periodo $2^n$ para ciertos valores $C_n$ del parámetro. Dichos valores son *especiales*, ya que el hecho de que $x=0$ pertenezca a un ciclo de periodo $2^n$ define los llamados *ciclos superestable*, donde tenemos $(Q^{2^p}_{C_n})'(0)=0$.
-#' 
-#' - ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
-#' 
-#' - De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
-#' 
 
 ```julia
 ```
