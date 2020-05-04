@@ -1,3 +1,4 @@
+
 # Tarea 3
 
 > Envío inicial del PR: **22 de abril**.
@@ -22,6 +23,160 @@ La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estim
 Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
 
 ```julia
+include("NumDual.jl")
+using Main.NumDual
+```
+
+```julia
+Dual(1.9,2)
+```
+
+```julia
+x_Dual(8)
+```
+
+```julia
+function Met_Newton(f::Function,x_0;its=10)
+    x_0 = x_Dual(x_0)
+    x_last = x_0
+    for i in 1:its
+        x_last = x_0
+        f_n = f(x_0)
+        x_0 = x_0-f_n[1]/f_n[2]
+        if x_0 == x_last
+            #print("iteraciones = ")
+            #println(i)
+            break
+        end
+    end
+    if x_0[1] ≈ x_last[1]
+        return x_0
+    else
+        return "No converge"
+    end
+end
+```
+
+```julia
+Q(x,c) = x^2+c
+```
+
+```julia
+function Fiburcación(f,c₀,pres,direc)
+    for i in 1:pres
+        while true
+        P(x) = f(x,c₀)-x
+        X = Met_Newton(P,0,its=10000)
+            if typeof(X)!=String
+                break
+            else
+                c₀+= direc//(10^i)
+            end
+        end
+        if i!=pres
+            c₀-= 2*direc//(10^i)
+        end
+    end
+    return c₀
+end
+```
+
+```julia
+c₀=Fiburcación(Q,2.0,16,-1)
+```
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+
+    # Primeros nit iterados
+    x0 = 0.0
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc(f, nit, nout, crange)
+#     xx = Vector{Float64}(nout)
+    ff = Array{Float64}(undef, (nout, length(crange)))
+
+    for ic in eachindex(crange)
+        c = crange[ic]
+        ciclosestables!(view(ff, :, ic), f, c, nit, nout)
+#         ff[:,ic] = xx
+    end
+
+    return ff
+end
+```
+
+```julia
+function bifurcacion_dob(f,c₀,pres,direc,orden)
+    P(x) = f(x,c₀)-x
+    c₁=c₀
+    c = Array{Float64,1}(undef, orden+1)
+    for un in 0:orden
+        for i in 1:pres
+            while true
+                c₀+=direc//10^i
+                crange=[c₀]
+                ff = diag_bifurc(Q,1000000, 2^un, crange)
+                ff = reshape(ff, size(ff, 1)*size(ff, 2))
+                X = 1
+                for int in 1:2^un
+                    X *= Q(x_Dual(ff[int]),c₀)[2]
+                end
+                if abs(X)>1
+                    c₁=c₀
+                    break
+                end
+            end
+            c₀-= 2*direc//(10^i)
+        end
+        c[un+1] = c₁
+    end
+    return c
+end
+```
+
+```julia
+c=bifurcacion_dob(Q,1//4,5,-1,5)
+```
+
+```julia
+fₙ=Array{Float64,1}(undef, 5)
+fₙ[1]=(c₀-c[1])/(c[1]-c[2])
+for i in 2:5
+    fₙ[i]=(c[i-1]-c[i])/(c[i]-c[i+1])
+end
+fₙ
 ```
 
 ## Ejercicio 2
@@ -31,6 +186,9 @@ Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
 - ¿Cómo se comparan los valores obtenidos de $f_n$?
 
 - ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+```julia
+```
 
 ```julia
 ```
