@@ -1,29 +1,47 @@
 """
-    iterados(f::Function, n::T, x0) where {T <: Integer}
+    iterados(f::Function, n::T, x0; n_mín::T = 0, n_fin::T = n + 1) where {T <: Integer}
 
 Función que dado un mapeo \$f\$ y una condición inicial \$x_0\$, devuelve el vector \$(x_0, f(x_0), \\ldots, f^{(n)}(x_0)\$.
 \$f\$ debe tener dominio y codominio iguales.
+
+En caso de especificar `n_mín`, el vector que se devuelve tiene por entradas a \$(f^{(n_\\mathrm{mín})}(x_0), f^{(n_\\mathrm{mín} + 1)}(x_0), \\ldots, f^{(n)}(x_0))\$.
+En caso de especificar `n_fin`, el vector que se devuelve consiste en las últimas `n_fin` iteraciones.
 """
-function iterados(f::Function, n::T, x0) where {T <: Integer}
+function iterados(f::Function, n::T, x0; n_mín::T = 0, n_fin::T = n + 1) where {T <: Integer}
     
     @assert n >= 0
+    @assert n >= n_mín
+    @assert n + 1 >= n_fin
     
-    iterados = fill(x0, n + 1)
-    
-    for i in 1:n
+    if n_mín == 0
         
-        iterados[i + 1] = f(iterados[i])
+        n_mín = n + 1 - n_fin
+        
+    elseif n_fin == n + 1
+        
+        n_fin = n + 1 - n_mín
+    end
+    
+    longitud = n_fin
+
+    x_n_mín = iterar(f, n_mín, x0)
+    
+    iterados = fill(x_n_mín, longitud)
+    
+    for i in 2:longitud
+        
+        iterados[i] = f(iterados[i - 1])
     end
     
     return iterados
 end
 
 """
-    iterados(f::Function, n::T) where {T <: Integer}
+    iterados(f::Function, n::T; n_mín::T = 0, n_fin::T = n) where {T <: Integer}
 
-Forma funcional de ```iterados(f, n, x0)``` que permite variar la condición inicial \$x_0\$.
+Forma funcional de ```iterados(f, n, x0; n_mín = 0)``` que permite variar la condición inicial \$x_0\$.
 """
-iterados(f::Function, n::T) where {T <: Integer} = x0 -> iterados(f, n, x0)
+iterados(f::Function, n::T; n_mín::T = 0, n_fin::T = n + 1) where {T <: Integer} = x0 -> iterados(f, n, x0, n_mín = n_mín, n_fin = n_fin)
 
 """
     iterar(f::Function, n::T, x0) where {T <: Integer}
