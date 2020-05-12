@@ -42,8 +42,8 @@ El algoritmo usado es ejemplificado con el primer paso:
 1. Para comenzar, iniciamos buscando $c_1$ desde la derecha con el mapeo en el que $k = 0$ ($n = 1$).
 2. Fijamos una condición inicial, $c'$, (sabemos de lo realizado anteriormente que $ -\frac{3}{4} < c' < \frac{1}{4}$) y un paso $dc < 0$ (sabemos que la bifurcación de doblamiento de periodo se da a la izquierda de $c_0$), así como una adivinanza de la ubicación del punto fijo atractor para $c'$, $x_0$.
 3. Con estos parámetros, damos un paso a la izquierda en $c'$ de tamaño $dc$, y usamos $x_0$ para buscar la posición del punto fijo atractor en $c' + dc$ para $Q^1_{c' + dc}(x)$, $y_0$.
-4. Revisamos si $y_0$ en efecto es de punto fijo del mapeo $C^n_c(x)$ y verificamos el valor de la derivada del mapeo $Q^n_{c' + dc}(x)$ evaluada en $y_0$.
-    - Si el punto que encontramos es punto fijo y su el valor absoluto de la derivada del mapeo en ese punto es menor o igual a uno, aceptamos $c' + dc$ como el nuevo valor de $c'$ y comenzamos el proceso en (2) con el nuevo valor de c'.
+4. Revisamos si $y_0$ en efecto es un punto fijo del mapeo $C^n_c(x)$ y verificamos el valor de la derivada del mapeo $Q^n_{c' + dc}(x)$ evaluada en $y_0$.
+    - Si el punto que encontramos es punto fijo y su valor absoluto de la derivada del mapeo en ese punto es menor o igual a uno, aceptamos $c' + dc$ como el nuevo valor de $c'$ y comenzamos el proceso en (2) con el nuevo valor de c'.
     - Si el punto que encontramos no es punto fijo o el valor absoluto de la derivada del mapeo en ese punto es mayor a uno, comenzamos de nuevo el proceso en (2) con $c'$ y $x_0$ de nuevo, pero con un tamaño de paso de $\frac{dc}{2}$. (Quizá conviene alterar $x_0$ para aumentar la velocidad de convergencia al punto fijo real).
 
 Esto, a priori, se puede realizar analíticamente de forma infinita, acercándose arbitrariamente al valor real de $c_1$.
@@ -192,7 +192,7 @@ buscar_doblamiento_periodo(Q, -0.75, -0.1, 1, -rand(), iteraciones_máximas_paso
 buscar_doblamiento_periodo(Q, -1.25, -0.1, 2, -rand(), iteraciones_máximas_paso_c = 1000)
 ```
 
-Finalmente, podemos automatizar el proceso de encontrar los parámetros en los que se da la bifurcación de doblamiento de periodo usando los valores encontrados del periodo anterior.
+A continuación, podemos automatizar el proceso de encontrar los parámetros en los que se da la bifurcación de doblamiento de periodo usando los valores encontrados del periodo anterior.
 
 ```julia
 """
