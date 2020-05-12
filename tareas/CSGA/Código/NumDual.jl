@@ -45,7 +45,7 @@ Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones u
 """
 var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
 
-import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log, atan, acot
+import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log, atan, acot, mod, mod1
 
 #Display:
 #Para implementar un poco de "eyecandy", conviene colocar el signo de la parte derivada antes del número ϵ. Para hacer esto podemos usar la función ```signbit```:
@@ -167,6 +167,9 @@ sinh(a::Dual) = Dual(sinh(a.p), a.d*cosh(a.p))
 
 atan(a::Dual) = Dual(atan(a.p), a.d/(1 + a.p^2))
 acot(a::Dual) = Dual(acot(a.p),-a.d/(1 + a.p^2))
+
+mod(a::Dual, x::T) where {T<:Real} = Dual(mod(a.p, x), a.d)
+mod1(a::Dual, x::T) where {T<:Real} = Dual(mod1(a.p, x), a.d)
 
 #Diferenciación automática:
 """

@@ -377,7 +377,40 @@ fs_6 = f(cs_6)
 ```
 
 Parece ser que esta dificultad de encontrar los parámetros en los que se dan las bifurcaciones se puede deber a la existencia de dos ramas paralelas en cada bifurcación que aunado a una condición inicial aleatoria para la búsqueda del punto siguiente en la rama, ocasionando que los valores subsecuentes brinquen entre ramas diferentes.
-Sin embargo, aunque la convergencia es más lenta, aparentemente el valor de convergencia es similar al anterior ($\approx 3.69\ldots$).
+Sin embargo, aunque la convergencia es más lenta, aparentemente el valor de convergencia es similar al anterior ($\approx 4.66\ldots$).
+
+Una forma de solventar esto, es limitándonos a una única rama (inicial) del mapeo, por ejemplo, limitando el dominio a $[0, \pi]$ usando aritmética modular:
+
+```julia
+S1(c) = x -> mod1(S(c)(x), π)
+```
+
+```julia
+cs_7 = buscar_doblamientos_periodo(S1, 1.0, 1.0, 10, rand())
+
+fs_7 = f(cs_7)
+```
+
+```julia
+#A veces las condiciones iniciales aleatorias no son tan buenas, puede servir correr el código varias veces.
+cs_8 = buscar_doblamientos_periodo(S1, 1.0, 0.5, 11, rand(), ϵ = 1e-10, iteraciones_máximas_paso_c = 10000, multiplicador_k = k -> 5^k)
+
+fs_8 = f(cs_8)
+```
+
+```julia
+#Este también funciona, y no se tarda tanto como el caso de usar el mapeo completo.
+#Aún así, se deja comentado:
+
+#=
+cs_9 = buscar_doblamientos_periodo(S1, BigFloat(1.0), BigFloat(1.0), 12, rand(BigFloat), ϵ = 1e-50, iteraciones_máximas_paso_c = 10000, multiplicador_k = k -> 10^k)
+
+fs_9 = f(cs_9)
+=#
+```
+
+En efecto, salvo en el caso de usar tolerancias menos estrictas, obsevamos que el valor de convergencia es $\approx 4.66\ldots$
+
 Se sabe, [rigurosamente](https://en.wikipedia.org/wiki/Feigenbaum_constants#Properties), que este límite (la primera constante de Feigenbaum) en efecto es el mismo, en el sentido de *universalidad*.
 
 ## Ejercicio 3
