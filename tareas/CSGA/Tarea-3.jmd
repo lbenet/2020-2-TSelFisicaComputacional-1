@@ -421,5 +421,80 @@ Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece 
 
 - De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
 
+Para el primer punto, buscamos los valores de $c$, $C_n$, tales que $x = 0$ es un punto de periodo $2^n$, es decir, los valores de C_n tales que:
+
+$Q^{(2^n)}_{C_n}(0) = 0$
+
+Si pensamos esta ecuación para $n \in \{0, 1, \ldots\}$ fijo, resulta una función de $c$ en el que $C_n$ es una raíz.
+
+En particular, podemos definir esta función de la siguiente forma:
+
 ```julia
+q(n) = c -> iterar(Q(c), 2^n)(0.0)
 ```
+
+Usando el hecho de que conocemos los valores de $c$ en los que aparecen puntos de periodo superior, (los valores de $c_k$, podemos usar $c_{k}$ como condición inicial del método de Newton aplicado a $q(k)$ para encontrar el punto $C_{k}$ que define al ciclo superestable.
+
+```julia
+#Recordemos que el primer valor de c en cs_1 es una aproximación de c_0, es por eso que restamos uno al índice de q:
+
+Cs_1 = [Newton(q(i - 1), cs_1[i]) for i in eachindex(cs_1)]
+```
+
+Calculamos el valor de $f$ usando ésto:
+
+```julia
+Fs_1 = f(Cs_1)
+```
+
+¡De nuevo aparece la primer constante de Feigenbaum!
+
+Podemos usar otras condiciones iniciales para el método de Newton, como las encontradas en los cálculos con tolerancias más pequeñas o con BigFloats:
+
+```julia
+Cs_2 = [@show Newton(q(i - 1), cs_2[i]) for i in eachindex(cs_2)]
+
+Fs_2 = f(Cs_2)
+```
+
+```julia
+#Iteramos un poco más para ubicar mejor las raíces con BigFloats
+Cs_3 = [@show Newton(q(i - 1), cs_3[i], 100) for i in eachindex(cs_3)]
+
+Fs_3 = f(Cs_3)
+```
+
+El cambio en la condición inicial usada no afecta significativamente el valor de convergencia de las soluciones, lo que produce que el límite de los tres conjuntos de valores de $C_n$ calculados converjan al mismo valor.
+
+Para el segundo punto, podemos utilizar el hecho de que para cualquier mapeo sobre un conjunto $A$, $f: A \rightarrow A$, el conjunto de puntos del dominio que son de periodo $k$, digamos $P_k$, es cerrado bajo iteración, es decir: $f[P_k] = P_k$. Más aún, este conjunto está dividido en clases de equivalencia definidas por la operación de iteración. (Es decir, si $a$ es un punto de periodo $k$ de $f$, $b = f(a)$ también es un punto de periodo $k$ de $f$ y existe $c \in P_k$ tales que $f(c) = a$.)
+Esto nos permite intentar construir el conjunto de puntos de periodo $k$ de (o una clase de equivalencia dentro de éste) iterando sucesivamente un valor de periodo $k$ conocido.
+
+En el caso del mapeo $Q_c$, sabemos al ser éste un polinomio de grado 2 que cuanto más, existen $2^k$ puntos de periodo $k$ para todo valor de $c$.
+Aunque en principio el conocer un único elemento de periodo $k$ sólo nos permite explorar la clase de equivalencia del que es representante, afortunadamente esto es suficiente para conocer todos los puntos de periodo $k$ para los valores de $C_n$ encontrados usando como representante al cero:
+
+```julia
+#Para cada valor de C_n, calculamos el conjunto P_{2^n} generado por el cero, colectando los valores Q(C_n)^{i}(0.0) con i ∈ {0, 1, …, 2^n - 1}
+#Recordando que el índice está desfasado uno respecto al valor de n:
+pqs = [[iterar(Q(Cs_3[k]), i)(BigFloat(0.0)) for i in 0:(2^(k - 1) - 1)] for k in eachindex(Cs_3)]
+PQs = unique!.(sort!.(pqs));
+```
+
+Podemos ver que en efecto se tienen todos los $2^n$ valores para cada valor de $C_n$:
+
+```julia
+length.(PQs)
+```
+
+Buscamos los puntos más cercanos a cero calculando su distancia del cero, removiendo el cero y buscando el mínimo de las listas no vacías:
+
+```julia
+ds = minimum.(broadcast(x -> filter(y -> !iszero(y), abs.(x)), PQs)[2:end])
+```
+
+Finalmente, calculamos los valores de los cocientes sucesivos:
+
+```julia
+Ds = [ds[i - 1]/ds[i] for i in 2:length(ds)]
+```
+
+El límite parece corresponder a la [segunda constante](https://en.wikipedia.org/wiki/Feigenbaum_constants#The_second_constant) de Feigenbaum ($\approx 2.502\ldots$).
