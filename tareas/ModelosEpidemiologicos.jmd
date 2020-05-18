@@ -1,0 +1,73 @@
+
+# Mapeos epidemiológicos
+
+
+ 
+
+Uno de los modelos epidemiológicos más sencillos, y a la vez útiles, es el SIR. La idea del modelo es dividir a la población en compartimientos que describben la evolución de la pandemia. Los compartimentos, que definen las siglas del modelo, corresponden a los Susceptibles, Infectados y Resueltos, donde el último compartimiento a veces se señala como "Recuperados".
+
+
+
+ 
+
+Las ecuaciones (diferenciales) que definen al modelo son:
+
+\begin{eqnarray}
+\frac{\textrm{d}S}{\textrm{d}t} & = & - \frac{\beta I S}{N},          & \quad S(0) \ge 0,\\
+\frac{\textrm{d}I}{\textrm{d}t} & = & \frac{\beta I S}{N} - \gamma R, & \quad I(0) \ge 0,\\
+\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma R,                       & \quad R(0) \ge 0.\\
+\end{eqnarray}
+
+En estas ecuaciones, la constante $N$ está dada por $N=S(0)+I(0)+R(0)$, y es claro que corresponde a una constante para todo tiempo, ya que $\dot{S}+\dot{I}+\dot{R} = 0$. 
+
+La constante $\beta$ define la tasa de contactos, y está ligada al número básico reproductivo, 
+$R_0 = \beta / \gamma$.
+
+ 
+
+De manera similar, el modelo SEIR (que incluye a los Expuestos) está dado por:
+
+\begin{eqnarray}
+\frac{\textrm{d}S}{\textrm{d}t} & = & - \frac{\beta I S}{N},           & \quad S(0) \ge 0,\\
+\frac{\textrm{d}E}{\textrm{d}t} & = & \frac{\beta I S}{N}  - \sigma E ,& \quad E(0) \ge 0,\\
+\frac{\textrm{d}I}{\textrm{d}t} & = & \sigma E - \gamma R,             & \quad I(0) \ge 0,\\
+\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma R,                        & \quad R(0) \ge 0.\\
+\end{eqnarray}
+
+En este caso, $N=S(0)+E(0)+I(0)+R(0)$.
+
+ 
+
+La versión continua de estos modelos ha sido ampliamente estudianda. La idea es jugar con la versión discreta de estos modelos.
+
+- SIR
+
+\begin{eqnarray}
+S(t+1) & = & S(t) - \frac{\beta I(t) S(t)}{N},               & \quad S(0) \ge 0,\\
+I(t+1) & = & I(t) + \frac{\beta I(t) S(t)}{N} - \gamma R(t), & \quad I(0) \ge 0,\\
+R(t+1) & = & R(t) + \gamma R(t),                             & \quad R(0) \ge 0.\\
+\end{eqnarray}
+
+- SEIR
+
+\begin{eqnarray}
+S(t+1) & = & S(t) - \frac{\beta I(t) S(t)}{N},                & \quad S(0) \ge 0,\\
+E(t+1) & = & E(t) + \frac{\beta I(t) S(t)}{N}  - \sigma E(t), & \quad E(0) \ge 0,\\
+I(t+1) & = & I(t) + \sigma E(t) - \gamma R(t),                & \quad I(0) \ge 0,\\
+R(t+1) & = & R(t) + \gamma R(t),                              & \quad R(0) \ge 0.\\
+\end{eqnarray}
+
+
+## Propuestas como proyecto:
+
+1. Simular la evolución de la epidemia y la reconstrucción de los parámetros del modelo. 
+
+    Para esto, partiremos de fijar los parámetros del modelo, y a partir de ellos, construímos datos en  el tiempo. Estos datos *sintéticos" tienen ruido, que inicialmente podemos suponer que es gaussiano, aunque de hecho deberían tener un sesgo. La idea es usar los datos sintéticos en diversas situaciones, buscando determinar los parámetros del modelo.
+    
+
+2. Modelos estadísticos de la evolución de la pandemia.
+
+    La idea es simular la evolución de la pandemia, a partir de ciertos parámetros *inciertos*, que son variados para estudiar estadísticamente las posiles evoluciones de la pandemia.
+
+```julia
+```
