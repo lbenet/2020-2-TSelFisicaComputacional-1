@@ -1,5 +1,3 @@
-module NumDual
-
 """
     Dual{T <: Real}
 
@@ -47,7 +45,7 @@ Construye el dual \$x + \\epsilon\$ usado para calcular derivadas de funciones u
 """
 var_Dual(x::T) where {T <: Real} = Dual(x, one(x))
 
-import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log, atan, acot
+import Base: show, +, -, *, /, sin, cos, tan, ^, sqrt, exp, log, atan, acot, mod, mod1
 
 #Display:
 #Para implementar un poco de "eyecandy", conviene colocar el signo de la parte derivada antes del número ϵ. Para hacer esto podemos usar la función ```signbit```:
@@ -170,6 +168,9 @@ sinh(a::Dual) = Dual(sinh(a.p), a.d*cosh(a.p))
 atan(a::Dual) = Dual(atan(a.p), a.d/(1 + a.p^2))
 acot(a::Dual) = Dual(acot(a.p),-a.d/(1 + a.p^2))
 
+mod(a::Dual, x::T) where {T<:Real} = Dual(mod(a.p, x), a.d)
+mod1(a::Dual, x::T) where {T<:Real} = Dual(mod1(a.p, x), a.d)
+
 #Diferenciación automática:
 """
     derivada(f::Function, x::T) where {T <: Real}
@@ -178,7 +179,46 @@ Calcula la derivada de \$f\$ en el punto \$x\$ mediante duales.
 """
 derivada(f::Function, x::T) where {T <: Real} = f(var_Dual(x)) |> derivada
 
-export Dual, var_Dual, principal, derivada
-
 include("ComplexDual.jl")
+
+"""
+    Newton(f::Function, x0::Real, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Real, número_iteraciones::Int = 100)
+    
+    x = var_Dual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
 end
+
+"""
+    Newton(f::Function, x0::Complex, número_iteraciones::Int = 1000)
+
+Implementación del método de Newton real usando números duales.
+Dada una adivinanza inicial \$x_0\$, aproxima la raíz de la ecuación \$f(x) = 0\$ mediante el número de iteraciones determinado.
+"""
+function Newton(f::Function, x0::Complex, número_iteraciones::Int = 100)
+    
+    x = var_ComplexDual(x0)
+    
+    for i in 1:número_iteraciones
+        
+        y = f(x)
+        
+        x -= principal(y)/derivada(y)
+    end
+    
+    return principal(x)
+end
+
+export Dual, var_Dual, principal, derivada, Newton
