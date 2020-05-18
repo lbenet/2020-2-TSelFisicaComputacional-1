@@ -43,9 +43,7 @@ function Met_Newton(f::Function,x_0;its=10)
         x_last = x_0
         f_n = f(x_0)
         x_0 = x_0-f_n[1]/f_n[2]
-        if x_0 == x_last
-            #print("iteraciones = ")
-            #println(i)
+        if x_0[1] ≈ x_last[1]
             break
         end
     end
@@ -57,32 +55,62 @@ function Met_Newton(f::Function,x_0;its=10)
 end
 ```
 
+<font size=3>
+
+Para encontrar la primera bifurcación, utilizaremos la función bifurcación, está tendra 4 parámetro de entrada que será f, la función, $c_{0}$, el parametro $c_0$ con el que iniciaremos nuestra búsqueda, el paso, que nos indicará que tanto avanzaremos al buscar la bifurcación, y direc, que nos indicará la dirección en la que buscaremos la bifurcación, de está forma iniciaremos un ciclo 'while', en el que buscaremos un 0 a la función $f(x,c_0)-x$ a través del método de Newton, sino encuentra un cero en 1000 iteraciones, ahora variaremos a nuestro parámetro, en función de la dirección un paso dado, de tal forma que avanzaremos $\frac{direc}{10^{paso}}$; ahora bien si el algoritmo encunetra un 0, puede haber dos opciones, que el cero sea tan bueno tal que al evaluarlo en la derivada de $f(x,c_0)-x$ nos da un valor en valor absoluto menor a 1e-20, sin embargo si no es así se recurre a la función refinamiento. 
+
+```julia
+function bifurcacion(f,c₀;paso=2,direc=-1)
+    c₀=BigFloat(c₀)
+    while true
+        P(x) = f(x,c₀)-x
+        X = Met_Newton(P,0.1,its=1000)
+        if typeof(X)!=String
+            if abs(P(x_Dual(X[1]))[2])≤1e-20
+                break
+            else
+                c₁ = c₀ - direc//10^paso
+                c₀ = refinamiento(f,c₀,c₁)
+                break
+            end
+        else
+            c₀ += direc//10^paso
+        end
+    end
+    return Float64(c₀)
+end
+```
+
+<font size=3>
+Para la función refinamiento, se requiere a la función, y dos parametros $c_0$ y $c_1$, los cuales serán el parámetro con el que se obtuvo un 0 y el antecesor a éste, en el que no se encontraron ceros. La idea es la misma que bifurcación: buscar ceros con el método de Newton, pero ahora se parten los intervalos en 2 y en función de si se encuentren ceros o no en el punto medio se va recortando el intrevalo hasta que encontramos una precisión de 1e-20.
+
+```julia
+function refinamiento(f,c₀,c₁)
+    c₂ = BigFloat(0)
+    while true
+        c₂ = c₀ - (c₀-c₁)/2.0
+        P(x) = f(x,c₂)-x
+        X = Met_Newton(P,0,its=1000)
+        if typeof(X)!=String
+            if abs(P(x_Dual(X[1]))[2])≤1e-20
+                break
+            else
+                c₀ = c₂ 
+            end
+        else
+            c₁ = c₂
+        end
+    end
+    return c₂
+end
+```
+
 ```julia
 Q(x,c) = x^2+c
 ```
 
 ```julia
-function Fiburcación(f,c₀,pres,direc)
-    for i in 1:pres
-        while true
-        P(x) = f(x,c₀)-x
-        X = Met_Newton(P,0,its=10000)
-            if typeof(X)!=String
-                break
-            else
-                c₀+= direc//(10^i)
-            end
-        end
-        if i!=pres
-            c₀-= 2*direc//(10^i)
-        end
-    end
-    return c₀
-end
-```
-
-```julia
-c₀=Fiburcación(Q,2.0,16,-1)
+c₀=bifurcacion(Q,8;paso=1)
 ```
 
 ```julia
@@ -104,6 +132,347 @@ function ciclosestables!(xx, f, cc, nit, nout)
     for it = 1:nit
         x0 = f(x0, cc)
     end
+    
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc_2(f, nit, nout, crange)
+
+    ff = Array{Float64}(undef, nout)
+    ciclosestables!(view(ff, :, 1), f, crange, nit, nout)
+
+    return ff
+end
+```
+
+<font size=3>
+    
+Ahora explicaré los puntos principales de la función `bifurcación_dob_v1`:
+
+   - $f$ será la función a la que se le encontrará las fiburcaciones.
+   - $c_0$ será el punto desde el que partiremos, en este punto es importante mencionar que se calcula la primera bifurcación para que la función nos dveuelva $c_0$, solo por completez.
+   - $pres$ será un parámetro que buscará tener un objetivo parecido al parámetro paso de la función anterior `bifurcacion`, de está manera se llegará a variar al parametro hasta un $\frac{1}{10^{pres+1}}$.
+   - $direc$ nos dirá la dirección en la que buscaremos las bifurcaciones.
+   - $orden$ nos indicará hasta que $c_n$ se calculará, esto es si sé busca hasta $c_6$, $orden= 6$.
+   - $tol$ será un parametro que nos indicará hasta que preción llegaremos, esto es nos detendremos hasta que nuestra condición sea menor a $tol$.
+   - $imprimir$ nos indicará si queremos que se impriman dos parametros que permiten visualizar que sucede en nuestra función.
+   - $paso$ será el paso incial con el que avanzaremos nuestro parámetro.
+   - $pasos$ será un array que nos indicará como cambiarán los parametros en función del parametro siguiente.
+   - $abs_value$ nos indicará que pasos estarán asociados a lso valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
+   - $its$ nos indicará el número de iteraciones que le daremos a `diag_bifurc_2`.
+   
+De esta forma la función se propone dinamica, dentro habrá una variable $flag$ que sirve para salir de los ciclos. Ahora explicaré los ciclos:
+ 
+ - El primer `for` va de $0:orden-1$ este nos indica en que $c_n$ vamos. al salir de este ciclo la función nos retornará $c$.
+ 
+ - El segundo `for` va de $un:pres$ y lo que nos indica es que presición le daremos a nuestro refinamiento, y va de $un$ porque conforme avance nuestro refinamiento se iniciarán desde números más pequeños de tal forma que se vaya avanzando en función del orden de $c_n$ en el que vamos. Al terminar este ciclo colocaremos el $c_n$ encontrado en el array $c$ y se dará un paso inicial de $2^(un+2)$ para el sigunete $c_n$, de tal forma que el paso no sea muy pequeño y nos encerremos en el mismo $c_n$.
+ 
+ - El ciclo `while` será el calculo del $c_n$, si al terminar este ciclo encontramos que $flag$ le dimos el valor de *true* entonces habremos encontrado nuestro $c_n$ deseado y nos saldremos también del `for` anterior, si no es así ahora nos regresaremos al $c_0$ anterior.
+ 
+Ahora explicaré el código del ciclo `while`:
+
+ - Primero comenzaremos variando nuestro $c_0$ en función de nuestro paso, dirección y precisión.
+ 
+ - Después calcularemos sus ceros en función de que es un ciclo $2^un$ (en este punto ya no verifique que se trata de en efecto un ciclo de $2^n$ por lo que observe en la derivada).
+ 
+ - Enseguida calculo el valor de la derivada de $f$ en los $2^n$ ceros.
+ 
+ - Después se imprimen $c_0$ y el valor absoluto de la derivada anterior menos 1.
+ 
+ - Ahora se verificarán las condiciones:
+ 
+     - Si $abs(X-1)<tol$ tendremos que hemos encontrado nuestro $c_n$ por lo que salemos del ciclo y redefinimos $flag=true$.
+         
+     - En cambio si $X>1$ nos habremos pasado de nuestro $c_n$ por lo que nos salimos del `while` pero $flag==false$.
+ 
+ - Si en cambio ninguno de estas condiciones es cierta se redefine $paso$ con la función `Pasos`.
+ 
+ - Y se guarda el último $X$ en $X_{last}$.
+ 
+ Por último explicaré la función `Pasos`:
+ 
+ - $abs_value$ y $pasos$ serán los primeros arrays que se importaron.
+ 
+ - $value_abs$ nos dice que valor tiene $abs(abs(X)-1)$, este parametro es importante pues es con el que detenemos nuestro ciclo, vemos que este valor se compará con el array $abs_value$ y en función de como se comparen estos valores se le asigna un $paso$, en nuestras definiciones iniciales mientras sea más grande se dará un paso mayor.
+
+- Por último $veloc$ nos indicará si nuestro valor está subiendo o está bajando, al imprimir encontramos que $abs(X)$ al iniciar cerca del $c_n$ anterior comienza muy cercano a 1, hasta que baja a 0 y después regresa a 1, eneste punto lo que intenté hacer fue ver si subía  o bajaba $X$ y así dar un paso mayor o menor, sin embargo a pesar de que hay un error, en una versión siguinete mejoró está parte.
+
+```julia
+function bifurcacion_dob_v1(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden+1)
+    c[1] = bifurcacion(f,c₀;paso=1,direc=direc)
+    c₀, flag = c[1], false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                X = abs(X)
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    println(abs(X-1))
+                end
+                if abs(X-1) < tol
+                    flag = true
+                    break
+                elseif X > 1
+                    break
+                end
+                paso = Pasos(abs_value,pasos,abs(X-1),X_last-X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+        end
+        c[un+2],paso = c₀, 2^(un+2)
+    end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,veloc)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                return 8^2*pasos[i]
+            else
+                return 16*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v1(Q,1.0,15,-1,9;imprimir=true)
+```
+
+```julia
+num=8
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+```julia
+function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
+    c = Array{Float64,1}(undef, orden+2)
+    c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
+    c₀, flag, paso, pasos, abs_value = c[1], false, 2, [6,4,3,2],[0.7,0.5,0.3,0.0]
+    for un in 0:orden
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+                ff = diag_bifurc(f,100000000, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= Q(x_Dual(ff[int]),c₀)[2]
+                end
+                #print(c₀)
+                #print("  ")
+                #print(abs(abs(X)-1))
+                #print("  ")
+                #println(X)
+                if abs(abs(X)-1) < 1e-5
+                    c₁, flag = c₀, true
+                    break
+                elseif abs(X) > 1
+                    c₁=c₀
+                    break
+                elseif un > 7
+                    if abs(X_last) > 0.9
+                        if X_last < 0
+                            if abs(X_last) > abs(X)
+                 #               println("nuevo")
+                                c₁=c₀
+                                break
+                            end
+                        end
+                    end
+                end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
+                X_last=X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+            paso=2
+        end
+        c[un+2],paso = c₀, 2^(un+2)
+        #print("---------------------")
+        #print(un+1)
+        #println("---------------------")
+        end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,veloc,un)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                return 100*pasos[i]
+            else
+                return 40*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v3(Q,1.0,16,-1,10)
+```
+
+```julia
+num=10
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+```julia
+function bifurcacion_dob_v4(f,c₀,pres,direc,orden)
+    c = Array{Float64,1}(undef, orden+2)
+    c[1] = bifurcacion(Q,c₀;tol_init=1,direc=direc)
+    c₀, flag, paso, pasos, abs_value = c[1], false, 2, [6,4,3,2],[0.7,0.5,0.3,0.0]
+    for un in 0:orden
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+                ff = diag_bifurc(f,300000000, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= Q(x_Dual(ff[int]),c₀)[2]
+                end
+                print(c₀)
+                print("  ")
+                print(abs(abs(X)-1))
+                print("  ")
+                println(X)
+                if abs(abs(X)-1) < 1e-8
+                    c₁, flag = c₀, true
+                    break
+                elseif abs(X) > 1
+                    c₁=c₀
+                    break
+                elseif un > 7
+                    if abs(X_last) > 0.9
+                        if X_last < 0
+                            if abs(X_last) > abs(X)
+                 #               println("nuevo")
+                                c₁=c₀
+                                break
+                            end
+                        end
+                    end
+                end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
+                X_last=X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+        end
+        c[un+2],paso = c₀, 2^(un+2)
+        print("---------------------")
+        print(un+1)
+        println("---------------------")
+        end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,veloc,un)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                return 25*pasos[i]
+            else
+                return 10*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v4(Q,1.0,16,-1,10)
+```
+
+```julia
+num=10
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+## Ejercicio 2
+
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
+
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
+
+- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+    #println("---------------------------------")
+    # Primeros nit iterados
+    x0 = pi/2
+    for it = 1:nit
+        x0 = f(x0, cc)
+        #println(x0)
+    end
+    #println(x0)
 
     # Se guardan los siguientes nout iterados
     for it = 1:nout
@@ -138,59 +507,180 @@ end
 ```
 
 ```julia
-function bifurcacion_dob(f,c₀,pres,direc,orden)
-    P(x) = f(x,c₀)-x
-    c₁=c₀
+Qc(x,c) = c*sin(x)
+
+crange = 2.2:1/2^8:2.8
+#crange=[-5//4]
+
+ff = diag_bifurc(Qc, 100000, 1000, crange);
+cc = ones(size(ff, 1)) * crange';
+
+# Esto cambia las matrices en vectores; ayuda un poco para los dibujos
+ff = reshape(ff, size(ff, 1)*size(ff, 2));
+cc = reshape(cc, size(ff));
+```
+
+```julia
+using Plots
+```
+
+```julia
+gr(grid=true)
+```
+
+```julia
+scatter(cc, ff, markersize=0.5, markerstrokestyle=:solid, legend=false, title="Fig. 1")
+#plot!([-1.2,-1.5,-1.5,-1.2,-1.2], [-1.5,-1.5,-0.9,-0.9,-1.5], color=:black)
+#plot!([-2,0.5], [0.0,0.0], color=:red)
+xaxis!("c")
+yaxis!("x_infty")
+savefig("sin18.png")
+```
+
+![Fig 1](sin18.png "sin9")
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+
+    # Primeros nit iterados
+    x0 = pi/2
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+    
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc(f, nit, nout, crange)
+   # xx = Vector{Float64}(nout)
+    ff = Array{Float64}(undef, nout)
+    ciclosestables!(view(ff, :, 1), f, crange, nit, nout)
+    #ff[:,1] = xx
+
+    #for ic in eachindex(crange)
+      #  c = crange[ic]
+     #   ciclosestables!(view(ff, :, ic), f, c, nit, nout)
+    #    ff[:,ic] = xx
+    #end
+
+    return ff
+end
+```
+
+```julia
+function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
     c = Array{Float64,1}(undef, orden+1)
+   # c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
+   flag, paso, pasos, abs_value =  false, 1, [4,3,2,1],[0.7,0.5,0.3,0.0]
     for un in 0:orden
-        for i in 1:pres
+        for i in un:pres
+            X_last = 0.0
             while true
-                c₀+=direc//10^i
-                crange=[c₀]
-                ff = diag_bifurc(Q,1000000, 2^un, crange)
-                ff = reshape(ff, size(ff, 1)*size(ff, 2))
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+                ff = diag_bifurc(f,10000000, 2^un, crange)
                 X = 1
                 for int in 1:2^un
-                    X *= Q(x_Dual(ff[int]),c₀)[2]
+                    X *= f(x_Dual(ff[int]),c₀)[2]
                 end
-                if abs(X)>1
+                print(c₀)
+                print("  ")
+                print(abs(abs(X)-1))
+                print("  ")
+                println(X)
+                if abs(abs(X)-1) < 1e-5
+                    c₁, flag = c₀, true
+                    break
+                elseif abs(X) > 1
                     c₁=c₀
                     break
+                #elseif un > 7
+                elseif abs(X_last) > 0.9
+                        if X_last < 0
+                            if abs(X_last) > abs(X)
+                 #               println("nuevo")
+                                c₁=c₀
+                                break
+                            end
+                        end
+                    #end
                 end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
+                X_last=X
             end
-            c₀-= 2*direc//(10^i)
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+            paso=2
         end
-        c[un+1] = c₁
-    end
+        c[un+1],paso = c₀, 2^(un+2)
+        print("---------------------")
+        print(un+1)
+        println("---------------------")
+        end
     return c
 end
+
+function Pasos(abs_value,pasos,value_abs,veloc,un)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                if veloc<0.1
+                    return 50*pasos[i]
+                else
+                    return 100*(abs(veloc))*pasos[i]
+                end
+            else
+                return 50*(1-abs(veloc))*pasos[i]
+            end
+        end
+    end
+end
 ```
 
 ```julia
-c=bifurcacion_dob(Q,1//4,5,-1,5)
+F(x,c) = c*sin(x)
 ```
 
 ```julia
-fₙ=Array{Float64,1}(undef, 5)
-fₙ[1]=(c₀-c[1])/(c[1]-c[2])
-for i in 2:5
-    fₙ[i]=(c[i-1]-c[i])/(c[i]-c[i+1])
+c = bifurcacion_dob_v3(F,1.5,16,1,6)
+```
+
+```julia
+num=5
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
 end
 fₙ
-```
-
-## Ejercicio 2
-
-Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
-
-- ¿Cómo se comparan los valores obtenidos de $f_n$?
-
-- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
-
-```julia
-```
-
-```julia
 ```
 
 ## Ejercicio 3
@@ -200,6 +690,89 @@ Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece 
 - ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
 
 - De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
+
+```julia
+function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
+    c = Array{Float64,1}(undef, orden+1)
+   # c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
+   flag, paso, pasos, abs_value =  false, 1, [4,3,2,1],[0.7,0.5,0.3,0.0]
+    for un in 0:orden
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+              #  ff = diag_bifurc(f,10000000, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(0),c₀)[2]
+                end
+                print(c₀)
+                print("  ")
+                print(abs(abs(X)-1))
+                print("  ")
+                println(X)
+                """
+                if abs(X) < 1e-5
+                    c₁, flag = c₀, true
+                    break
+                elseif abs(X) > 1
+                    c₁=c₀
+                    break
+                #elseif un > 7
+              #  elseif abs(X_last) > 0.9
+               #         if X_last < 0
+                #            if abs(X_last) > abs(X)
+                 #               println("nuevo")
+                  #              c₁=c₀
+                 #               break
+                   #         end
+                    #    end
+                    #end
+                end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
+                X_last=X
+                """
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+            paso=2
+        end
+        c[un+1],paso = c₀, 2^(un+2)
+        print("---------------------")
+        print(un+1)
+        println("---------------------")
+        end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,veloc,un)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                if veloc<0.1
+                    return 50*pasos[i]
+                else
+                    return 100*(abs(veloc))*pasos[i]
+                end
+            else
+                return 50*(1-abs(veloc))*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v3(Q,2.0,16,-1,6)
+```
+
+```julia
+f(x_Dual(1))
+```
 
 ```julia
 ```
