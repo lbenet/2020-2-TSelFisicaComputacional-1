@@ -396,6 +396,8 @@ Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
 
 - ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
 
+Ahora observemos el diagrama del $S_c(x)$
+
 ```julia
 """
     ciclosestables!(xx, f, cc, nit, nout)
@@ -454,7 +456,6 @@ end
 Qc(x,c) = c*sin(x)
 
 crange = 2.2:1/2^8:2.8
-#crange=[-5//4]
 
 ff = diag_bifurc(Qc, 100000, 1000, crange);
 cc = ones(size(ff, 1)) * crange';
@@ -474,158 +475,88 @@ gr(grid=true)
 
 ```julia
 scatter(cc, ff, markersize=0.5, markerstrokestyle=:solid, legend=false, title="Fig. 1")
-#plot!([-1.2,-1.5,-1.5,-1.2,-1.2], [-1.5,-1.5,-0.9,-0.9,-1.5], color=:black)
-#plot!([-2,0.5], [0.0,0.0], color=:red)
 xaxis!("c")
 yaxis!("x_infty")
-savefig("sin18.png")
+savefig("sin_its.png")
 ```
 
-![Fig 1](sin18.png "sin9")
+![Fig 1](sin_its.png "Sc")
+
+Ahora definimos una función similar a las del primer problema pero sin considerar la primera bifurcacion pues, en este caso siempre existe un cero en x=0.
 
 ```julia
-"""
-    ciclosestables!(xx, f, cc, nit, nout)
-
-Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
-usando como condición inicial `x0=0`; los últimos `nout` iterados
-actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
-del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
-tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
-`nout` iterados reflejen los ciclos estables del mapeo `f`.
-"""
-function ciclosestables!(xx, f, cc, nit, nout)
-    @assert (nit > 0) && (nout > 0)
-
-    # Primeros nit iterados
-    x0 = pi/2
-    for it = 1:nit
-        x0 = f(x0, cc)
-    end
-    
-    # Se guardan los siguientes nout iterados
-    for it = 1:nout
-        x0 = f(x0, cc)
-        @inbounds xx[it] = x0
-    end
-
-    nothing
-end
-"""
-    diag_bifurc(f, nit, nout, crange)
-
-Itera el mapeo `f` `nit+nout` veces y regresa una matriz
-cuya columna `i` tiene los últimos `nout` iterados del mapeo
-para el valor del parámetro del mapeo `crange[i]`.
-
-La función `f` debe ser definida de tal manera que `f(x0, c)`
-tenga sentido.
-"""
-function diag_bifurc(f, nit, nout, crange)
-   # xx = Vector{Float64}(nout)
-    ff = Array{Float64}(undef, nout)
-    ciclosestables!(view(ff, :, 1), f, crange, nit, nout)
-    #ff[:,1] = xx
-
-    #for ic in eachindex(crange)
-      #  c = crange[ic]
-     #   ciclosestables!(view(ff, :, ic), f, c, nit, nout)
-    #    ff[:,ic] = xx
-    #end
-
-    return ff
-end
-```
-
-```julia
-function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
-    c = Array{Float64,1}(undef, orden+1)
-   # c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
-   flag, paso, pasos, abs_value =  false, 1, [4,3,2,1],[0.7,0.5,0.3,0.0]
-    for un in 0:orden
+function bifurcacion_dob_v2_sin(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden)
+    flag =  false
+    for un in 0:orden-1
         for i in un:pres
             X_last = 0.0
             while true
-                c₀+=paso*direc//10^(i+1)
-                crange=c₀
-                ff = diag_bifurc(f,10000000, 2^un, crange)
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
                 X = 1
                 for int in 1:2^un
                     X *= f(x_Dual(ff[int]),c₀)[2]
                 end
-                print(c₀)
-                print("  ")
-                print(abs(abs(X)-1))
-                print("  ")
-                println(X)
-                if abs(abs(X)-1) < 1e-5
-                    c₁, flag = c₀, true
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(abs(X)-1) < tol
+                    flag = true
                     break
                 elseif abs(X) > 1
-                    c₁=c₀
                     break
-                #elseif un > 7
                 elseif abs(X_last) > 0.9
                         if X_last < 0
                             if abs(X_last) > abs(X)
-                 #               println("nuevo")
-                                c₁=c₀
                                 break
                             end
                         end
-                    #end
                 end
-                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
-                X_last=X
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X)
+                X_last = X
             end
             if flag
                 flag = false
                 break
             end
-            c₀-= paso*direc//10^(i+1)
-            paso=2
+            c₀-= paso*direc//10^(i+2)
         end
         c[un+1],paso = c₀, 2^(un+2)
-        print("---------------------")
-        print(un+1)
-        println("---------------------")
-        end
-    return c
-end
-
-function Pasos(abs_value,pasos,value_abs,veloc,un)
-    for i in 1:4
-        if value_abs>abs_value[i]
-            if veloc>0
-                if veloc<0.1
-                    return 50*pasos[i]
-                else
-                    return 100*(abs(veloc))*pasos[i]
-                end
-            else
-                return 50*(1-abs(veloc))*pasos[i]
-            end
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
         end
     end
+    return c
 end
 ```
 
 ```julia
-F(x,c) = c*sin(x)
+S(x,c) = c*sin(x)
 ```
 
 ```julia
-c = bifurcacion_dob_v3(F,1.5,16,1,6)
+c = bifurcacion_dob_v2_sin(S,1.5,15,1,8;pasos=[6,5,4,2],imprimir=true)
 ```
 
 ```julia
-num=5
+num=6
 fₙ=Array{Float64,1}(undef, num)
 for i in 1:num
     fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
 end
 fₙ
 ```
+
+Observamos que los números comienzan a converger al mismo valor, un valor como de $\approx$4.669 al igual que en caso anterior, esto nos indica que esxiste la misma relación entre los parametros porlo que podemos afirmar que existe una clase de relación entre los cocientes la cual nos dice que existe la misma relación entre la dinamica de estos mapeos.
 
 ## Ejercicio 3
 
