@@ -173,14 +173,14 @@ Ahora explicaré los puntos principales de la función `bifurcación_dob_v1`:
    - $imprimir$ nos indicará si queremos que se impriman dos parametros que permiten visualizar que sucede en nuestra función.
    - $paso$ será el paso incial con el que avanzaremos nuestro parámetro.
    - $pasos$ será un array que nos indicará como cambiarán los parametros en función del parametro siguiente.
-   - $abs_value$ nos indicará que pasos estarán asociados a lso valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
+   - $abs_{value}$ nos indicará que pasos estarán asociados a lso valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
    - $its$ nos indicará el número de iteraciones que le daremos a `diag_bifurc_2`.
    
 De esta forma la función se propone dinamica, dentro habrá una variable $flag$ que sirve para salir de los ciclos. Ahora explicaré los ciclos:
  
  - El primer `for` va de $0:orden-1$ este nos indica en que $c_n$ vamos. al salir de este ciclo la función nos retornará $c$.
  
- - El segundo `for` va de $un:pres$ y lo que nos indica es que presición le daremos a nuestro refinamiento, y va de $un$ porque conforme avance nuestro refinamiento se iniciarán desde números más pequeños de tal forma que se vaya avanzando en función del orden de $c_n$ en el que vamos. Al terminar este ciclo colocaremos el $c_n$ encontrado en el array $c$ y se dará un paso inicial de $2^(un+2)$ para el sigunete $c_n$, de tal forma que el paso no sea muy pequeño y nos encerremos en el mismo $c_n$.
+ - El segundo `for` va de $un:pres$ y lo que nos indica es que presición le daremos a nuestro refinamiento, y va de $un$ porque conforme avance nuestro refinamiento se iniciarán desde números más pequeños de tal forma que se vaya avanzando en función del orden de $c_n$ en el que vamos. Al terminar este ciclo colocaremos el $c_n$ encontrado en el array $c$ y se dará un paso inicial de $2^{un+2}$ para el sigunete $c_n$, de tal forma que el paso no sea muy pequeño y nos encerremos en el mismo $c_n$.
  
  - El ciclo `while` será el calculo del $c_n$, si al terminar este ciclo encontramos que $flag$ le dimos el valor de *true* entonces habremos encontrado nuestro $c_n$ deseado y nos saldremos también del `for` anterior, si no es así ahora nos regresaremos al $c_0$ anterior.
  
@@ -208,9 +208,11 @@ Ahora explicaré el código del ciclo `while`:
  
  - $abs_value$ y $pasos$ serán los primeros arrays que se importaron.
  
- - $value_abs$ nos dice que valor tiene $abs(abs(X)-1)$, este parametro es importante pues es con el que detenemos nuestro ciclo, vemos que este valor se compará con el array $abs_value$ y en función de como se comparen estos valores se le asigna un $paso$, en nuestras definiciones iniciales mientras sea más grande se dará un paso mayor.
+ - $value_abs$ nos dice que valor tiene $abs(abs(X)-1)$, este parametro es importante pues es con el que detenemos nuestro ciclo, vemos que este valor se compará con el array $abs_{value}$ y en función de como se comparen estos valores se le asigna un $paso$, en nuestras definiciones iniciales mientras sea más grande se dará un paso mayor.
 
 - Por último $veloc$ nos indicará si nuestro valor está subiendo o está bajando, al imprimir encontramos que $abs(X)$ al iniciar cerca del $c_n$ anterior comienza muy cercano a 1, hasta que baja a 0 y después regresa a 1, eneste punto lo que intenté hacer fue ver si subía  o bajaba $X$ y así dar un paso mayor o menor, sin embargo a pesar de que hay un error, en una versión siguinete mejoró está parte.
+
+Observamos que existen 2 formas de conseguir $c_n$ que se termine el ciclo `for` o bien que la $abs(abs(X)-1)<tol$. 
 
 ```julia
 function bifurcacion_dob_v1(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
@@ -229,12 +231,14 @@ function bifurcacion_dob_v1(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
                 for int in 1:2^un
                     X *= f(x_Dual(ff[int]),c₀)[2]
                 end
-                X = abs(X)
                 if imprimir
                     print(c₀)
                     print(" - ")
-                    println(abs(X-1))
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
                 end
+                X = abs(X)
                 if abs(X-1) < tol
                     flag = true
                     break
@@ -281,69 +285,86 @@ end
 fₙ
 ```
 
+Observamos que en efecto vemos como $f_n$ comienza a converger a un valor que es como $\approx$4.669, pero en el último valor esto cambia. Al ver los valres impresos observamos que $c_0$ al calcular nuestro último $c_n$, vemos que no es mayor a 1, esto es nuestro ciclo no lo puede detener, de esta forma debemos agregar otra condición.
+
+<font size=3>
+
+Los cambios que se hacen en `bifurcacion_dob_v2` con respecto a la versión 1, es que ahora agregamos una condición, la cual es, si $abs(X_{last})$ esta muy cerca de 1, que es valor que buscamos, y si $X_{last} < 0$ es decir nos encontramos cerca de -1, pero $abs(X_{last})>abs(X)$ quiere decir que ya casi nos acercamos a -1 pero de pronto el valor se redujo pero sin ser mayor a 1, por lo que nuestra condición anterior se pasó y nuestro $c_n$ queda atrás, por lo que aquí detenemos el ciclo. 
+
+Por otro lado se bajo el cambio del paso de $10^{i+1}$ a $10^{i+2}$ para que tengamos un paso más bajo y evitemos que nos pasemos demasiado de nuestra $c_n$.
+
+Ahora consideramos el valor de X, considerando, en la función `Pasos` el signo de este valor, si es mayor a 0.0 estaremos cerca del $c_n$ anterior y si es menor a 0 estaremos cerca de nuestro punto. De esta forma a un valor de $X>0$ requerimos un paso mayor, y aun $X<0$ requerimos un paso menor, este parametro también se modifica en función de $abs(X)$, de manera que si es mayor a 0 y $abs(X)$ es muy grande estaremos muy lejos por lo que se necesita un paso mayor, en cambio para un paso menor va bajando el paso, sin embargo, si se esta cerca de 0 este valor es muy pequeño y podemos quedar atrapados ahí, por lo que en ese caso le damos un valor de 20x. Por último si es menor a 0, vamos bajando los pasos conforme $abs(x)$ tienda a 1, hasta que X tenga un valor muy cercano a -1 y ya no consideremos el valor de $abs(X)$, sino un factor 20x.
+
+Por último agregamos a la función principal un `print` que nos ayudará a identificar el c encontrado al imprimir los valores.
+
 ```julia
-function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
-    c = Array{Float64,1}(undef, orden+2)
-    c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
-    c₀, flag, paso, pasos, abs_value = c[1], false, 2, [6,4,3,2],[0.7,0.5,0.3,0.0]
-    for un in 0:orden
+function bifurcacion_dob_v2(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden+1)
+    c[1] = bifurcacion(f,c₀;paso=1,direc=direc)
+    c₀, flag = c[1], false
+    for un in 0:orden-1
         for i in un:pres
             X_last = 0.0
             while true
-                c₀+=paso*direc//10^(i+1)
-                crange=c₀
-                ff = diag_bifurc(f,100000000, 2^un, crange)
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
                 X = 1
                 for int in 1:2^un
-                    X *= Q(x_Dual(ff[int]),c₀)[2]
+                    X *= f(x_Dual(ff[int]),c₀)[2]
                 end
-                #print(c₀)
-                #print("  ")
-                #print(abs(abs(X)-1))
-                #print("  ")
-                #println(X)
-                if abs(abs(X)-1) < 1e-5
-                    c₁, flag = c₀, true
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(abs(X)-1) < tol
+                    flag = true
                     break
                 elseif abs(X) > 1
-                    c₁=c₀
                     break
-                elseif un > 7
-                    if abs(X_last) > 0.9
+                elseif abs(X_last) > 0.9
                         if X_last < 0
                             if abs(X_last) > abs(X)
-                 #               println("nuevo")
-                                c₁=c₀
                                 break
                             end
                         end
-                    end
                 end
-                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
-                X_last=X
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X)
+                X_last = X
             end
             if flag
                 flag = false
                 break
             end
-            c₀-= paso*direc//10^(i+1)
-            paso=2
+            c₀-= paso*direc//10^(i+2)
         end
         c[un+2],paso = c₀, 2^(un+2)
-        #print("---------------------")
-        #print(un+1)
-        #println("---------------------")
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
         end
+    end
     return c
 end
 
-function Pasos(abs_value,pasos,value_abs,veloc,un)
-    for i in 1:4
-        if value_abs>abs_value[i]
-            if veloc>0
-                return 100*pasos[i]
+function Pasos(abs_value,pasos,value_abs,X)
+    for i in 1:length(abs_value)
+        if X>0
+            if X<0.1
+                    return 20*pasos[i]
             else
-                return 40*pasos[i]
+                    return 100*(abs(X))*pasos[i]
+                end
+        else
+            if X<-0.9
+                return 20*pasos[i]
+            else
+                return 100*(1-abs(X))*pasos[i]
             end
         end
     end
@@ -351,11 +372,11 @@ end
 ```
 
 ```julia
-c = bifurcacion_dob_v3(Q,1.0,16,-1,10)
+c = bifurcacion_dob_v2(Q,1.0,15,-1,10;tol=1e-5,imprimir=true,its=250000000)
 ```
 
 ```julia
-num=10
+num=9
 fₙ=Array{Float64,1}(undef, num)
 for i in 1:num
     fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
@@ -363,86 +384,9 @@ end
 fₙ
 ```
 
-```julia
-function bifurcacion_dob_v4(f,c₀,pres,direc,orden)
-    c = Array{Float64,1}(undef, orden+2)
-    c[1] = bifurcacion(Q,c₀;tol_init=1,direc=direc)
-    c₀, flag, paso, pasos, abs_value = c[1], false, 2, [6,4,3,2],[0.7,0.5,0.3,0.0]
-    for un in 0:orden
-        for i in un:pres
-            X_last = 0.0
-            while true
-                c₀+=paso*direc//10^(i+1)
-                crange=c₀
-                ff = diag_bifurc(f,300000000, 2^un, crange)
-                X = 1
-                for int in 1:2^un
-                    X *= Q(x_Dual(ff[int]),c₀)[2]
-                end
-                print(c₀)
-                print("  ")
-                print(abs(abs(X)-1))
-                print("  ")
-                println(X)
-                if abs(abs(X)-1) < 1e-8
-                    c₁, flag = c₀, true
-                    break
-                elseif abs(X) > 1
-                    c₁=c₀
-                    break
-                elseif un > 7
-                    if abs(X_last) > 0.9
-                        if X_last < 0
-                            if abs(X_last) > abs(X)
-                 #               println("nuevo")
-                                c₁=c₀
-                                break
-                            end
-                        end
-                    end
-                end
-                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
-                X_last=X
-            end
-            if flag
-                flag = false
-                break
-            end
-            c₀-= paso*direc//10^(i+1)
-        end
-        c[un+2],paso = c₀, 2^(un+2)
-        print("---------------------")
-        print(un+1)
-        println("---------------------")
-        end
-    return c
-end
+Por lo que observamos una mejor convergencia hasta $c_{10}$.
 
-function Pasos(abs_value,pasos,value_abs,veloc,un)
-    for i in 1:4
-        if value_abs>abs_value[i]
-            if veloc>0
-                return 25*pasos[i]
-            else
-                return 10*pasos[i]
-            end
-        end
-    end
-end
-```
-
-```julia
-c = bifurcacion_dob_v4(Q,1.0,16,-1,10)
-```
-
-```julia
-num=10
-fₙ=Array{Float64,1}(undef, num)
-for i in 1:num
-    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
-end
-fₙ
-```
+Como contras el código es muy sensible a que tanto se aumente los pasos y a la precisión ya que si le damos más $tol$, se necesitará el uso de `BigFloat` para que nuestro ciclo no se quede en un bucle infinito. Además a $c_n$ grandes se necesita un mayor numero de iteraciones.
 
 ## Ejercicio 2
 
