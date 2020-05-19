@@ -55,9 +55,15 @@ function Met_Newton(f::Function,x_0;its=10)
 end
 ```
 
-<font size=3>
+Para encontrar la primera bifurcación, utilizaremos la función `bifurcación`:
 
-Para encontrar la primera bifurcación, utilizaremos la función bifurcación, está tendra 4 parámetro de entrada que será f, la función, $c_{0}$, el parametro $c_0$ con el que iniciaremos nuestra búsqueda, el paso, que nos indicará que tanto avanzaremos al buscar la bifurcación, y direc, que nos indicará la dirección en la que buscaremos la bifurcación, de está forma iniciaremos un ciclo 'while', en el que buscaremos un 0 a la función $f(x,c_0)-x$ a través del método de Newton, sino encuentra un cero en 1000 iteraciones, ahora variaremos a nuestro parámetro, en función de la dirección un paso dado, de tal forma que avanzaremos $\frac{direc}{10^{paso}}$; ahora bien si el algoritmo encunetra un 0, puede haber dos opciones, que el cero sea tan bueno tal que al evaluarlo en la derivada de $f(x,c_0)-x$ nos da un valor en valor absoluto menor a 1e-20, sin embargo si no es así se recurre a la función refinamiento. 
+- Tendrá 4 parámetros de entrada que serán: f, la función, $c_{0}$, el parámetro $c_0$ con el que iniciaremos nuestra búsqueda, $paso$, que nos indicará que tanto avanzaremos al buscar la bifurcación, y $direc$, que nos indicará la dirección en la que buscaremos la bifurcación. 
+
+- Iniciaremos un ciclo `while`, en el que buscaremos un 0 a la función $f(x,c_0)-x$ a través del método de Newton.
+
+- Si no encuentra un cero en 1000 iteraciones, variaremos a nuestro parámetro, en función de la dirección un paso dado, de tal forma que avanzaremos $\frac{direc}{10^{paso}}$.
+
+- Si el algoritmo encuentra un 0, puede haber dos opciones, que el cero sea tan bueno tal que al evaluarlo en la derivada de $f(x,c_0)-x$ nos da un valor en valor absoluto menor a 1e-20 o que no lo sea, en este caso se recurre a la función `refinamiento`. 
 
 ```julia
 function bifurcacion(f,c₀;paso=2,direc=-1)
@@ -81,8 +87,11 @@ function bifurcacion(f,c₀;paso=2,direc=-1)
 end
 ```
 
-<font size=3>
-Para la función refinamiento, se requiere a la función, y dos parametros $c_0$ y $c_1$, los cuales serán el parámetro con el que se obtuvo un 0 y el antecesor a éste, en el que no se encontraron ceros. La idea es la misma que bifurcación: buscar ceros con el método de Newton, pero ahora se parten los intervalos en 2 y en función de si se encuentren ceros o no en el punto medio se va recortando el intrevalo hasta que encontramos una precisión de 1e-20.
+Para la función `refinamiento`:
+
+- Se requiere a la función, y dos parametros $c_0$ y $c_1$, los cuales serán el parámetro con el que se obtuvo un 0 y el antecesor a éste, en el que no se encontraron ceros. 
+
+- La idea es la misma que bifurcación: buscar ceros con el método de Newton, pero ahora se parten los intervalos en 2 y en función de si se encuentren ceros o no en el punto medio se va recortando el intrevalo hasta que encontramos una precisión de 1e-20.
 
 ```julia
 function refinamiento(f,c₀,c₁)
@@ -160,25 +169,23 @@ function diag_bifurc_2(f, nit, nout, crange)
 end
 ```
 
-<font size=3>
-    
 Ahora explicaré los puntos principales de la función `bifurcación_dob_v1`:
 
    - $f$ será la función a la que se le encontrará las fiburcaciones.
-   - $c_0$ será el punto desde el que partiremos, en este punto es importante mencionar que se calcula la primera bifurcación para que la función nos dveuelva $c_0$, solo por completez.
+   - $c_0$ será el punto desde el que partiremos, en este punto es importante mencionar que se calcula la primera bifurcación para que la función nos devuelva $c_0$, solo por completez.
    - $pres$ será un parámetro que buscará tener un objetivo parecido al parámetro paso de la función anterior `bifurcacion`, de está manera se llegará a variar al parametro hasta un $\frac{1}{10^{pres+1}}$.
-   - $direc$ nos dirá la dirección en la que buscaremos las bifurcaciones.
-   - $orden$ nos indicará hasta que $c_n$ se calculará, esto es si sé busca hasta $c_6$, $orden= 6$.
-   - $tol$ será un parametro que nos indicará hasta que preción llegaremos, esto es nos detendremos hasta que nuestra condición sea menor a $tol$.
-   - $imprimir$ nos indicará si queremos que se impriman dos parametros que permiten visualizar que sucede en nuestra función.
+   - $direc$ indicará la dirección en la que buscaremos las bifurcaciones.
+   - $orden$ indicará hasta que $c_n$ se calculará, esto es si sé busca hasta $c_6$, $orden= 6$.
+   - $tol$ será un parámetro que nos indicará hasta que presición llegaremos, esto es nos detendremos hasta que nuestra condición sea menor a $tol$.
+   - $imprimir$ nos indicará si queremos que se impriman los parámetros que permiten visualizar que sucede en nuestra función.
    - $paso$ será el paso incial con el que avanzaremos nuestro parámetro.
-   - $pasos$ será un array que nos indicará como cambiarán los parametros en función del parametro siguiente.
-   - $abs_{value}$ nos indicará que pasos estarán asociados a lso valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
+   - $pasos$ será un array que nos indicará como cambiarán los parámetros en función del parámetro siguiente.
+   - $abs_{value}$ nos indicará que pasos estarán asociados a los valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
    - $its$ nos indicará el número de iteraciones que le daremos a `diag_bifurc_2`.
    
-De esta forma la función se propone dinamica, dentro habrá una variable $flag$ que sirve para salir de los ciclos. Ahora explicaré los ciclos:
+De esta forma la función se propone dinámica. Habrá una variable extra, $flag$, que sirve para salir de los ciclos. Ahora explicaré los ciclos:
  
- - El primer `for` va de $0:orden-1$ este nos indica en que $c_n$ vamos. al salir de este ciclo la función nos retornará $c$.
+ - El primer `for` va de $0:orden-1$ este nos indica en que $c_n$ vamos. Al salir de este ciclo la función nos retornará $c$.
  
  - El segundo `for` va de $un:pres$ y lo que nos indica es que presición le daremos a nuestro refinamiento, y va de $un$ porque conforme avance nuestro refinamiento se iniciarán desde números más pequeños de tal forma que se vaya avanzando en función del orden de $c_n$ en el que vamos. Al terminar este ciclo colocaremos el $c_n$ encontrado en el array $c$ y se dará un paso inicial de $2^{un+2}$ para el sigunete $c_n$, de tal forma que el paso no sea muy pequeño y nos encerremos en el mismo $c_n$.
  
@@ -210,7 +217,7 @@ Ahora explicaré el código del ciclo `while`:
  
  - $value_abs$ nos dice que valor tiene $abs(abs(X)-1)$, este parametro es importante pues es con el que detenemos nuestro ciclo, vemos que este valor se compará con el array $abs_{value}$ y en función de como se comparen estos valores se le asigna un $paso$, en nuestras definiciones iniciales mientras sea más grande se dará un paso mayor.
 
-- Por último $veloc$ nos indicará si nuestro valor está subiendo o está bajando, al imprimir encontramos que $abs(X)$ al iniciar cerca del $c_n$ anterior comienza muy cercano a 1, hasta que baja a 0 y después regresa a 1, eneste punto lo que intenté hacer fue ver si subía  o bajaba $X$ y así dar un paso mayor o menor, sin embargo a pesar de que hay un error, en una versión siguinete mejoró está parte.
+- Por último $veloc$ nos indicará si nuestro valor está subiendo o está bajando, al imprimir encontramos que $abs(X)$ al iniciar cerca del $c_n$ anterior comienza muy cercano a 1, hasta que baja a 0 y después regresa a 1, en este punto lo que intenté hacer fue ver si subía  o bajaba $X$ y así dar un paso mayor o menor, sin embargo a pesar de que hay un error, en una versión siguiente mejoró está parte.
 
 Observamos que existen 2 formas de conseguir $c_n$ que se termine el ciclo `for` o bien que la $abs(abs(X)-1)<tol$. 
 
@@ -285,17 +292,25 @@ end
 fₙ
 ```
 
-Observamos que en efecto vemos como $f_n$ comienza a converger a un valor que es como $\approx$4.669, pero en el último valor esto cambia. Al ver los valres impresos observamos que $c_0$ al calcular nuestro último $c_n$, vemos que no es mayor a 1, esto es nuestro ciclo no lo puede detener, de esta forma debemos agregar otra condición.
+Observamos que en efecto vemos como $f_n$ comienza a converger a un valor que es como $\approx$4.669, pero en el último valor esto cambia. Al ver los valores impresos observamos que al calcular nuestro último $c_n$, $c_0$ vemos que no es mayor a 1, esto es nuestro ciclo no lo puede detener, de esta forma debemos agregar otra condición.
 
-<font size=3>
+Los cambios que se hacen en `bifurcacion_dob_v2` con respecto a la versión 1 son:
 
-Los cambios que se hacen en `bifurcacion_dob_v2` con respecto a la versión 1, es que ahora agregamos una condición, la cual es, si $abs(X_{last})$ esta muy cerca de 1, que es valor que buscamos, y si $X_{last} < 0$ es decir nos encontramos cerca de -1, pero $abs(X_{last})>abs(X)$ quiere decir que ya casi nos acercamos a -1 pero de pronto el valor se redujo pero sin ser mayor a 1, por lo que nuestra condición anterior se pasó y nuestro $c_n$ queda atrás, por lo que aquí detenemos el ciclo. 
+- Agregamos una condición, la cual es, si $abs(X_{last})$ está muy cerca de 1, que es valor que buscamos, y si $X_{last} < 0$ es decir nos encontramos cerca de -1, pero $abs(X_{last})>abs(X)$ quiere decir que ya casi nos acercamos a -1 pero de pronto el valor se redujo sin ser mayor a 1, por lo que nuestro $c_n$ queda atrás, y detenemos el ciclo. 
 
-Por otro lado se bajo el cambio del paso de $10^{i+1}$ a $10^{i+2}$ para que tengamos un paso más bajo y evitemos que nos pasemos demasiado de nuestra $c_n$.
+- Por otro lado se bajó el cambio del paso de $10^{i+1}$ a $10^{i+2}$ para que tengamos un paso más bajo y evitemos que nos pasemos demasiado de nuestra $c_n$.
 
-Ahora consideramos el valor de X, considerando, en la función `Pasos` el signo de este valor, si es mayor a 0.0 estaremos cerca del $c_n$ anterior y si es menor a 0 estaremos cerca de nuestro punto. De esta forma a un valor de $X>0$ requerimos un paso mayor, y aun $X<0$ requerimos un paso menor, este parametro también se modifica en función de $abs(X)$, de manera que si es mayor a 0 y $abs(X)$ es muy grande estaremos muy lejos por lo que se necesita un paso mayor, en cambio para un paso menor va bajando el paso, sin embargo, si se esta cerca de 0 este valor es muy pequeño y podemos quedar atrapados ahí, por lo que en ese caso le damos un valor de 20x. Por último si es menor a 0, vamos bajando los pasos conforme $abs(x)$ tienda a 1, hasta que X tenga un valor muy cercano a -1 y ya no consideremos el valor de $abs(X)$, sino un factor 20x.
+- Por último agregamos a la función principal un `print` que nos ayudará a identificar el c encontrado al imprimir los valores.
 
-Por último agregamos a la función principal un `print` que nos ayudará a identificar el c encontrado al imprimir los valores.
+Por otro lado en la función de `Pasos` se modificó:
+
+- Ahora consideramos el valor de $X$, si es mayor a $0$ estaremos cerca del $c_n$ anterior y si es menor a $0$ estaremos cerca de nuestro punto. 
+
+- Para un valor de $X>0$ requerimos un paso mayor, y a un $X<0$ requerimos un paso menor.
+
+- Si $X$ es mayor a $0$ y $abs(X)$ es muy grande estaremos muy lejos por lo que se necesita un paso mayor, en cambio para un paso menor va bajando el paso, sin embargo, si se está cerca de $0$ este valor es muy pequeño y podemos quedar atrapados ahí, por lo que en ese caso le damos un valor de $x20$. 
+
+- Si es $X$ menor a $0$, vamos bajando los pasos conforme $abs(x)$ tienda a 1, hasta que X tenga un valor muy cercano a $-1$ y ya no consideremos el valor de $abs(X)$, sino un factor $x20$.
 
 ```julia
 function bifurcacion_dob_v2(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
@@ -354,17 +369,19 @@ end
 
 function Pasos(abs_value,pasos,value_abs,X)
     for i in 1:length(abs_value)
-        if X>0
-            if X<0.1
-                    return 20*pasos[i]
+        if value_abs>abs_value[i]
+            if X>0
+                if X<0.1
+                        return 50*pasos[i]
+                else
+                        return 200*(abs(X))*pasos[i]
+                    end
             else
-                    return 100*(abs(X))*pasos[i]
+                if X<-0.9
+                    return 50*pasos[i]
+                else
+                    return 200*(1-abs(X))*pasos[i]
                 end
-        else
-            if X<-0.9
-                return 20*pasos[i]
-            else
-                return 100*(1-abs(X))*pasos[i]
             end
         end
     end
@@ -482,7 +499,7 @@ savefig("sin_its.png")
 
 ![Fig 1](sin_its.png "Sc")
 
-Ahora definimos una función similar a las del primer problema pero sin considerar la primera bifurcacion pues, en este caso siempre existe un cero en x=0.
+Ahora definimos una función similar a las del primer problema pero sin considerar la primera bifurcación pues, en este caso siempre existe un cero en x=0.
 
 ```julia
 function bifurcacion_dob_v2_sin(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
@@ -556,7 +573,9 @@ end
 fₙ
 ```
 
-Observamos que los números comienzan a converger al mismo valor, un valor como de $\approx$4.669 al igual que en caso anterior, esto nos indica que esxiste la misma relación entre los parametros porlo que podemos afirmar que existe una clase de relación entre los cocientes la cual nos dice que existe la misma relación entre la dinamica de estos mapeos.
+Observamos que los números comienzan a converger al mismo valor que en caso anterior, $\approx$4.669, esto nos indica que existe la misma relación entre los cocientes.
+
+Esto exhibe una relación entre los dos mapeos, por lo que podemos deducir que la dinámica entre ellos es similar a pesar de que provengan de funciones diferentes.
 
 ## Ejercicio 3
 
@@ -566,75 +585,120 @@ Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece 
 
 - De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
 
+Primero hacemos un análisis de la recta x = 0, contra el diagrama de bifurcaciones de $Q_c$:
+
 ```julia
-function bifurcacion_dob_v3(f,c₀,pres,direc,orden)
-    c = Array{Float64,1}(undef, orden+1)
-   # c[1] = bifurcacion(f,c₀;tol_init=1,direc=direc)
-   flag, paso, pasos, abs_value =  false, 1, [4,3,2,1],[0.7,0.5,0.3,0.0]
-    for un in 0:orden
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+    # Primeros nit iterados
+    x0 = 0
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+
+Qc(x,c) = x^2+c
+
+crange = 0.1:-1/2^8:-1.5
+
+ff = diag_bifurc(Qc, 1000000, 5000, crange);
+cc = ones(size(ff, 1)) * crange';
+
+# Esto cambia las matrices en vectores; ayuda un poco para los dibujos
+ff = reshape(ff, size(ff, 1)*size(ff, 2));
+cc = reshape(cc, size(ff));
+```
+
+```julia
+scatter(cc, ff, markersize=0.6, markerstrokestyle=:solid, legend=false, title="Fig. 2")
+plot!([-1.5,0.1], [0.0,0.0], color=:red)
+xaxis!("c")
+yaxis!("x_infty")
+savefig("sin_its_10.png")
+```
+
+![Fig 2](sin_its_10.png "Qc")
+
+Observamos que el punto buscado se encuentra entre dos bifurcaciones de doblamiento de periodo diferente, de esta forma recordamos los valores que se imprimieron en el Problema 1, en el que al iniciar la búsqueda de $c_n$ se tenía que entre 2 fiburcaciones la derivada se hacía 0, y es justo ese punto el que buscamos.
+
+Por lo que modificamos un poco la función de `bifurcación_dob_v2` para crear la función `bifurcación_ceros`:
+
+- Ahora nuestros ciclos se detendrán cuando $abs(X)<tol$, pues buscamos que $X$ tienda a $0$.
+
+- Si nuestro $c_n<0$ nos habremos pasado por lo que aquí detenemos el `while`.
+
+- Nuestra $x>0$ y cuando nos pasemos del $c_n$ cambia de signo, por lo que cuando $c_n<0$ se detiene el `while`.
+
+- Ahora necesitamos un mayor paso para X más grandes y no tenemos problemas de cambio de signo pues siempre es positiva.
+
+- Por último necesitamos que el ciclo tenga un mayor paso inicial para no quedar atrapado en el cero anterior por lo que se aumenta de un paso inicial de $2^{un+2}$ a $2^{un+4}$.
+
+```julia
+function bifurcacion_ceros(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[1,4,8,16],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden)
+    flag =  false
+    for un in 0:orden-1
         for i in un:pres
             X_last = 0.0
             while true
-                c₀+=paso*direc//10^(i+1)
-                crange=c₀
-              #  ff = diag_bifurc(f,10000000, 2^un, crange)
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
                 X = 1
                 for int in 1:2^un
-                    X *= f(x_Dual(0),c₀)[2]
+                    X *= f(x_Dual(ff[int]),c₀)[2]
                 end
-                print(c₀)
-                print("  ")
-                print(abs(abs(X)-1))
-                print("  ")
-                println(X)
-                """
-                if abs(X) < 1e-5
-                    c₁, flag = c₀, true
-                    break
-                elseif abs(X) > 1
-                    c₁=c₀
-                    break
-                #elseif un > 7
-              #  elseif abs(X_last) > 0.9
-               #         if X_last < 0
-                #            if abs(X_last) > abs(X)
-                 #               println("nuevo")
-                  #              c₁=c₀
-                 #               break
-                   #         end
-                    #    end
-                    #end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
                 end
-                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X,un)
-                X_last=X
-                """
+                if abs(X) < tol
+                    flag = true
+                    break
+                elseif X < 0
+                    break
+                elseif X_last < 0
+                    if 0 > X
+                            break
+                        end
+                end
+                paso = Pasos(abs_value,pasos,X)
+                X_last = X
             end
             if flag
                 flag = false
                 break
             end
-            c₀-= paso*direc//10^(i+1)
-            paso=2
+            c₀-= paso*direc//10^(i+2)
         end
-        c[un+1],paso = c₀, 2^(un+2)
-        print("---------------------")
-        print(un+1)
-        println("---------------------")
+        c[un+1],paso = c₀, 2^(un+4)
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
         end
+    end
     return c
 end
 
-function Pasos(abs_value,pasos,value_abs,veloc,un)
-    for i in 1:4
-        if value_abs>abs_value[i]
-            if veloc>0
-                if veloc<0.1
-                    return 50*pasos[i]
-                else
-                    return 100*(abs(veloc))*pasos[i]
-                end
+function Pasos(abs_value,pasos,X)
+    for i in 1:length(abs_value)
+        if abs(X)>abs_value[i]
+            if X<0.1
+                return 50*pasos[i]
             else
-                return 50*(1-abs(veloc))*pasos[i]
+                return 200*(abs(X))*pasos[i]
             end
         end
     end
@@ -642,12 +706,67 @@ end
 ```
 
 ```julia
-c = bifurcacion_dob_v3(Q,2.0,16,-1,6)
+c = bifurcacion_ceros(Q,0.25,15,-1,9;tol=1e-5,imprimir=true,its=250000000)
 ```
 
 ```julia
-f(x_Dual(1))
+num=7
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+Observamos que nuestras $f_n$ converge al mismo valor que en los dos problemas anteriores $\approx 4.669$.
+
+Ahora buscaremos, con los datos anteriores, el punto de de periodo $2^p$ más cercano a 0.
+
+```julia
+"""
+    minimo_c(vector)
+
+    Esta función encuentra el valor dentro de un vector, que es más cercano 0.
+    Se basa en el hecho de que el mínimo de nuestro vector sabemo que siempre es 0,
+    por lo que encuentra al mínimo de los valores absolutos del vector,
+    lo redefine con un valor exageradamente grande para después volver a buscar el valor
+    que se encuentra más cerca a 0.
+"""
+function minimo_c(vector)
+    vector_2 = Array{Float64,1}(undef, length(vector))
+    for i in 1:length(vector)
+        vector_2[i]=abs(vector[i])
+    end
+    a = findmin(vector_2)
+    vector_2[a[2]]=1e20
+    a = findmin(vector_2)
+    return vector[a[2]]
+end
 ```
 
 ```julia
+#Aquí es donde iteramos los c encontrados anteriormente y buscamos el punto
+#de periodo 2^i más cercano a 0.
+
+d = Array{Float64,1}(undef, length(c))
+for i in 0:length(c)-1
+    crange = c[i+1]
+    ff = diag_bifurc_2(Q,300000000, 2^i, crange)
+    d[i+1] =minimo_c(ff)
+end
 ```
+
+```julia
+d
+```
+
+```julia
+# Por último calculamos el cociente.
+dₙ = Array{Float64,1}(undef, length(d)-1)
+for i in 1:length(d)-1
+    dₙ[i]=d[i]/d[i+1]
+end
+dₙ
+```
+
+Observamos que ahora converge a otro valor y corresponde a $-\alpha = -2.502907\dots$.
