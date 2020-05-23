@@ -7,11 +7,257 @@ Obtengan, para la familia de mapeos cuadrática $Q_c(x)$, el diagrama que muestr
 
 - ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) para los valores de $c$ donde hay bifurcaciones?
 
-- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
+Comencemos definiendo una función que dado un mapeo $f$ y un punto inicial, $x_0$, calcule una aproximación numérica del exponente de Lyapunov.
+
+Para ello, nos conviene cargar el código ya realizado anteriormente:
 
 ```julia
+include("Código/Tools.jl")
+using Main.Tools
 ```
 
+Recordemos que podemos calcular el exponente de Lyapunov de un mapeo unidimensional de dos formas equivalentes, aunque numéricamente distintas:
+
+- Calculando el logaritmo valor absoluto de la derivada de la iteración $n$-ésima del mapeo, o,
+- Sumando los valores absolutos de los logaritmos de la derivada del mapeo evaluada en los iterados $x_0,\ldots,x_{n-1}$.
+
+Dado a que con lo que hemos realizado es relativamente sencillo implementar ambas definiciones, procedemos a hacerlo:
+
+```julia
+"""
+    Lyapunov(f, x0, n = 1000)
+
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\ln |f'(x_0)|\$ del exponente de Lyapunov.
+"""
+Lyapunov(f, x0, n = 1000) = log(abs(derivada(iterar(f, n), x0)))/n
+
+"""
+    Lyapunov_2(f, x0, n = 1000)
+
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\sum_{i = 0}^{n - 1} \\ln |f^{(i)}(x_0)|\$ del exponente de Lyapunov.
+"""
+Lyapunov_2(f, x0, n = 1000) = sum(broadcast(x -> log(abs(derivada(f, x))), iterados(f, n - 1)(x0)))/n
+```
+
+Nos conviene, para nuestro ejemplo, realizar dos tipos de análisis de las funciones definidas.
+El primero, verificar qué tan rápido se alcanza la convergencia al límite $n\rightarrow \infty$, y, el segundo, para verificar qué tan computacionalmente eficientes son nuestras funciones.
+
+Para esto, cargamos un par de paqueterías útiles:
+
+```julia
+using PyPlot
+using BenchmarkTools
+```
+
+Y definimos nuestro mapeo de interés:
+
+```julia
+Q(c) = x -> x^2 + c
+```
+
+Para el análisis de convergencia de los métodos, veamos un caso específico y comparemos ambos:
+
+```julia
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del primer método")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov(Q(-0.5), x, n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+```julia
+clf()
+
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del segundo método")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov_2(Q(-0.5), x, n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+Observamos que ambos métodos se comportan similarmente y convergen al mismo valor para la misma cantidad de iteraciones (lo cual tiene sentido, dado que para $n$ fijo, ambos métodos son formalmente idénticos).
+Más aún, la convergencia se alcanza en este caso para cuando tenemos $n \approx 500$.
+Sin embargo, el primer método presenta una deficiencia numérica que se muestra si se itera demasiado: puede ser que el valor de la derivada, antes de tomar el logaritmo, sea demasiado grande como para ser representado adecuadamente por `Float64`, lo que provoca errores por desbordamiento. 
+Podemos ver que los valores ficticios para $n = 5000$ y $n = 10000$ no ocurren si se usan `BigFloat`s:
+
+```julia
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del primer método con BigFloats")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov(Q(-0.5), BigFloat(x), n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+Una vez tenemos una idea del número de iteraciones que debemos realizar para obtener el límite, procedemos a hacer un par de tests para ver cómo se comparan computacionalmente las dos definiciones:
+
+```julia
+# Evaluamos por primera vez el macro de benchmarks para tener una comparación más fiel:
+@benchmark 1 + 1
+
+#Procedemos a la comparación.
+@benchmark a = broadcast(x -> Lyapunov(Q(-0.5), x, 1000), -1:0.005:1)
+```
+
+```julia
+@benchmark b = broadcast(x -> Lyapunov_2(Q(-0.5), x, 1000), -1:0.005:1)
+```
+
+Se observa que aunque la definciones son matemáticamente equivalentes y numéricamente dan resultados similares, al momento de realizar el cálculo hay una mejora modesta en el tiempo de ejecución con el primer algoritmo y una mejora muy importante en el uso de memoria con el primer algoritmo.
+
+Dicho esto, podemos concluir que aunque el segundo algoritmo es robusto en el sentido que sigue dando resultados correctos si se itera "de más", éste es mucho menos eficiente en términos de la memoria ocupada.
+Considerando "suficientes, pero no demasiadas" iteraciones con el primer algoritmo podemos aprovechar su relativa eficiencia.
+
+Para poder ver lo que sucede con el exponente de Lyapunov como función de $c$ y $x_0$, nos conviene realizar una gráfica de contorno a la que podamos sobreponer el diagrama de bifurcación.
+
+Para evitar problemas con la escala, en el caso de que el valor del exponente sea muy grande, definamos una función que acote los resultados (con el respectivo signo):
+
+```julia
+acotar(cota, x) = abs(x) <= cota ? x : sign(x)*cota
+acotar(cota) = x -> acotar(cota, x)
+```
+
+Procedemos a calcular los valores de los exponentes en una malla del diagrama $(c, x_0)$:
+
+```julia
+# Aún con las mejoras, generar un diagrama tan fino toma tiempo, por eso se deja comentado el código.
+
+
+#=
+cs = -2.5:0.0001:0.5
+x0s = -3:0.001:3
+
+λs = [acotar(1.0)(Lyapunov(Q(c), x0)) for x0 in x0s, c in cs];
+=#
+```
+
+A partir de esto, podemos graficar:
+
+```julia
+# Valor del exponente.
+
+#=
+using LaTeXStrings # Cargamos un paquete para mejorar el título
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.colorbar()
+
+savefig("Lyapunov.png")
+=#
+```
+
+```julia
+#Valor del exponente con el diagrama de bifurcaciones.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.colorbar()
+
+xs = -2:0.1:2
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+savefig("Lyapunov_bifurcación.png")
+=#
+```
+
+```julia
+#Valor del exponente con el diagrama de bifurcaciones con los puntos atractivos solamente.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.colorbar()
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+end
+
+savefig("Lyapunov_bifurcación_atractores.png")
+=#
+```
+
+El valor del exponente de Lyapunov (truncado a más menos uno) se puede observar en la imagen `Lyapunov.png`.
+Éste, con el diagrama de bifurcación sobrepuesto se puede observar en la imagen `Lyapunov_bifurcación.png`.
+Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurcación_atractores.png`.
+Ésta última se observa a continuación:
+
+![Lyapunov_bifurcaci%C3%B3n_atractores.png](attachment:Lyapunov_bifurcaci%C3%B3n_atractores.png)
+
+Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov positivo se muestra en blanco.
+
+En general se observa que cuando se dan las bifurcaciones de doblamiento de periodo, el exponente de Lyapunov se vuelve positivo, es decir, se da la transición al caos.
+
+- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
 ## Ejercicio 2:
 
 Estudiar la dinámica para el mapeo cuadrático $Q_c(x)$, con $c=-2.2$.
