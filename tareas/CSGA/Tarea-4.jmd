@@ -253,11 +253,47 @@ Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurca
 
 ![Lyapunov_bifurcaci%C3%B3n_atractores.png](attachment:Lyapunov_bifurcaci%C3%B3n_atractores.png)
 
-Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov positivo se muestra en blanco.
+Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov negativo se muestra en blanco.
 
 En general se observa que cuando se dan las bifurcaciones de doblamiento de periodo, el exponente de Lyapunov se vuelve positivo, es decir, se da la transición al caos.
 
 - ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
+
+De las imágenes, podemos conjeturar que cuando cero es un punto fijo, el exponente de Lyapunov para los elementos al interior del intervalo $(-p_+(C_n), p_+(C_n))$ se mantiene negativo (no caótico).
+
+Podemos elaborar en esta conjetura rescatando herramientas de la tarea anterior:
+
+```julia
+#Definimos la función que tiene por ceros a los valores del parámetro de los ciclos superestables.
+q(n) = c -> iterar(Q(c), 2^n)(0.0)
+
+#Y usamos aproximaciones a las bifurcaciones de doblamiento de periodo [1](https://en.wikipedia.org/wiki/Feigenbaum_constants#Non-linear_maps)
+# como condición inicial para encontrar los valores de $C_n$.
+cs = [-0.75, -1.25, -1.3680989, -1.3940462, -1.3996312, -1.4008286, -1.4010853, -1.4011402]
+Cs = [Newton(q(i - 1), cs[i]) for i in eachindex(cs)]
+```
+
+Finalmente, podemos calcular el exponente de Lyapunov a lo largo de un intervalo que contenga al dominio señalado para los valores de $C_n$:
+
+```julia
+xs = -3:0.01:3
+
+plt.xlabel(L"x")
+plt.ylabel(L"λ_{1000}(x)")
+
+plt.title("Exponente de Lyapunov para \$C_n\$")
+
+for i in eachindex(Cs)
+
+    λs = broadcast(x -> Lyapunov_2(Q(Cs[i]), x), xs)
+    plt.plot(xs, λs, label = "C_$(i - 1)")
+end
+
+plt.legend()
+```
+
+De dónde verificamos que, al menos para los casos bajo estudio, éste parece ser el caso.
+
 ## Ejercicio 2:
 
 Estudiar la dinámica para el mapeo cuadrático $Q_c(x)$, con $c=-2.2$.
