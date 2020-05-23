@@ -251,7 +251,7 @@ El valor del exponente de Lyapunov (truncado a más menos uno) se puede observar
 Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurcación_atractores.png`.
 Ésta última se observa a continuación:
 
-![Lyapunov_bifurcaci%C3%B3n_atractores.png](attachment:Lyapunov_bifurcaci%C3%B3n_atractores.png)
+![Lyapunov_bifurcaci%C3%B3n_atractores.png](Lyapunov_bifurcaci%C3%B3n_atractores.png)
 
 Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov negativo se muestra en blanco.
 
@@ -293,6 +293,16 @@ plt.legend()
 ```
 
 De dónde verificamos que, al menos para los casos bajo estudio, éste parece ser el caso.
+
+Sin embargo, usando las definiciones del exponente de Lyapunov podemos concluir algo más importante en general para las parejas $(c, 0)$, y algo particular para las parejas $(C_n,x)$.
+Sabemos que $Q'_c(x) = 2x$, por lo que necesariamente, si $x_0 = 0$, $Q'_c(x_0) \equiv 0$. (Esto es válido en general para cualquier valor de $c$, no sólo los valores de $C_n$.)
+Esto implica, con la segunda definición equivalente, que uno de los factores del producto de valores de la derivada del mapeo en al interior del logaritmo es idénticamente cero, lo que hace que el valor del exponente de Lyapunov en cero, siempre sea menos infinito. (Es decir, el sistema, localmente en torno al cero, *nunca* presenta caos, sino que en algún sentido, todo lo contrario.)
+
+(En caso de que resulte incómodo el separar el logaritmo cuando uno de los términos sea cero, quizá por temores de que alguno de los iterados diverja y cancele el cero proveniente del término comentado, es fácil notar que la forma explícita de $Q^{(n)}_c(x)$ siempre es un polinomio de grado $2^n$ **sin término lineal**, lo que hace que la derivada de $Q^{(n)}_c(x)$ nunca tenga un término independiente no nulo, por lo que al evaluar en cero, el valor de la derivada es idénticamente cero para cualquier $n$. 
+Esto confirma que en efecto, en el cero, *nunca* hay caos.)
+
+Respecto a los valores del parámetro en los que hay un ciclo superestable, como todos los iterados de $x_0$ tienen el mismo exponente de Lyapunov que $x_0$, sabemos que todos los puntos de periodo $2^n$ *nunca* presentan caos, ya que el valor del exponente de Lyapunov en éstos es el mismo que el del cero, menos infinito.
+(En efecto hay $2^n$ puntos de periodo $2^n$ distintos por lo comentado en la tarea anterior sobre criterios de divisibilidad y clases de equivalencia.)
 
 ## Ejercicio 2:
 
