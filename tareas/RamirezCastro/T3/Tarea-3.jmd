@@ -1,0 +1,772 @@
+
+# Tarea 3
+
+> Envío inicial del PR: **22 de abril**.
+>
+> Aceptación PR *final*: **30 de abril**.
+
+
+## Ejercicio 1
+
+Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
+
+Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
+
+\begin{equation}
+f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
+\end{equation}
+
+La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
+
+
+*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
+Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
+
+```julia
+include("NumDual.jl")
+using Main.NumDual
+```
+
+```julia
+Dual(1.9,2)
+```
+
+```julia
+x_Dual(8)
+```
+
+```julia
+function Met_Newton(f::Function,x_0;its=10)
+    x_0 = x_Dual(x_0)
+    x_last = x_0
+    for i in 1:its
+        x_last = x_0
+        f_n = f(x_0)
+        x_0 = x_0-f_n[1]/f_n[2]
+        if x_0[1] ≈ x_last[1]
+            break
+        end
+    end
+    if x_0[1] ≈ x_last[1]
+        return x_0
+    else
+        return "No converge"
+    end
+end
+```
+
+Para encontrar la primera bifurcación, utilizaremos la función `bifurcación`:
+
+- Tendrá 4 parámetros de entrada que serán: f, la función, $c_{0}$, el parámetro $c_0$ con el que iniciaremos nuestra búsqueda, $paso$, que nos indicará que tanto avanzaremos al buscar la bifurcación, y $direc$, que nos indicará la dirección en la que buscaremos la bifurcación. 
+
+- Iniciaremos un ciclo `while`, en el que buscaremos un 0 a la función $f(x,c_0)-x$ a través del método de Newton.
+
+- Si no encuentra un cero en 1000 iteraciones, variaremos a nuestro parámetro, en función de la dirección un paso dado, de tal forma que avanzaremos $\frac{direc}{10^{paso}}$.
+
+- Si el algoritmo encuentra un 0, puede haber dos opciones, que el cero sea tan bueno tal que al evaluarlo en la derivada de $f(x,c_0)-x$ nos da un valor en valor absoluto menor a 1e-20 o que no lo sea, en este caso se recurre a la función `refinamiento`. 
+
+```julia
+function bifurcacion(f,c₀;paso=2,direc=-1)
+    c₀=BigFloat(c₀)
+    while true
+        P(x) = f(x,c₀)-x
+        X = Met_Newton(P,0.1,its=1000)
+        if typeof(X)!=String
+            if abs(P(x_Dual(X[1]))[2])≤1e-20
+                break
+            else
+                c₁ = c₀ - direc//10^paso
+                c₀ = refinamiento(f,c₀,c₁)
+                break
+            end
+        else
+            c₀ += direc//10^paso
+        end
+    end
+    return Float64(c₀)
+end
+```
+
+Para la función `refinamiento`:
+
+- Se requiere a la función, y dos parametros $c_0$ y $c_1$, los cuales serán el parámetro con el que se obtuvo un 0 y el antecesor a éste, en el que no se encontraron ceros. 
+
+- La idea es la misma que bifurcación: buscar ceros con el método de Newton, pero ahora se parten los intervalos en 2 y en función de si se encuentren ceros o no en el punto medio se va recortando el intrevalo hasta que encontramos una precisión de 1e-20.
+
+```julia
+function refinamiento(f,c₀,c₁)
+    c₂ = BigFloat(0)
+    while true
+        c₂ = c₀ - (c₀-c₁)/2.0
+        P(x) = f(x,c₂)-x
+        X = Met_Newton(P,0,its=1000)
+        if typeof(X)!=String
+            if abs(P(x_Dual(X[1]))[2])≤1e-20
+                break
+            else
+                c₀ = c₂ 
+            end
+        else
+            c₁ = c₂
+        end
+    end
+    return c₂
+end
+```
+
+```julia
+Q(x,c) = x^2+c
+```
+
+```julia
+c₀=bifurcacion(Q,8;paso=1)
+```
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+
+    # Primeros nit iterados
+    x0 = 0.0
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+    
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc_2(f, nit, nout, crange)
+
+    ff = Array{Float64}(undef, nout)
+    ciclosestables!(view(ff, :, 1), f, crange, nit, nout)
+
+    return ff
+end
+```
+
+Ahora explicaré los puntos principales de la función `bifurcación_dob_v1`:
+
+   - $f$ será la función a la que se le encontrará las bifurcaciones.
+   - $c_0$ será el punto desde el que partiremos, en este punto es importante mencionar que se calcula la primera bifurcación para que la función nos devuelva $c_0$, solo por completez.
+   - $pres$ será un parámetro que buscará tener un objetivo parecido al parámetro paso de la función anterior `bifurcacion`, de está manera se llegará a variar al parametro hasta un $\frac{1}{10^{pres+1}}$.
+   - $direc$ indicará la dirección en la que buscaremos las bifurcaciones.
+   - $orden$ indicará hasta que $c_n$ se calculará, esto es si sé busca hasta $c_6$, $orden= 6$.
+   - $tol$ será un parámetro que nos indicará hasta que presición llegaremos, esto es nos detendremos hasta que nuestra condición sea menor a $tol$.
+   - $imprimir$ nos indicará si queremos que se impriman los parámetros que permiten visualizar que sucede en nuestra función.
+   - $paso$ será el paso incial con el que avanzaremos nuestro parámetro.
+   - $pasos$ será un array que nos indicará como cambiarán los parámetros en función del parámetro siguiente.
+   - $abs_{value}$ nos indicará que pasos estarán asociados a los valores absolutos de $abs(X)-1$, donde X es la derivada de la función con periodo $2n$, o bien, la multiplicación de las derivadas de f, evaluadas en los puntos periodicos correspondientes.
+   - $its$ nos indicará el número de iteraciones que le daremos a `diag_bifurc_2`.
+   
+De esta forma la función se propone dinámica. Habrá una variable extra, $flag$, que sirve para salir de los ciclos. Ahora explicaré los ciclos:
+ 
+ - El primer `for` va de $0:orden-1$ este nos indica en que $c_n$ vamos. Al salir de este ciclo la función nos retornará $c$.
+ 
+ - El segundo `for` va de $un:pres$ y lo que nos indica es que presición le daremos a nuestro refinamiento, y va de $un$ porque conforme avance nuestro refinamiento se iniciarán desde números más pequeños de tal forma que se vaya avanzando en función del orden de $c_n$ en el que vamos. Al terminar este ciclo colocaremos el $c_n$ encontrado en el array $c$ y se dará un paso inicial de $2^{un+2}$ para el sigunete $c_n$, de tal forma que el paso no sea muy pequeño y nos encerremos en el mismo $c_n$.
+ 
+ - El ciclo `while` será el calculo del $c_n$, si al terminar este ciclo encontramos que $flag$ le dimos el valor de *true* entonces habremos encontrado nuestro $c_n$ deseado y nos saldremos también del `for` anterior, si no es así ahora nos regresaremos al $c_0$ anterior.
+ 
+Ahora explicaré el código del ciclo `while`:
+
+ - Primero comenzaremos variando nuestro $c_0$ en función de nuestro paso, dirección y precisión.
+ 
+ - Después calcularemos sus ceros en función de que es un ciclo $2^un$ (en este punto ya no verifique que se trata de en efecto un ciclo de $2^n$ por lo que observe en la derivada).
+ 
+ - Enseguida calculo el valor de la derivada de $f$ en los $2^n$ ceros.
+ 
+ - Después se imprimen $c_0$ y el valor absoluto de la derivada anterior menos 1.
+ 
+ - Ahora se verificarán las condiciones:
+ 
+     - Si $abs(X-1)<tol$ tendremos que hemos encontrado nuestro $c_n$ por lo que salemos del ciclo y redefinimos $flag=true$.
+         
+     - En cambio si $X>1$ nos habremos pasado de nuestro $c_n$ por lo que nos salimos del `while` pero $flag==false$.
+ 
+ - Si en cambio ninguno de estas condiciones es cierta se redefine $paso$ con la función `Pasos`.
+ 
+ - Y se guarda el último $X$ en $X_{last}$.
+ 
+ Por último explicaré la función `Pasos`:
+ 
+ - $abs_value$ y $pasos$ serán los primeros arrays que se importaron.
+ 
+ - $value_abs$ nos dice que valor tiene $abs(abs(X)-1)$, este parametro es importante pues es con el que detenemos nuestro ciclo, vemos que este valor se compará con el array $abs_{value}$ y en función de como se comparen estos valores se le asigna un $paso$, en nuestras definiciones iniciales mientras sea más grande se dará un paso mayor.
+
+- Por último $veloc$ nos indicará si nuestro valor está subiendo o está bajando, al imprimir encontramos que $abs(X)$ al iniciar cerca del $c_n$ anterior comienza muy cercano a 1, hasta que baja a 0 y después regresa a 1, en este punto lo que intenté hacer fue ver si subía  o bajaba $X$ y así dar un paso mayor o menor, sin embargo a pesar de que hay un error, en una versión siguiente mejoró está parte.
+
+Observamos que existen 2 formas de conseguir $c_n$ que se termine el ciclo `for` o bien que la $abs(abs(X)-1)<tol$. 
+
+```julia
+function bifurcacion_dob_v1(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden+1)
+    c[1] = bifurcacion(f,c₀;paso=1,direc=direc)
+    c₀, flag = c[1], false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀+=paso*direc//10^(i+1)
+                crange=c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                X = abs(X)
+                if abs(X-1) < tol
+                    flag = true
+                    break
+                elseif X > 1
+                    break
+                end
+                paso = Pasos(abs_value,pasos,abs(X-1),X_last-X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+1)
+        end
+        c[un+2],paso = c₀, 2^(un+2)
+    end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,veloc)
+    for i in 1:4
+        if value_abs>abs_value[i]
+            if veloc>0
+                return 8^2*pasos[i]
+            else
+                return 16*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v1(Q,1.0,15,-1,9;imprimir=true)
+```
+
+```julia
+num=8
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+Observamos que en efecto vemos como $f_n$ comienza a converger a un valor que es como $\approx$4.669, pero en el último valor esto cambia. Al ver los valores impresos observamos que al calcular nuestro último $c_n$, $c_0$ vemos que no es mayor a 1, esto es nuestro ciclo no lo puede detener, de esta forma debemos agregar otra condición.
+
+Los cambios que se hacen en `bifurcacion_dob_v2` con respecto a la versión 1 son:
+
+- Agregamos una condición, la cual es, si $abs(X_{last})$ está muy cerca de 1, que es valor que buscamos, y si $X_{last} < 0$ es decir nos encontramos cerca de -1, pero $abs(X_{last})>abs(X)$ quiere decir que ya casi nos acercamos a -1 pero de pronto el valor se redujo sin ser mayor a 1, por lo que nuestro $c_n$ queda atrás, y detenemos el ciclo. 
+
+- Por otro lado se bajó el cambio del paso de $10^{i+1}$ a $10^{i+2}$ para que tengamos un paso más bajo y evitemos que nos pasemos demasiado de nuestra $c_n$.
+
+- Por último agregamos a la función principal un `print` que nos ayudará a identificar el c encontrado al imprimir los valores.
+
+Por otro lado en la función de `Pasos` se modificó:
+
+- Ahora consideramos el valor de $X$, si es mayor a $0$ estaremos cerca del $c_n$ anterior y si es menor a $0$ estaremos cerca de nuestro punto. 
+
+- Para un valor de $X>0$ requerimos un paso mayor, y a un $X<0$ requerimos un paso menor.
+
+- Si $X$ es mayor a $0$ y $abs(X)$ es muy grande estaremos muy lejos por lo que se necesita un paso mayor, en cambio para un paso menor va bajando el paso, sin embargo, si se está cerca de $0$ este valor es muy pequeño y podemos quedar atrapados ahí, por lo que en ese caso le damos un valor de $x20$. 
+
+- Si es $X$ menor a $0$, vamos bajando los pasos conforme $abs(x)$ tienda a 1, hasta que X tenga un valor muy cercano a $-1$ y ya no consideremos el valor de $abs(X)$, sino un factor $x20$.
+
+```julia
+function bifurcacion_dob_v2(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden+1)
+    c[1] = bifurcacion(f,c₀;paso=1,direc=direc)
+    c₀, flag = c[1], false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(abs(X)-1) < tol
+                    flag = true
+                    break
+                elseif abs(X) > 1
+                    break
+                elseif abs(X_last) > 0.9
+                        if X_last < 0
+                            if abs(X_last) > abs(X)
+                                break
+                            end
+                        end
+                end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+2)
+        end
+        c[un+2],paso = c₀, 2^(un+2)
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
+        end
+    end
+    return c
+end
+
+function Pasos(abs_value,pasos,value_abs,X)
+    for i in 1:length(abs_value)
+        if value_abs>abs_value[i]
+            if X>0
+                if X<0.1
+                        return 50*pasos[i]
+                else
+                        return 200*(abs(X))*pasos[i]
+                    end
+            else
+                if X<-0.9
+                    return 50*pasos[i]
+                else
+                    return 200*(1-abs(X))*pasos[i]
+                end
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_dob_v2(Q,1.0,15,-1,10;tol=1e-5,imprimir=true,its=250000000)
+```
+
+```julia
+num=9
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+Por lo que observamos una mejor convergencia hasta $c_{10}$.
+
+Como contras el código es muy sensible a que tanto se aumente los pasos y a la precisión ya que si le damos más $tol$, se necesitará el uso de `BigFloat` para que nuestro ciclo no se quede en un bucle infinito. Además a $c_n$ grandes se necesita un mayor numero de iteraciones.
+
+## Ejercicio 2
+
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
+
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
+
+- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+Ahora observemos el diagrama del $S_c(x)$
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+    #println("---------------------------------")
+    # Primeros nit iterados
+    x0 = pi/2
+    for it = 1:nit
+        x0 = f(x0, cc)
+        #println(x0)
+    end
+    #println(x0)
+
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc(f, nit, nout, crange)
+#     xx = Vector{Float64}(nout)
+    ff = Array{Float64}(undef, (nout, length(crange)))
+
+    for ic in eachindex(crange)
+        c = crange[ic]
+        ciclosestables!(view(ff, :, ic), f, c, nit, nout)
+#         ff[:,ic] = xx
+    end
+
+    return ff
+end
+```
+
+```julia
+Qc(x,c) = c*sin(x)
+
+crange = 2.2:1/2^8:2.8
+
+ff = diag_bifurc(Qc, 100000, 1000, crange);
+cc = ones(size(ff, 1)) * crange';
+
+# Esto cambia las matrices en vectores; ayuda un poco para los dibujos
+ff = reshape(ff, size(ff, 1)*size(ff, 2));
+cc = reshape(cc, size(ff));
+```
+
+```julia
+using Plots
+```
+
+```julia
+gr(grid=true)
+```
+
+```julia
+scatter(cc, ff, markersize=0.5, markerstrokestyle=:solid, legend=false, title="Fig. 1")
+xaxis!("c")
+yaxis!("x_infty")
+savefig("sin_its.png")
+```
+
+![Fig 1](sin_its.png "Sc")
+
+Ahora definimos una función similar a las del primer problema pero sin considerar la primera bifurcación pues, en este caso siempre existe un cero en x=0.
+
+```julia
+function bifurcacion_dob_v2_sin(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[6,4,3,2],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden)
+    flag =  false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(abs(X)-1) < tol
+                    flag = true
+                    break
+                elseif abs(X) > 1
+                    break
+                elseif abs(X_last) > 0.9
+                        if X_last < 0
+                            if abs(X_last) > abs(X)
+                                break
+                            end
+                        end
+                end
+                paso = Pasos(abs_value,pasos,abs(abs(X)-1),X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+2)
+        end
+        c[un+1],paso = c₀, 2^(un+2)
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
+        end
+    end
+    return c
+end
+```
+
+```julia
+S(x,c) = c*sin(x)
+```
+
+```julia
+c = bifurcacion_dob_v2_sin(S,1.5,15,1,8;pasos=[6,5,4,2],imprimir=true)
+```
+
+```julia
+num=6
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+Observamos que los números comienzan a converger al mismo valor que en caso anterior, $\approx$4.669, esto nos indica que existe la misma relación entre los cocientes.
+
+Esto exhibe una relación entre los dos mapeos, por lo que podemos deducir que la dinámica entre ellos es similar a pesar de que provengan de funciones diferentes.
+
+## Ejercicio 3
+
+Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece a un ciclo de periodo $2^n$ para ciertos valores $C_n$ del parámetro. Dichos valores son *especiales*, ya que el hecho de que $x=0$ pertenezca a un ciclo de periodo $2^n$ define los llamados *ciclos superestable*, donde tenemos $(Q^{2^p}_{C_n})'(0)=0$.
+
+- ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
+
+- De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
+
+Primero hacemos un análisis de la recta x = 0, contra el diagrama de bifurcaciones de $Q_c$:
+
+```julia
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+    # Primeros nit iterados
+    x0 = 0
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+
+Qc(x,c) = x^2+c
+
+crange = 0.1:-1/2^8:-1.5
+
+ff = diag_bifurc(Qc, 1000000, 5000, crange);
+cc = ones(size(ff, 1)) * crange';
+
+# Esto cambia las matrices en vectores; ayuda un poco para los dibujos
+ff = reshape(ff, size(ff, 1)*size(ff, 2));
+cc = reshape(cc, size(ff));
+```
+
+```julia
+scatter(cc, ff, markersize=0.6, markerstrokestyle=:solid, legend=false, title="Fig. 2")
+plot!([-1.5,0.1], [0.0,0.0], color=:red)
+xaxis!("c")
+yaxis!("x_infty")
+savefig("sin_its_10.png")
+```
+
+![Fig 2](sin_its_10.png "Qc")
+
+Observamos que el punto buscado se encuentra entre dos bifurcaciones de doblamiento de periodo diferente, de esta forma recordamos los valores que se imprimieron en el Problema 1, en el que al iniciar la búsqueda de $c_n$ se tenía que entre 2 fiburcaciones la derivada se hacía 0, y es justo ese punto el que buscamos.
+
+Por lo que modificamos un poco la función de `bifurcación_dob_v2` para crear la función `bifurcación_ceros`:
+
+- Ahora nuestros ciclos se detendrán cuando $abs(X)<tol$, pues buscamos que $X$ tienda a $0$.
+
+- Si nuestro $c_n<0$ nos habremos pasado por lo que aquí detenemos el `while`.
+
+- Nuestra $x>0$ y cuando nos pasemos del $c_n$ cambia de signo, por lo que cuando $c_n<0$ se detiene el `while`.
+
+- Ahora necesitamos un mayor paso para X más grandes y no tenemos problemas de cambio de signo pues siempre es positiva.
+
+- Por último necesitamos que el ciclo tenga un mayor paso inicial para no quedar atrapado en el cero anterior por lo que se aumenta de un paso inicial de $2^{un+2}$ a $2^{un+4}$.
+
+```julia
+function bifurcacion_ceros(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[1,4,8,16],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden)
+    flag =  false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀ += paso*direc//10^(i+2)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 2^un, crange)
+                X = 1
+                for int in 1:2^un
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(X) < tol
+                    flag = true
+                    break
+                elseif X < 0
+                    break
+                elseif X_last < 0
+                    if 0 > X
+                            break
+                        end
+                end
+                paso = Pasos(abs_value,pasos,X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+2)
+        end
+        c[un+1],paso = c₀, 2^(un+4)
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
+        end
+    end
+    return c
+end
+
+function Pasos(abs_value,pasos,X)
+    for i in 1:length(abs_value)
+        if abs(X)>abs_value[i]
+            if X<0.1
+                return 50*pasos[i]
+            else
+                return 200*(abs(X))*pasos[i]
+            end
+        end
+    end
+end
+```
+
+```julia
+c = bifurcacion_ceros(Q,0.25,15,-1,9;tol=1e-5,imprimir=true,its=250000000)
+```
+
+```julia
+num=7
+fₙ=Array{Float64,1}(undef, num)
+for i in 1:num
+    fₙ[i]=(c[i]-c[i+1])/(c[i+1]-c[i+2])
+end
+fₙ
+```
+
+Observamos que nuestras $f_n$ converge al mismo valor que en los dos problemas anteriores $\approx 4.669$.
+
+Ahora buscaremos, con los datos anteriores, el punto de periodo $2^p$ más cercano a 0.
+
+```julia
+"""
+    minimo_c(vector)
+
+    Esta función encuentra el valor dentro de un vector, que es más cercano 0.
+    Se basa en el hecho de que el mínimo de nuestro vector sabemos que siempre es 0,
+    por lo que encuentra al mínimo de los valores absolutos del vector,
+    lo redefine con un valor exageradamente grande para después volver a buscar el valor
+    que se encuentra más cerca a 0.
+"""
+function minimo_c(vector)
+    vector_2 = Array{Float64,1}(undef, length(vector))
+    for i in 1:length(vector)
+        vector_2[i]=abs(vector[i])
+    end
+    a = findmin(vector_2)
+    vector_2[a[2]]=1e20
+    a = findmin(vector_2)
+    return vector[a[2]]
+end
+```
+
+```julia
+#Aquí es donde iteramos los c encontrados anteriormente y buscamos el punto
+#de periodo 2^i más cercano a 0.
+
+d = Array{Float64,1}(undef, length(c))
+for i in 0:length(c)-1
+    crange = c[i+1]
+    ff = diag_bifurc_2(Q,300000000, 2^i, crange)
+    d[i+1] =minimo_c(ff)
+end
+```
+
+```julia
+d
+```
+
+```julia
+# Por último calculamos el cociente.
+dₙ = Array{Float64,1}(undef, length(d)-1)
+for i in 1:length(d)-1
+    dₙ[i]=d[i]/d[i+1]
+end
+dₙ
+```
+
+Observamos que ahora converge a otro valor y corresponde a $-\alpha = -2.502907\dots$.
