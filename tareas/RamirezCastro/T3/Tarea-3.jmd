@@ -171,7 +171,7 @@ end
 
 Ahora explicaré los puntos principales de la función `bifurcación_dob_v1`:
 
-   - $f$ será la función a la que se le encontrará las fiburcaciones.
+   - $f$ será la función a la que se le encontrará las bifurcaciones.
    - $c_0$ será el punto desde el que partiremos, en este punto es importante mencionar que se calcula la primera bifurcación para que la función nos devuelva $c_0$, solo por completez.
    - $pres$ será un parámetro que buscará tener un objetivo parecido al parámetro paso de la función anterior `bifurcacion`, de está manera se llegará a variar al parametro hasta un $\frac{1}{10^{pres+1}}$.
    - $direc$ indicará la dirección en la que buscaremos las bifurcaciones.
@@ -720,14 +720,14 @@ fₙ
 
 Observamos que nuestras $f_n$ converge al mismo valor que en los dos problemas anteriores $\approx 4.669$.
 
-Ahora buscaremos, con los datos anteriores, el punto de de periodo $2^p$ más cercano a 0.
+Ahora buscaremos, con los datos anteriores, el punto de periodo $2^p$ más cercano a 0.
 
 ```julia
 """
     minimo_c(vector)
 
     Esta función encuentra el valor dentro de un vector, que es más cercano 0.
-    Se basa en el hecho de que el mínimo de nuestro vector sabemo que siempre es 0,
+    Se basa en el hecho de que el mínimo de nuestro vector sabemos que siempre es 0,
     por lo que encuentra al mínimo de los valores absolutos del vector,
     lo redefine con un valor exageradamente grande para después volver a buscar el valor
     que se encuentra más cerca a 0.
