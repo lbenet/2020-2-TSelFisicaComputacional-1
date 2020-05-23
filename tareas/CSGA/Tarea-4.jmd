@@ -27,14 +27,14 @@ Dado a que con lo que hemos realizado es relativamente sencillo implementar amba
 """
     Lyapunov(f, x0, n = 1000)
 
-Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\ln |f'(x_0)|\$ del exponente de Lyapunov.
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\ln |f^{n}'(x_0)|\$ del exponente de Lyapunov.
 """
 Lyapunov(f, x0, n = 1000) = log(abs(derivada(iterar(f, n), x0)))/n
 
 """
     Lyapunov_2(f, x0, n = 1000)
 
-Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\sum_{i = 0}^{n - 1} \\ln |f^{(i)}(x_0)|\$ del exponente de Lyapunov.
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\sum_{i = 0}^{n - 1} \\ln |f'(x_i)|\$ del exponente de Lyapunov.
 """
 Lyapunov_2(f, x0, n = 1000) = sum(broadcast(x -> log(abs(derivada(f, x))), iterados(f, n - 1)(x0)))/n
 ```
@@ -298,7 +298,7 @@ Sin embargo, usando las definiciones del exponente de Lyapunov podemos concluir 
 Sabemos que $Q'_c(x) = 2x$, por lo que necesariamente, si $x_0 = 0$, $Q'_c(x_0) \equiv 0$. (Esto es válido en general para cualquier valor de $c$, no sólo los valores de $C_n$.)
 Esto implica, con la segunda definición equivalente, que uno de los factores del producto de valores de la derivada del mapeo en al interior del logaritmo es idénticamente cero, lo que hace que el valor del exponente de Lyapunov en cero, siempre sea menos infinito. (Es decir, el sistema, localmente en torno al cero, *nunca* presenta caos, sino que en algún sentido, todo lo contrario.)
 
-(En caso de que resulte incómodo el separar el logaritmo cuando uno de los términos sea cero, quizá por temores de que alguno de los iterados diverja y cancele el cero proveniente del término comentado, es fácil notar que la forma explícita de $Q^{(n)}_c(x)$ siempre es un polinomio de grado $2^n$ **sin término lineal**, lo que hace que la derivada de $Q^{(n)}_c(x)$ nunca tenga un término independiente no nulo, por lo que al evaluar en cero, el valor de la derivada es idénticamente cero para cualquier $n$. 
+(En caso de que resulte incómodo el separar el logaritmo cuando uno de los términos sea cero, quizá por temores de que alguno de los iterados diverja y cancele el cero proveniente del término comentado, es fácil notar que la forma explícita de $Q^{n}_c(x)$ siempre es un polinomio de grado $2^n$ **sin término lineal**, lo que hace que la derivada de $Q^{n}_c(x)$ nunca tenga un término independiente no nulo, por lo que al evaluar en cero, el valor de la derivada es idénticamente cero para cualquier $n$. 
 Esto confirma que en efecto, en el cero, *nunca* hay caos.)
 
 Respecto a los valores del parámetro en los que hay un ciclo superestable, como todos los iterados de $x_0$ tienen el mismo exponente de Lyapunov que $x_0$, sabemos que todos los puntos de periodo $2^n$ *nunca* presentan caos, ya que el valor del exponente de Lyapunov en éstos es el mismo que el del cero, menos infinito.
