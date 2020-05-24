@@ -146,7 +146,7 @@ acotar(cota, x) = abs(x) <= cota ? x : sign(x)*cota
 acotar(cota) = x -> acotar(cota, x)
 ```
 
-Asimismo, nos conviene definir, para comparar con el diagrama de bifurcación, una función que clasifique si el exponente suministrado resulta o no caótico.
+Asimismo, nos conviene definir, para comparar con el diagrama de bifurcación, una función que clasifique si el exponente suministrado es mayor o menor que cero (si el mapeo en el punto resulta o no caótico).
 
 ```julia
 caótico(λ) = λ > 0 ? true : false
@@ -164,7 +164,7 @@ x0s = -3:0.001:3
 xs = -2:0.1:2
 
 λs = [Lyapunov(Q(c), x0) for x0 in x0s, c in cs]
-λs_acotar = acotar(1.0).(λs)
+λs_acotar = acotar(2.0).(λs)
 λs_caótico = caótico.(λs)
 =#
 ```
@@ -183,8 +183,9 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
 plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
 
 savefig("Lyapunov.png")
 =#
@@ -200,8 +201,9 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
 plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
 
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
@@ -234,8 +236,9 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
 plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
 
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
@@ -267,7 +270,7 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
 
 savefig("Lyapunov_2.png")
 =#
@@ -283,7 +286,7 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
 
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
@@ -316,7 +319,7 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
 
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
@@ -369,7 +372,8 @@ plt.ylabel(L"x")
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
 
-plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
 
 savefig("Comparación.png")
 =#
@@ -405,7 +409,8 @@ plt.ylabel(L"x")
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
 
-plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
 
 savefig("Comparación_atractores.png")
 =#
@@ -426,7 +431,7 @@ En general se observa que cuando se dan las bifurcaciones de doblamiento de peri
 Para poder comparar más detenidamente el diagrama de bifurcación respecto a los valores del exponente de Lyapunov, se muestran ambos lado a lado en `Comparación.png` y `Comparación_atractores.png`.
 Esta última imagen se muestra a continuación:
 
-![Comparaci%C3%B3n_atractores.png](Lyapunov_bifurcaci%C3%B3n_atractores.png)
+![Comparaci%C3%B3n_atractores.png](Comparaci%C3%B3n_atractores.png)
 
 - ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
 
