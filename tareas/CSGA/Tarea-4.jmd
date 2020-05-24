@@ -505,8 +505,18 @@ Observemos lo que ocurre cuando iteramos nuestras muestras 200 veces:
 iterar(Q(-2.2), 200).(I) |> unique
 ```
 
-*Todas* las condiciones iniciales que consideramos eventualmente convergen a infinito. 
-Observemos que esto no necesariamente es cierto para todos los puntos del intervalo, dado que existen, por lo menos, dos puntos de periodo finito: $(p_-, p_+)$.
+*Todas* las condiciones iniciales que consideramos **explícitamente** (no muestreamos todos los puntos del intervalo, sólamente una muestra *finita* de puntos en el intervalo) eventualmente convergen a infinito. 
+Sin embargo, esto no indica que *todos* los puntos en el intervalo eventualmente converjan a infinito, ya que existen, por lo menos, dos puntos de periodo finito: $(p_-, p_+)$. (Además de los puntos cuyas órbitas se vuelven eventualmente periódicas, a pesar de que estos sean inestables.)
+
+Podemos ver esto con aritmética de intervalos validada:
+
+```julia
+using IntervalArithmetic
+
+intervalo = @interval(-p₊, p₊)
+
+iterar(Q(-2.2), 200)(intervalo)
+```
 
 - Caractericen los subconjuntos de $I$ tales que, después de $n=1,2,3,\dots$ iterados de $Q_c(x)$, su intersección con $I$ es vacía.
 
@@ -555,11 +565,11 @@ for i in 0:10
 end
 ```
 
-Es necesario comentar que dado a que más y más de las condiciones iniciales se van filtrando conforme el número de iteraciones aumenta, estas aparentan formar una línea continua al estudiar el complemento.
+Es necesario comentar que dado a que más y más de las condiciones iniciales se van filtrando conforme el número de iteraciones aumenta, éstas aparentan formar una línea continua al estudiar el complemento.
 Sin embargo, esto es sólamente por la forma en la que se grafica, en la que los conjuntos $J_n$ se vuelven *densos* y "porosos" en $I$.
 Cambiando la escala de las gráficas y haciendo zoom se observa que la línea del complemento no es continua, sino porosa.
 
-Podemos concluir que éste conjunto es de tipo Cantor. (La construcción clásica del conjunto de Cantor involucra dividir el intervalo unitario en tercios idénticos y remover el tercio central, repitiendo el proceso en los segmentos restantes.)
+Podemos concluir que este conjunto es de tipo Cantor. (La construcción clásica del conjunto de Cantor involucra dividir el intervalo unitario en tercios idénticos y remover el tercio central, repitiendo el proceso en los segmentos restantes.)
 
 ## Ejercicio 3:
 
