@@ -61,9 +61,6 @@ end
 ```
 
 ```julia
-```
-
-```julia
 plot(c,l,legend=false)
 plot!([-2,2],[0,0])
 title!("Exponente de Lyapunov de Q_c")
@@ -166,10 +163,49 @@ analisis_grafico(Qc, 2.0, 12, xrange,title_l=latexstring("Q_{-2,2}"),color=:blac
 ```
 
 ```julia
-analisis_grafico(Qc, -1.9, 8, xrange,title_l=latexstring("Q_{-2,2}"),color=:black,domy=(-5,10))
+analisis_grafico(Qc, -1.9, 8, -5:1e-3:30,title_l=latexstring("Q_{-2,2}"),color=:black,
+    domy=(-5,200),domx_2=(-5,30))
 ```
 
-Observamos que no son punto atractivos pues cualquier condición inicial cerca se aleja de éstos.
+Observamos que no son punto atractivos pues cualquier condición inicial cerca se aleja de éstos, y de hecho como observamos en la última gráfica se tiende a un número muy grande.
+
+Ahora veamos si existen periodos inestables, para eso retomamos una función de la clase:
+
+```julia
+"""
+    Qcⁿ(x, args)
+
+Esta función define el n-enésimo iterado de ``Qc(x)``,
+donde el valor a iterar es `x` y el valor del parámetro
+es `c`, donde `c = args[1]` y `n = args[2]`.
+"""
+function Qcⁿ(x, args)
+    n = args
+    @assert n >= 0 && isa(n,Int)
+    n <= 1 && return Qc(x)
+    for it = 1:n
+        x = Qc(x)
+    end
+    return x
+end
+```
+
+```julia
+xrange = -2.2:1/64:2.2
+plot(xrange, x->Qcⁿ(x,1),label="n=1",color=:blue)
+plot!(xrange, x->Qcⁿ(x,2),label="n=2",color=:red)
+plot!(xrange, x->Qcⁿ(x,3),label="n=3",color=:green)
+plot!(xrange, x->Qcⁿ(x,4),label="n=4",color=:yellow)
+plot!(xrange, x->x,label="Id",color=:black)
+ylims!(-5,30)
+xlabel!("x")
+ylabel!("Q_c(x)")
+title!("c = -2.2")
+```
+
+Observamos en la gráfica anterior que existen puntos de periodo 1,2,3,4... Esto nos exhibe que existen puntos fijos de periodo n, pero los cuales son inestables por lo que no fueron localizados en el análisis previo.
+
+Ṕor lo tanto casi cualquier punto inicial, con excepción de los puntos fijos y los puntos inestables de periodo n, tiende a crecer infinitiamente.
 
 
 - ¿Cómo se caracteriza el valor al que tiende *casi* cualquier condición inicial en el
@@ -233,7 +269,7 @@ max(vec...)
 
  Observamos que en este intervalo todas las condiciones inciales tienden a infinito, pues el `max`y el `min` de iterar $Q_{-2.2}$ es Infinito.
  
- Es claro que para los puntos fijos no es así, pero como solo tenemos una aproximación no es posible visualizar esto.
+ Es claro que para los puntos fijos no es así, pero como sólo tenemos una aproximación no es posible visualizar esto.
 
 - Caractericen los subconjuntos de $I$ tales que, después de $n=1,2,3,\dots$ iterados de $Q_c(x)$, su intersección con $I$ es vacía.
 
@@ -271,18 +307,18 @@ sub_1,sub_2=subconjuntos(Qc,domx)
 sub_1 # Este es el conjunto cuya intersección es vacía con I
 ```
 
-Se tiene la hipotesis de que se tomo un subconjunto cerrado de $domx$, es decir, no se brinca ningún valor, para esto verifiquemos que la distancia entre cada valor del array consecutivo es $\approx 0.001$.
+Se tiene la hipótesis de que se tomó un subconjunto cerrado de $domx$, es decir, no se brinca ningún valor, para esto verifiquemos que la distancia entre cada valor del array consecutivo es $\approx 0.001$.
 
 ```julia
 i=0
 for i in 2:length(sub_1)
     if sub_1[i-1]-sub_1[i]≈1e-3
-        println("Mi hipotesis está mal")
+        println("Mi hipótesis está mal")
     end
 end
 ```
 
-Esto implica que la hipotesis es cierta, por lo que tenemos que se trata del subconunto:
+Esto implica que la hipótesis es cierta, por lo que tenemos que se trata del subconunto:
 [-0.3662475842498527, 0.36675241575014716]. (Aunque tal vez pueda ser más grande el subconjunto, aseguro que todos los valores dentro de este divergen.)
 
 - Caracterizen al complemento del conjunto de los casos anteriores, es decir, cuando los iterados de la condición inicial **no** llegan a donde *casi* cualquier condición inicial termina. ¿Cómo se conoce a este conjunto?
@@ -297,7 +333,7 @@ Este conjunto se trata de la unión de dos conjuntos:
 
 $$(-P_+,-0.3672475842498527]\cup [0.36775241575014716,P_+)$$
 
-Observamos que para este subconjunto hay un caos transitorio, pues como se observa en el análisis previo existen un número finito de iteraciones para las cuales se itera dentro del mismo conjunto, paraa que en un punto después el valor tienda a infinito.
+Observamos que para este subconjunto hay un caos transitorio, pues como se observa en el análisis previo existen un número finito de iteraciones para las cuales se itera dentro del mismo conjunto, para que en un punto después el valor tienda a infinito.
 
 ## Ejercicio 3:
 
@@ -383,40 +419,63 @@ yaxis!("x_infty")
 savefig("diag_bif_window_3.png")
 ```
 
-![Fig 1](diag_bif_window_3.png "Fig. 1")
+![Fig 2](diag_bif_window_3.png "Fig. 2")
 
-De esta forma observamos que se trata de un cambio *abrupto*, entre un periodo infinito y un periodo 3.
+De esta forma observamos que se trata de un cambio *abrupto*, entre una ventana en la que después de un gran número de iteraciones no se ve claramente un periodo finito  y un periodo 3.
 
-Si iteramos sobre una $c$ en la ventana de periodo 3 y una $c$ en le periodo infinito tenemos los siguientes diagramas:
+Si iteramos sobre una $c$ en la ventana de periodo 3 y una $c$ en la otra ventana tenemos los siguientes diagramas:
 
-En el periodo infinito para $x_0 = 1.0$:
+Primero realizamos una función que itera la función n veces y devuelve el valor de cada iteración.
+
+```julia
+function iterados_n(f,x;its=200)
+    sub_2,sub_1 = [],[]
+    for a in 1:its
+        x = f(x)
+        push!(sub_2,x)
+        push!(sub_1,a)
+    end
+    return sub_1,sub_2
+end
+```
+
+En la ventana en la que no se observa un periodo finito, con la condición inicial $x_0 = 1.0$:
 
 ```julia
 Qc(x)=Q(x,-1.749)
-analisis_grafico(Qc, 1.0, 50, xrange,title_l=latexstring("Q_{-1.749}"),
-    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+n, Q_2= iterados_n(Qc,1.0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_1.png")
 ```
 
-En el periodo infinito para $x_0=0$:
+![Fig 3](200_1.png "Fig. 3")
+
+Ahora para la condición inicial $x_0=0$:
 
 ```julia
-analisis_grafico(Qc, 0.0, 100, xrange,title_l=latexstring("Q_{-1.749}"),
-    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+n, Q_2= iterados_n(Qc,0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_0.png")
 ```
 
-Ahora en la ventana de periodo 3 para $x_0=1$:
+![Fig 4](200_0.png "Fig. 4")
+
+Por último en la ventana de periodo 3 para $x_0=1$:
 
 ```julia
 Qc(x)=Q(x,-1.755)
-analisis_grafico(Qc, 1.0, 60, xrange,title_l=latexstring("Q_{-1.755}"),
-    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+n, Q_2= iterados_n(Qc,1.0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_10.png")
 ```
 
-Lo que notamos es que, en la de periodo infinito comienza a acercarse al periodo 3.
+![Fig 5](200_10.png "Fig. 5")
+
+Lo que notamos es que, en la ventana que no tiene un periodo claro comienza a acercarse al periodo 3, pero de repente sale de este periodo y después regresa, pero sin seguir un patrón claro.
 
 En la de periodo 3 es claro que hay ciclo estable.
 
-Por lo que observamos que se trata de una bifurcación tangencial en la que abruptamente cambia de un periodo infinito a un periodo 3 estable.
+Por lo que observamos que se trata de una bifurcación tangencial en la que abruptamente se cambia a un periodo 3 estable.
 
 - Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
 
@@ -448,7 +507,7 @@ end
 S = S/its
 ```
 
-Lo que notamos es que en el periodo infinito hay caos, mientras que en el periodo 3 no hay tal.
+Lo que notamos es que en la primera ventana el exponente resulta positivo y en la de periodo 3 el exponente resulta ser negativo, lo que indica que en la primera ventana hay caos, mientras que en el periodo 3 no hay tal.
 
 - Encuentren el valor de $c$ donde se da el ciclo superestable de periodo 3. (Nuevamente, usen el método de Newton con una buena semilla inicial para $c$.) Demuestren que para este valor de $c$ el mapeo $Q_c^3(x)$ tiene *ocho* puntos fijos, donde dos de ellos son puntos fijos de $Q_c(x)$, y los otros 6 forman dos secuencias periódicas, de periodo 3 en $Q_c(x)$, una de ellas estable y la otra inestable.
 
@@ -559,10 +618,10 @@ analisis_grafico(Qc, 0.0, 60, xrange,title_l=latexstring("Q_{-1.7548776662466918
     color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
 ```
 
-Y como en efecto debe estar cercano a 0, usamos una función que solo nos devuelve 3 valores:
+Y como en efecto debe estar cercano a 0, usamos una función que sólo nos devuelve 3 valores:
 
 ```julia
-ff = diag_bifurc_2(Qc,3, 3, c[1])
+ff = diag_bifurc_2(Q,3, 3, c[1])
 ```
 
 Y estos son los puntos fijos de periodo estable.
@@ -641,7 +700,7 @@ xlabel!("x")
 ylabel!("Q_c(x)")
 ```
 
-El más cercanoa $1.32$ es el estable por lo que calculamos el cercano a $1.28$:
+El más cercano a $1.32$ es el estable por lo que calculamos el cercano a $1.28$:
 
 ```julia
 x_ines_3=Met_Newton(QcI,1.28;its=100000000)
@@ -653,7 +712,7 @@ De esta forma tenemos los siguientes puntos fijos:
 puntos_fijos=[x_mas[1],x_menos[1],ff[1],ff[2],ff[3],x_ines_1[1],x_ines_2[1],x_ines_3[1]]
 ```
 
-Ahora solo verificamos que los últimos puntos fijos son de periodo 3:
+Ahora sólo verificamos que los últimos puntos fijos son de periodo 3:
 
 ```julia
 analisis_grafico(Qc, puntos_fijos[6], 60, xrange,
@@ -766,7 +825,7 @@ for a in c3
 end
 ```
 
-Por lo que cuando un punto cae en estos intervalos, al iterarlo este converge a los puntos fijos del ciclo estable.
+Por lo que cuando un punto cae en estos intervalos, al iterarlo éste converge a los puntos fijos del ciclo estable.
 
 - Definiendo los intervalos $I_0=[\hat\beta, \alpha]$, $I_1=[\gamma,\beta]$, mostrar que bajo la acción de $Q_c(x)$ se cumple: (i) $Q_c(I_0) \supset I_1$, y (ii) $Q_c(I_1) \supset I_0\cup I_1$. ¿Qué propiedad *importante* de $Q_c(x)$ se utiliza aquí?
 
@@ -814,6 +873,4 @@ max(c5...) >= max(max(I₁...),max(I₀...))
 min(c5...) <= min(min(I₁...),min(I₀...))
 ```
 
-Se utiliza que $Q_c$ es una aplicación continua pues se matiene la distancia entre los puntos al ir pasando de un subconjunto a otro.
-
-Esto se observa en los iterados que hicimos al observar como se iban haciendo lo que parecen ser periodos 3 (aunque no lo son), pero las distancias entre puntos sucesivos se van manteniendo.
+Se utiliza que $Q_c$ es una aplicación continua y además es $C^1$, esto por la existencia del punto fijo en el intervalo $I_1$.
