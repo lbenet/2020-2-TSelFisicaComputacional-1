@@ -482,12 +482,79 @@ Estudiar la dinámica para el mapeo cuadrático $Q_c(x)$, con $c=-2.2$.
 - ¿Cómo se caracteriza el valor al que tiende *casi* cualquier condición inicial en el
 intervalo $I=[-p_+,p_+]$ (donde $p_+$ es el valor positivo tal que $Q_c(p_+)=p_+$), después de muchos iterados? (El intervalo $I$ es donde "toda la dinámica interesante ocurre".)
 
+Sabemos que $p_+(c)$ está dado por $p_+(c) = \frac{1}{2} + \sqrt{\frac{1}{4} - c}$, por lo que, para $c = 2.2$, tenemos:
+
+```julia
+p₊ = 1/2 + sqrt(1/4 + 2.2)
+```
+
+Generemos un muestreo del intervalo de interés:
+
+```julia
+I = -p₊:0.00001:p₊
+```
+
+Observemos lo que ocurre cuando iteramos nuestras muestras 200 veces:
+
+```julia
+iterar(Q(-2.2), 200).(I) |> unique
+```
+
+*Todas* las condiciones iniciales que consideramos eventualmente convergen a infinito. 
+Observemos que esto no necesariamente es cierto para todos los puntos del intervalo, dado que existen, por lo menos, dos puntos de periodo finito: $(p_-, p_+)$.
+
 - Caractericen los subconjuntos de $I$ tales que, después de $n=1,2,3,\dots$ iterados de $Q_c(x)$, su intersección con $I$ es vacía.
+
+Recordemos que los puntos de $I$ satisfacen $ -p_+ \leq x \leq p_+ \iff |x| \leq p_+$.
+Definamos a la familia de conjuntos $J_n$ como:
+
+$$ J_n = \{ x \in I | Q^{n}_{-2.2}(x) \in I \}. $$
+
+Esto lo podemos implementar mediante:
+
+```julia
+J(n) = filter(x -> abs(iterar(Q(-2.2), n, x)) <= p₊, I)
+```
+
+Gráficamente, se pueden observar los conjuntos $J_n$ en la siguiente figura.
+
+```julia
+plt.figure()
+plt.title(L"J_n")
+plt.xlabel("x")
+plt.ylabel("n")
+
+for i in 0:10
+    
+    J_n = J(i)
+    n_escalada = fill(i, length(J_n))
+    plt.plot(J_n, n_escalada, marker = ",", lw = 0, linestyle = "", color = "blue")
+end
+```
 
 - Caracterizen al complemento del conjunto de los casos anteriores, es decir, cuando los iterados de la condición inicial **no** llegan a donde *casi* cualquier condición inicial termina. ¿Cómo se conoce a este conjunto?
 
+Podemos usar la función `setdiff` para obtener el complemento relativo de $J_n$ en $I$:
+
 ```julia
+plt.figure()
+plt.title(L"J_n^C")
+plt.xlabel("x")
+plt.ylabel("n")
+
+for i in 0:10
+    
+    J_n_C = setdiff(I, J(i))
+    n_escalada = fill(i, length(J_n_C))
+    plt.plot(J_n_C, n_escalada, marker = ",", lw = 0, linestyle = "", color = "red")
+end
 ```
+
+Es necesario comentar que dado a que más y más de las condiciones iniciales se van filtrando conforme el número de iteraciones aumenta, estas aparentan formar una línea continua al estudiar el complemento.
+Sin embargo, esto es sólamente por la forma en la que se grafica, en la que los conjuntos $J_n$ se vuelven *densos* y "porosos" en $I$.
+Cambiando la escala de las gráficas y haciendo zoom se observa que la línea del complemento no es continua, sino porosa.
+
+Podemos concluir que éste conjunto es de tipo Cantor. (La construcción clásica del conjunto de Cantor involucra dividir el intervalo unitario en tercios idénticos y remover el tercio central, repitiendo el proceso en los segmentos restantes.)
 
 ## Ejercicio 3:
 
