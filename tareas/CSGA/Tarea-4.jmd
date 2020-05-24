@@ -146,6 +146,12 @@ acotar(cota, x) = abs(x) <= cota ? x : sign(x)*cota
 acotar(cota) = x -> acotar(cota, x)
 ```
 
+Asimismo, nos conviene definir, para comparar con el diagrama de bifurcación, una función que clasifique si el exponente suministrado resulta o no caótico.
+
+```julia
+caótico(λ) = λ > 0 ? true : false
+```
+
 Procedemos a calcular los valores de los exponentes en una malla del diagrama $(c, x_0)$:
 
 ```julia
@@ -155,8 +161,11 @@ Procedemos a calcular los valores de los exponentes en una malla del diagrama $(
 #=
 cs = -2.5:0.0001:0.5
 x0s = -3:0.001:3
+xs = -2:0.1:2
 
-λs = [acotar(1.0)(Lyapunov(Q(c), x0)) for x0 in x0s, c in cs];
+λs = [Lyapunov(Q(c), x0) for x0 in x0s, c in cs]
+λs_acotar = acotar(1.0).(λs)
+λs_caótico = caótico.(λs)
 =#
 ```
 
@@ -167,12 +176,14 @@ A partir de esto, podemos graficar:
 
 #=
 using LaTeXStrings # Cargamos un paquete para mejorar el título
+
 plt.figure(figsize=(10,10))
 plt.xlabel(L"c")
 plt.ylabel(L"x")
+
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
 plt.colorbar()
 
 savefig("Lyapunov.png")
@@ -180,7 +191,7 @@ savefig("Lyapunov.png")
 ```
 
 ```julia
-#Valor del exponente con el diagrama de bifurcaciones.
+# Valor del exponente con el diagrama de bifurcaciones.
 
 #=
 plt.figure(figsize=(10,10))
@@ -189,10 +200,8 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
 plt.colorbar()
-
-xs = -2:0.1:2
 
 plt.xlim(-2.5, 0.5)
 plt.ylim(-3, 3)
@@ -216,7 +225,7 @@ savefig("Lyapunov_bifurcación.png")
 ```
 
 ```julia
-#Valor del exponente con el diagrama de bifurcaciones con los puntos atractivos solamente.
+# Valor del exponente con el diagrama de bifurcaciones con los puntos atractivos solamente.
 
 #=
 plt.figure(figsize=(10,10))
@@ -225,7 +234,7 @@ plt.ylabel(L"x")
 
 plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
 
-plt.contourf(cs, x0s, λs, cmap = plt.cm.binary)
+plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
 plt.colorbar()
 
 plt.xlim(-2.5, 0.5)
@@ -239,14 +248,171 @@ for c in cs[1:20:end]
     
     Cs_atractores = fill(c, length(Xs_atractores))
 
-    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
 end
 
 savefig("Lyapunov_bifurcación_atractores.png")
 =#
 ```
 
-El valor del exponente de Lyapunov (truncado a más menos uno) se puede observar en la imagen `Lyapunov.png`.
+```julia
+# Zonas caóticas.
+
+#=
+using LaTeXStrings # Cargamos un paquete para mejorar el título
+
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+
+savefig("Lyapunov_2.png")
+=#
+```
+
+```julia
+# Zonas caóticas con el diagrama de bifurcaciones.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+savefig("Lyapunov_bifurcación_2.png")
+=#
+```
+
+```julia
+# Zonas caóticas con el diagrama de bifurcaciones con los puntos atractivos solamente.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "both")
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
+end
+
+savefig("Lyapunov_bifurcación_atractores_2.png")
+=#
+```
+
+```julia
+# Comparación del diagrama de bifurcación con el exponente de Lyapunov.
+
+#=
+plt.figure(figsize=(10,10))
+
+plt.subplot(211)
+plt.title(LaTeXString("Exponente de Lyapunov y diagrama de bifurcación de \$Q_c(x)\$"))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+plt.subplot(212)
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+
+savefig("Comparación.png")
+=#
+```
+
+```julia
+# Comparación del diagrama de bifurcación (parte atractiva) con el exponente de Lyapunov.
+
+#=
+plt.figure(figsize=(10,10))
+
+plt.subplot(211)
+plt.title(LaTeXString("Exponente de Lyapunov y diagrama de bifurcación de \$Q_c(x)\$"))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
+end
+
+plt.subplot(212)
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+plt.contourf(cs, x0s, λs_acotar, cmap = plt.cm.get_cmap("RdBu_r"), extend = "both")
+
+savefig("Comparación_atractores.png")
+=#
+```
+
+Los valores de los exponentes de Lyapunov se pueden observar en la imagen `Lyapunov.png`.
+Tonos azules corresponden a zonas no caóticas y tonos rojos a zonas caóticas.
 Éste, con el diagrama de bifurcación sobrepuesto se puede observar en la imagen `Lyapunov_bifurcación.png`.
 Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurcación_atractores.png`.
 Ésta última se observa a continuación:
@@ -256,6 +422,11 @@ Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurca
 Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov negativo se muestra en blanco.
 
 En general se observa que cuando se dan las bifurcaciones de doblamiento de periodo, el exponente de Lyapunov se vuelve positivo, es decir, se da la transición al caos.
+
+Para poder comparar más detenidamente el diagrama de bifurcación respecto a los valores del exponente de Lyapunov, se muestran ambos lado a lado en `Comparación.png` y `Comparación_atractores.png`.
+Esta última imagen se muestra a continuación:
+
+![Comparaci%C3%B3n_atractores.png](Lyapunov_bifurcaci%C3%B3n_atractores.png)
 
 - ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
 
