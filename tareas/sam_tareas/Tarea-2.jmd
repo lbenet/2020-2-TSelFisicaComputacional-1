@@ -93,8 +93,7 @@ En la siguiente gráfica se tiene la dinámica de las órbitas para el mapeo $M_
 analisis_grafico(x -> -(x^5)/5,x0,50,(-20,20),(-100,100))
 ```
 
-En el mapeo $M_3(x) = \frac{x}{2}-2$ se observa que los iterados se acercan al punto fijo , por lo que es un punto atractor. También la función tiende rápido al punto fijo, por lo que tiene un periodo finito.
-
+En el mapeo $M_3(x) = \frac{x}{2}-2$ , como la identidad intersecta a la recta únicamente en un punto, entonces sólo tenemos un punto fijo el cual es un punto atractor ya que $M_3\prime(x) < 1$
 
 ```julia
 analisis_grafico(x -> x/2 - 2 ,x0,15,(-5,5),(-5,1))
@@ -141,7 +140,7 @@ histogram(its_y, nbins=50,color= "red", title="f(x) = 2x mod 1",normed=true,lege
 ```
 
 En el inciso (a) se puede observar que la mayoría de los puntos están en -2 y 2 para un punto inicial aleatorio en ese intervalo , por lo que se ve que la órbita de la función oscila más en esos puntos . Pero al plotear el punto fijo se tiene únicamente valores en el 2, lo que es de esperar. 
-En el inciso (b) tomamos puntos del 0 al 1, pero al evaluar en la función tenemos un número irracional, por lo cual su representación en cualquier base es infinita , en particular en la base binaria. Así, al multiplicarlo por 2 se recorre el punto únicamente dos lugares y cuando hacemos módulo 1 el número queda igual o se le resta 1, pero, aquí lo importante es que la cola decimal permanece inalterada. Lo que ocurre en el código es que, al recorrer la cola dos puntos la computadora llena de ceros los lugares vacíos , en lugar de los ceros o unos correspondientes, lo que hace que al iterar la función esta se quede en el cero.    
+En el inciso (b) tomamos puntos del 0 al 1, pero al evaluar en la función tenemos un número irracional, cuya representación en cualquier base es infinita , en particular en la base binaria. Así, al multiplicarlo por 2 se recorre el punto una posición a la derecha, y el lugar vacío por el punto que se recorrió se llena con ceros, ya que al operar por mod 1 se deben conservar el número de cifras que representan al numero. Como en cada iteración se repite este mismo hecho , se tiene que la representación binaria del número no es la correcta, y con eso, se obtiene lo que se observa en el histograma. 
 
 ## Ejercicio 3
 
