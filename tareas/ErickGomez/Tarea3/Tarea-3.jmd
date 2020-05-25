@@ -1,0 +1,367 @@
+
+# Tarea 3
+
+> Envío inicial del PR: **22 de abril**.
+>
+> Aceptación PR *final*: **30 de abril**.
+
+
+## Ejercicio 1
+
+Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
+
+Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
+
+\begin{equation}
+f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
+\end{equation}
+
+La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
+
+
+*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
+Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
+
+```julia
+using Plots
+```
+
+```julia
+include("NumDual.jl")
+```
+
+```julia
+using Main.NumDual
+```
+
+Para abordar este problema decidímos recurrir al análisis gráfico. Para acortar tiempo de cómputo prefirmos introducir un intervalo $[c_i,c_f]$ que definímos con base a lo que observamos en la gráfica. Quisimos tener control de los pasos $\Delta$ que se daban en ese intervalo, el cual definimos experimentando. 
+Esto lo hicimos porque observamos que era importante acotar el intervalo en donde tomábamos la c ya que , con la condición de $(Q^p_c)\prime(x)=-1$ , encontramos productos que no correspondían al periodo n pero que cumplían la condición, es por eso que para cada $c_n$ redefinimos el intervalo tomando la $c_n$ anterior más $\epsilon$ y así evitar esa situación. Tener control de $\Delta$ nos ayudó a reducir el tiempo de cómputo, aunque tuvimos que experimentar un poco para encontrar la adecuada.   
+
+```julia
+"""
+iterar2 evalua f nit veces y devuelve los ultimos n iterados
+"""
+function iterar2(F::Function,x0::Float64,nit::Int,n)
+    X= [x0]
+    for i = 1:nit
+    x0 = F(x0)
+     push!(X,x0)   
+    end
+    return [X[end-i] for i=0:n-1]        
+end
+"""
+Calcula la derivada (d/dx)[Q^p(x)]
+"""
+# Calcula la dervida de los n ultimos elementos de Xr
+
+function deriv_P(F::Function, P::Int, Xr)
+    # Xr es un vector de puntos de periodo P
+    
+    der = F(var_dual(Xr[end])).y 
+    
+    for i in 1:(P-1)
+        der = der*F(var_dual(Xr[end - i])).y
+    end
+    
+    return der # derivada de (F^P)(x) en x0 (que es un punto de periodo P)
+    
+end
+"""
+ funcion que calcula las cn's para una funcion Qc que se itera nit veces, n 
+    es el numero de periodo, [ci,cf] es el intervalo en el que se encuentra la 
+    c deseada, y Δ es el numero de pasos.
+    """
+function c_n(Qc::Function, nit, n, ci, cf, Δ)
+    
+    C = ci:Δ:cf
+    
+    verif_deriv = Float64[]
+    
+    for c in C
+        xr  = iterar2(x -> Qc(x,c), 1.0, nit, n)
+        der = deriv_P(x -> Qc(x,c), n, xr)
+        
+        push!(verif_deriv, abs(abs(der) - 1))
+    end
+    
+    minimo = minimum(verif_deriv)
+    
+    j = 1
+    
+    while verif_deriv[j] != minimo
+        j += 1
+    end
+    
+    return verif_deriv[j], C[j]
+    
+end
+```
+
+```julia
+"""
+iterar(f :: Function, x0, n :: Int)
+
+Itera el mapeo `f` `n` veces, usando como condición inicial
+`x0` y regresa el vector de la sucesión de puntos iterados.
+"""
+function iterar(f::Function, x0, n::Int)
+    X = [x0]
+    
+    for i = 1:n
+        x0 = f(x0)
+        push!(X, x0)
+    end
+    
+    X
+end
+"""
+`diag_bifurc(F::Function, C, n_it::Int, m_end::Int)` \n
+
+Dibuja el diagrama de bifurcación sobre el conjunto de parámetros `C` (el cual es un rango), 
+a partir de iterar `n_it` veces la función `F`. De las `n_it` iteracciones
+sólo se pintan las últimas `m_end`
+"""
+
+function diag_bifurc(F::Function, C, n_it::Int, m_end::Int,x)
+    
+    x0 = x
+    
+    p = plot(label = "", xlabel = "c")
+    
+    for c in C
+        
+        iter = iterar(x -> F(x, c), x0, n_it)
+        
+        X = [c]
+        Y = [iter[end]]
+
+        for i = 1:(m_end-1)
+            push!(X, c)
+            push!(Y, iter[end-i])      
+        end
+
+        scatter!(X, Y, label = "", 
+            ms = 1.5, mc = :red3, marker = stroke(0, 0, :black, :dot))
+
+    end
+        
+    return p
+    
+end
+```
+
+```julia
+Qc(x,c) = x^2 + c
+```
+
+```julia
+# PERIODO 2^2 = 4
+
+# parámetros para diag_bifurc
+n_it = 2000 # número de iteraciones
+m_end = 200 # se guarda los m_end últimos de las n_it iteraciones
+Δ = 1e-3    # paso en el eje c
+C = -1.5:Δ:-1.0 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit = "Periodo: 2^2 = 4"
+vert = [-1.2, -1.3, -1.25]; # = [ci, c_f, c_n]
+# Gráfica
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+#plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(title = tit, vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif4.png")
+```
+
+```julia
+# calculo c_2, periodo n=4
+c_2= c_n(Qc, 200000, 4, -1.2, -1.3, -1e-5)
+```
+
+```julia
+# PERIODO 2^3 = 8
+
+# parámetros para diag_bifurc
+n_it = 2000 # número de iteraciones
+m_end = 200 # se guarda los m_end últimos de las n_it iteraciones
+Δ = 1.3e-3    # paso en el eje c
+C = -1.25:-Δ:-1.45 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit = "Periodo: 2^3 = 8"
+vert = [-1.33, -1.4, -1.3681] # = [ci, c_f, c_n];
+# Gráfica
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+#plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(title = tit, vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif8.png")
+```
+
+```julia
+# cálculo de c_3 , periodo n=8
+c_3 = c_n(Qc, 200000, 8, -1.33, -1.4, -1e-5)
+```
+
+```julia
+# PERIODO 2^4 = 16
+
+# parámetros para diag_bifurc
+n_it = 2000 # número de iteraciones
+m_end = 200 # se guarda los m_end últimos de las n_it iteraciones
+Δ = 1e-4    # paso en el eje c
+C = -1.36:-Δ:-1.42 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit = "Periodo: 2^4 = 16"
+vert = [-1.385, -1.4, -1.394046] # = [ci, c_f, c_n]
+limx = (-1.42, -1.36)
+limy = (-0.4, 0.7)
+rad = 5e-2;
+# Gráfica
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(title = tit, vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif16.png")
+```
+
+```julia
+# Cálculo de c_4, periodo n=16:
+c_4 = c_n(Qc, 200000, 16, -1.385, -1.4, -1e-6)
+```
+
+```julia
+# PERIODO 2^5 = 32
+
+# parámetros para diag_bifurc
+n_it = 2000 # número de iteraciones
+m_end = 200 # se guarda los m_end últimos de las n_it iteraciones
+Δ = 1e-5    # paso en el eje c
+C = -1.3935:-Δ:-1.403 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit = "Periodo: 2^5 = 32"
+vert = [-1.399, -1.4, -1.3996312] # = [ci, c_f, c_n]
+limx = (-1.403, -1.3935)
+limy = (-0.07, 0.11)
+rad = 5e-2;
+# Gráfica
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(title = tit, vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif32.png")
+```
+
+```julia
+# Cálculo de c_5, periodo n=32:
+c_5 = c_n(Qc, 200000, 32, -1.399, -1.4, -5e-7)
+```
+
+```julia
+# PERIODO 2^6 = 64
+
+# parámetros para diag_bifurc
+n_it = 2000 # número de iteraciones
+m_end = 200 # se guarda los m_end últimos de las n_it iteraciones
+Δ = 1e-6    # paso en el eje c
+C = -1.4006:-Δ:-1.4013 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit = "Periodo: 2^6 = 64"
+limx = (-1.4013,-1.4006)
+limy = (-0.04, 0.02)
+vert = [-1.40074, -1.4009, -1.4008286] # = [ci, c_f, c_f]
+rad = 1e-2;
+# Gráfica
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif64.png")
+```
+
+```julia
+# Cálculo de c_6, periodo n=64: 
+c_6 = c_n(Qc, 200000, 64, -1.40074, -1.4009, -1e-7)
+```
+
+```julia
+# PERIODO 2^7 = 128
+
+# parámetros para diag_bifurc
+n_it = 2000
+m_end = 200
+Δ = 8e-7
+C = -1.4008:-Δ:-1.4013 # c ∈ [-3/4, 1/4]
+
+# Parámetros adicionales para una mejor visualización
+tit = "2^7 = 128"
+limx = (-1.4013,-1.4008)
+limy = (-0.04, 0.02)
+vert = [-1.401065, -1.40112, -1.4010852]
+rad = 1e-2;
+# Gráfica para estimar c_7
+diag_bifurc(Qc, C, n_it, m_end,0.0)
+plot!(title = tit, xlims = limx, ylims = limy, aspectratio = rad)
+vline!(vert, l = 1.5, lc = :blue3, ls = :dash, label = "")
+savefig("bif128.png")
+```
+
+```julia
+# Cálculo de c_7 , periodo n=128:
+c_7 = c_n(Qc, 200000, 128, -1.401065, -1.40112, -1e-7)
+```
+
+Las $c_n$ obtenidas fueron :
+$c_0 = 1/4$,
+$c_1 = -1/4$,
+$c_2 = -3/4$,
+$c_3 = -1.3681$,
+$c_4 = -1.394046$,
+$c_5 = -1.3996312$,
+$c_6 = -1.4008286$,
+$c_7 = -1.4010852$
+
+
+```julia
+"""
+Ahora vamos a calcula fn. "cns" es el vector que contiene c_n hasta n=7
+
+"""
+cns=[0.25,-0.25,-0.75,-1.3681 ,-1.394046,-1.3996312,-1.4008286,-1.4010852]
+f(n) = (cns[n] - cns[n+1])/(cns[n+1] - cns[n+2])
+F2=[f(i) for i=1:6]
+```
+
+Con las aproximaciones anteriores, se puede intuir que 
+\begin{equation}
+\lim_{n\to \infty}\frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} \approx 4.66640
+\end{equation}
+
+
+## Ejercicio 2
+
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
+
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
+
+- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+```julia
+F(x,c)= c*sin(x)
+c_1= c_n(F,2000000,2,2.1,2.378,1e-4,1.1)
+c_2=c_n(F,2000000,4,2.4,2.7,1e-4,1.1)
+c_3=c_n(F,200000,8,2.692,2.8,1e-5,1.1)
+c_4=c_n(F,200000,16,2.7,2.8,1e-5,1.1)
+c_5 = c_n(F,300000,32,2.73,2.8,1e-7,1.1) 
+c_6 = c_n(F,400000,64,2.79,2.9,1e-7,1.1)
+```
+
+## Ejercicio 3
+
+Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece a un ciclo de periodo $2^n$ para ciertos valores $C_n$ del parámetro. Dichos valores son *especiales*, ya que el hecho de que $x=0$ pertenezca a un ciclo de periodo $2^n$ define los llamados *ciclos superestable*, donde tenemos $(Q^{2^p}_{C_n})'(0)=0$.
+
+- ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
+
+- De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
+
+```julia
+```
