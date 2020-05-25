@@ -25,5 +25,11 @@ deberán ser enviadas en formato `jmd`.
 
 |     Asignación     | Fecha PR inicial | Fecha de aceptación del PR  |         Estado         |
 |:------------------:|:------------------------:|:-----------------------:|:----------------------:|
-|        Tarea 1     |  6/03/2020   |  27/03/2020 | Abierta  |
-|        Tarea 2     | 27/03/2020   |  19/04/2020 | Abierta  |
+|        Tarea 1     |  6/03/2020 |  24/03/2020  | Abierta  |
+|        Tarea 2     | 27/03/2020 |  24/04/2020  | Abierta  |
+|        Tarea 3     | 22/04/2020 |  24/05/2020  | Abierta  |
+|        Tarea 4*    | 11/05/2020 |  24/05/2020  | Abierta  |
+
+* Optativa
+
+NOTA: Como acordamos, la fecha límite para enviar todos los PR es el 24/05/2020; en base a ellos se calificará el curso.

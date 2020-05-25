@@ -1,0 +1,876 @@
+
+# Tarea 4
+
+## Ejercicio 1:
+
+Obtengan, para la familia de mapeos cuadrática $Q_c(x)$, el diagrama que muestra el exponente de Lyapunov en términos de $c$, para $c\in[-2,2]$.
+
+- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) para los valores de $c$ donde hay bifurcaciones?
+
+- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
+
+```julia
+include("NumDual.jl")
+using Main.NumDual
+using Plots
+using LaTeXStrings
+```
+
+```julia
+Dual(1.9,2)
+```
+
+```julia
+x_Dual(2)
+```
+
+```julia
+Q(x,c) = x^2+c
+```
+
+Recordamos que:
+
+\begin{equation}
+\lambda(x_0) = \lim_{n\to\infty} \frac{1}{n} \sum_{i=1}^n \log
+\Big| \, f'(x_i)\, \Big|.
+\end{equation}
+
+donde $x_i=f^i(x_0)$.
+
+Para resolver este problema consideramos un $n$ suficientemente grande como una aproximación hacia un valor infinito.
+
+Además empezamos con un $x_0=0$.
+
+```julia
+its = 100000
+domx = -2:1e-3:2
+c = Array{Float64,1}(undef, length(domx))
+l = Array{Float64,1}(undef, length(domx))
+for count in 1:length(domx)
+    S = 0
+    x₀ = 0
+    c₀ = domx[count]
+    for i in 1:its
+        x₀ = Q(x₀,c₀)
+        S += log(abs(Q(x_Dual(x₀),c₀)[2]))
+    end
+    S = S/its
+    c[count] = c₀
+    l[count] = S
+end
+```
+
+```julia
+plot(c,l,legend=false)
+plot!([-2,2],[0,0])
+title!("Exponente de Lyapunov de Q_c")
+savefig("c_vs_lv.png")
+```
+
+![Fig 1](c_vs_lv.png "Qc")
+
+Recordamos que las bifurcaciones se encontraban en c = 0.25, -0.75, -1.25, ... 
+
+Observamos que en estos puntos el exponente de Lyapunov se hace 0.
+
+Por otro lado, cuando hay ciclos superestables que fue en c = 0, -1, ... encontramos que el valor tiende $-\infty$:
+
+```julia
+its = 1000000
+S = 0
+x₀ = 0
+c₀ = -1
+for i in 1:its
+    x₀ = Q(x₀,c₀)
+    S += log(abs(Q(x_Dual(x₀),c₀)[2]))
+end
+S = S/its
+```
+
+Esto, por lo visto en clase, indica que no hay caos, lo cual es consiste ya que son ciclos superestables.
+
+
+   Por último observamos como mientras vamos encontrando bifurcaciones de doblamiento consecutivos: $c = -0.75, -1.25, -1.368\dots , \dots$ ; en todo este intervalo encontramos que el exponente es siempre negativo hasta un punto en que cominza a ser $>0$ lo que indica que hay caos.
+
+## Ejercicio 2:
+
+Estudiar la dinámica para el mapeo cuadrático $Q_c(x)$, con $c=-2.2$.
+
+Primero visualizamos el mapeo $Q_c$ con c= -2.2:
+
+```julia
+xrange = -3:1/10^4:3
+Qc(x) = Q(x,-2.2)
+plot(xrange,Qc)
+plot!(xrange,x->x)
+```
+
+Observamos que existen dos puntos fijos.
+
+```julia
+"""
+    iteramapeo(f, x0, n)
+
+"""
+function itera_mapeo(f, x0, n::Int)
+    its = Float64[x0]
+    its_x = Float64[x0]
+    its_y = Float64[0.0]
+    for i = 1:n
+        push!(its_x,x0)
+        x0 = f(x0)
+        push!(its_x, x0)
+        push!(its,x0)
+        push!(its_y,x0)
+        push!(its_y,x0)
+    end
+    return its, its_x, its_y
+end
+"""
+    analisis_grafico(F::Function, x0::Float64, n::Int)
+"""
+function analisis_grafico(F::Function, x0::Float64, n::Int, domx=0.0:1/128:1.0;
+        title_l = "F(x)",color=:blue,  
+        domy=(sort([F(domx[end]), F(domx[1])])[1],sort([F(domx[end]), F(domx[1])])[2]),
+        domx_2=(domx[1],domx[end]))
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot(domx, F, color=:blue,
+        xaxis=("x", domx_2),
+        yaxis=(domy,"F(x)"), legend=false, 
+        title=title_l, grid=false)
+    plot!(domx, identity, color=:red)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.5)
+end
+
+"""
+    analisis_grafico!(F::Function, x0::Float64, n::Int)
+"""
+function analisis_grafico!(F::Function, x0::Float64, 
+        n::Int, domx=0.0:1/128:1.0; color=:blue)
+    its, its_x, its_y = itera_mapeo(F, x0, n)
+    plot!(its_x, its_y, markershape=:circle,markerstrokecolor=color, 
+        markercolor= color,linecolor=color,markersize=4, alpha=0.4)
+end
+```
+
+```julia
+analisis_grafico(Qc, 0.0, 5, xrange,title_l=latexstring("Q_{-2,2}"),color=:black,domy=(-5,10))
+```
+
+```julia
+analisis_grafico(Qc, 2.0, 12, xrange,title_l=latexstring("Q_{-2,2}"),color=:black,domy=(-5,10))
+```
+
+```julia
+analisis_grafico(Qc, -1.9, 8, -5:1e-3:30,title_l=latexstring("Q_{-2,2}"),color=:black,
+    domy=(-5,200),domx_2=(-5,30))
+```
+
+Observamos que no son punto atractivos pues cualquier condición inicial cerca se aleja de éstos, y de hecho como observamos en la última gráfica se tiende a un número muy grande.
+
+Ahora veamos si existen periodos inestables, para eso retomamos una función de la clase:
+
+```julia
+"""
+    Qcⁿ(x, args)
+
+Esta función define el n-enésimo iterado de ``Qc(x)``,
+donde el valor a iterar es `x` y el valor del parámetro
+es `c`, donde `c = args[1]` y `n = args[2]`.
+"""
+function Qcⁿ(x, args)
+    n = args
+    @assert n >= 0 && isa(n,Int)
+    n <= 1 && return Qc(x)
+    for it = 1:n
+        x = Qc(x)
+    end
+    return x
+end
+```
+
+```julia
+xrange = -2.2:1/64:2.2
+plot(xrange, x->Qcⁿ(x,1),label="n=1",color=:blue)
+plot!(xrange, x->Qcⁿ(x,2),label="n=2",color=:red)
+plot!(xrange, x->Qcⁿ(x,3),label="n=3",color=:green)
+plot!(xrange, x->Qcⁿ(x,4),label="n=4",color=:yellow)
+plot!(xrange, x->x,label="Id",color=:black)
+ylims!(-5,30)
+xlabel!("x")
+ylabel!("Q_c(x)")
+title!("c = -2.2")
+```
+
+Observamos en la gráfica anterior que existen puntos de periodo 1,2,3,4... Esto nos exhibe que existen puntos fijos de periodo n, pero los cuales son inestables por lo que no fueron localizados en el análisis previo.
+
+Ṕor lo tanto casi cualquier punto inicial, con excepción de los puntos fijos y los puntos inestables de periodo n, tiende a crecer infinitiamente.
+
+
+- ¿Cómo se caracteriza el valor al que tiende *casi* cualquier condición inicial en el
+intervalo $I=[-p_+,p_+]$ (donde $p_+$ es el valor positivo tal que $Q_c(p_+)=p_+$), después de muchos iterados? (El intervalo $I$ es donde "toda la dinámica interesante ocurre".)
+
+
+Ahora calculemos el punto fijo positivo. Para esto recurrimos al `Met_Newton` para determinar el punto $p_{+}$ tal que $Q(p_{+})=Q(p_{+})$.
+
+```julia
+function Met_Newton(f::Function,x_0;its=10)
+    x_0 = x_Dual(x_0)
+    x_last = x_0
+    for i in 1:its
+        x_last = x_0
+        f_n = f(x_0)
+        x_0 = x_0-f_n[1]/f_n[2]
+        if x_0[1] ≈ x_last[1]
+            break
+        end
+    end
+    if (x_0[1] - x_last[1])<1e-10
+        return x_0
+    else
+        return "No converge"
+    end
+end
+```
+
+```julia
+Qc(x)=Q(x,-2.2)-x
+x_mas=Met_Newton(Qc,1;its=1000000)
+```
+
+Ahora definamos una función simple para iterar a la función $f$, con una condición inicial $x_0$ y un número de veces $its$.
+
+```julia
+function itera(f,x0,its)
+    for i in 1:its
+        x0 = f(x0)
+    end
+    return x0
+end
+```
+
+```julia
+#Iteramos en un conjunto entre [-P+,P+]
+domx = -x_mas[1]:1e-5:x_mas[1]
+vec = Array{Float64,1}(undef, length(domx))
+for i in 1:length(domx)
+    vec[i] = itera(Qc,domx[i],100)
+end
+```
+
+```julia
+min(vec...) == Inf && max(vec...)==Inf
+```
+
+```julia
+max(vec...)
+```
+
+ Observamos que en este intervalo todas las condiciones inciales tienden a infinito, pues el `max`y el `min` de iterar $Q_{-2.2}$ es Infinito.
+ 
+ Es claro que para los puntos fijos no es así, pero como sólo tenemos una aproximación no es posible visualizar esto.
+
+- Caractericen los subconjuntos de $I$ tales que, después de $n=1,2,3,\dots$ iterados de $Q_c(x)$, su intersección con $I$ es vacía.
+
+```julia
+"""
+    subconjuntos(f,I;its=100)
+
+    Esta función divide a las condiciones iniciales de tal forma que la intersección con I 
+    después de n iterados es vacía o no.
+"""
+function subconjuntos(f,I;its=100)
+    sub_1, sub_2 = [], []
+    for i in 1:length(I)
+        for it in 1:its
+            x = itera(f,I[i],it)
+            if x<=max(I...) && min(I...)<=x
+                push!(sub_2,[I[i],it])
+                break
+            elseif x == Inf
+                push!(sub_1,I[i])
+                break
+            end
+        end
+    end
+    return sub_1,sub_2
+end
+```
+
+```julia
+domx = -x_mas[1]:1e-3:x_mas[1]
+sub_1,sub_2=subconjuntos(Qc,domx)
+```
+
+```julia
+sub_1 # Este es el conjunto cuya intersección es vacía con I
+```
+
+Se tiene la hipótesis de que se tomó un subconjunto cerrado de $domx$, es decir, no se brinca ningún valor, para esto verifiquemos que la distancia entre cada valor del array consecutivo es $\approx 0.001$.
+
+```julia
+i=0
+for i in 2:length(sub_1)
+    if sub_1[i-1]-sub_1[i]≈1e-3
+        println("Mi hipótesis está mal")
+    end
+end
+```
+
+Esto implica que la hipótesis es cierta, por lo que tenemos que se trata del subconunto:
+[-0.3662475842498527, 0.36675241575014716]. (Aunque tal vez pueda ser más grande el subconjunto, aseguro que todos los valores dentro de este divergen.)
+
+- Caracterizen al complemento del conjunto de los casos anteriores, es decir, cuando los iterados de la condición inicial **no** llegan a donde *casi* cualquier condición inicial termina. ¿Cómo se conoce a este conjunto?
+
+Ahora veamos el otro subconjunto.
+
+```julia
+sub_2
+```
+
+Este conjunto se trata de la unión de dos conjuntos:
+
+$$(-P_+,-0.3672475842498527]\cup [0.36775241575014716,P_+)$$
+
+Observamos que para este subconjunto hay un caos transitorio, pues como se observa en el análisis previo existen un número finito de iteraciones para las cuales se itera dentro del mismo conjunto, para que en un punto después el valor tienda a infinito.
+
+## Ejercicio 3:
+
+- Usando el análisis gráfico para un valor de $c$ *ligeramente* anterior al punto donde se observa la ventana de periodo 3 para la familia $Q_c(x)$, y uno en la ventana de periodo 3, concluyan el tipo de bifurcación que se observa.
+
+Veamos primero a la ventana de periodo 3.
+
+```julia
+"""
+    ciclosestables!(xx, f, cc, nit, nout)
+
+Esta función itera el mapeo `f`, de una variable, `nit+nout` veces,
+usando como condición inicial `x0=0`; los últimos `nout` iterados
+actualizan al vector `xx` que tiene longitud `nout`. `cc` es el valor
+del parámetro del mapeo `f`. El mapeo `f` debe ser definido de
+tal manera que `f(x0, cc)` tenga sentido. La idea es que los últimos
+`nout` iterados reflejen los ciclos estables del mapeo `f`.
+"""
+function ciclosestables!(xx, f, cc, nit, nout)
+    @assert (nit > 0) && (nout > 0)
+
+    # Primeros nit iterados
+    x0 = 0.0
+    for it = 1:nit
+        x0 = f(x0, cc)
+    end
+
+    # Se guardan los siguientes nout iterados
+    for it = 1:nout
+        x0 = f(x0, cc)
+        @inbounds xx[it] = x0
+    end
+
+    nothing
+end
+```
+
+```julia
+"""
+    diag_bifurc(f, nit, nout, crange)
+
+Itera el mapeo `f` `nit+nout` veces y regresa una matriz
+cuya columna `i` tiene los últimos `nout` iterados del mapeo
+para el valor del parámetro del mapeo `crange[i]`.
+
+La función `f` debe ser definida de tal manera que `f(x0, c)`
+tenga sentido.
+"""
+function diag_bifurc(f, nit, nout, crange)
+#     xx = Vector{Float64}(nout)
+    ff = Array{Float64}(undef, (nout, length(crange)))
+
+    for ic in eachindex(crange)
+        c = crange[ic]
+        ciclosestables!(view(ff, :, ic), f, c, nit, nout)
+#         ff[:,ic] = xx
+    end
+
+    return ff
+end
+```
+
+```julia
+Qc(x,c) = x^2 + c
+
+crange = -1.74:-1/10^3:-1.8
+
+ff = diag_bifurc(Qc, 1000, 10000, crange);
+cc = ones(size(ff, 1)) * crange';
+
+# Esto cambia las matrices en vectores; ayuda un poco para los dibujos
+ff = reshape(ff, size(ff, 1)*size(ff, 2));
+cc = reshape(cc, size(ff));
+```
+
+```julia
+scatter(cc, ff, markersize=0.5, markerstrokestyle=:solid, legend=false, title="Fig. 1")
+#plot!([-2,0.5], [0.0,0.0], color=:red)
+xaxis!("c")
+#xlims!(-1.775,-1.755)
+#ylims!(-0.4,0.4)
+yaxis!("x_infty")
+savefig("diag_bif_window_3.png")
+```
+
+![Fig 2](diag_bif_window_3.png "Fig. 2")
+
+De esta forma observamos que se trata de un cambio *abrupto*, entre una ventana en la que después de un gran número de iteraciones no se ve claramente un periodo finito  y un periodo 3.
+
+Si iteramos sobre una $c$ en la ventana de periodo 3 y una $c$ en la otra ventana tenemos los siguientes diagramas:
+
+Primero realizamos una función que itera la función n veces y devuelve el valor de cada iteración.
+
+```julia
+function iterados_n(f,x;its=200)
+    sub_2,sub_1 = [],[]
+    for a in 1:its
+        x = f(x)
+        push!(sub_2,x)
+        push!(sub_1,a)
+    end
+    return sub_1,sub_2
+end
+```
+
+En la ventana en la que no se observa un periodo finito, con la condición inicial $x_0 = 1.0$:
+
+```julia
+Qc(x)=Q(x,-1.749)
+n, Q_2= iterados_n(Qc,1.0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_1.png")
+```
+
+![Fig 3](200_1.png "Fig. 3")
+
+Ahora para la condición inicial $x_0=0$:
+
+```julia
+n, Q_2= iterados_n(Qc,0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_0.png")
+```
+
+![Fig 4](200_0.png "Fig. 4")
+
+Por último en la ventana de periodo 3 para $x_0=1$:
+
+```julia
+Qc(x)=Q(x,-1.755)
+n, Q_2= iterados_n(Qc,1.0)
+scatter(n, Q_2, title=latexstring("Q_{-1.749}"),legend=false)
+savefig("200_10.png")
+```
+
+![Fig 5](200_10.png "Fig. 5")
+
+Lo que notamos es que, en la ventana que no tiene un periodo claro comienza a acercarse al periodo 3, pero de repente sale de este periodo y después regresa, pero sin seguir un patrón claro.
+
+En la de periodo 3 es claro que hay ciclo estable.
+
+Por lo que observamos que se trata de una bifurcación tangencial en la que abruptamente se cambia a un periodo 3 estable.
+
+- Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
+
+Para el caso del periodo infinito:
+
+```julia
+its = 200000000
+S = 0
+x₀ = 0
+c₀ = -1.749
+for i in 1:its
+    x₀ = Q(x₀,c₀)
+    S += log(abs(Q(x_Dual(x₀),c₀)[2]))
+end
+S = S/its
+```
+
+En ventana de periodo 3:
+
+```julia
+its = 2000000
+S = 0
+x₀ = 0
+c₀ = -1.755
+for i in 1:its
+    x₀ = Q(x₀,c₀)
+    S += log(abs(Q(x_Dual(x₀),c₀)[2]))
+end
+S = S/its
+```
+
+Lo que notamos es que en la primera ventana el exponente resulta positivo y en la de periodo 3 el exponente resulta ser negativo, lo que indica que en la primera ventana hay caos, mientras que en el periodo 3 no hay tal.
+
+- Encuentren el valor de $c$ donde se da el ciclo superestable de periodo 3. (Nuevamente, usen el método de Newton con una buena semilla inicial para $c$.) Demuestren que para este valor de $c$ el mapeo $Q_c^3(x)$ tiene *ocho* puntos fijos, donde dos de ellos son puntos fijos de $Q_c(x)$, y los otros 6 forman dos secuencias periódicas, de periodo 3 en $Q_c(x)$, una de ellas estable y la otra inestable.
+
+Utilizaremos las funciones de la `Tarea 3`, pero ahora para un periodo 3:
+
+```julia
+function diag_bifurc_2(f, nit, nout, crange)
+
+    ff = Array{Float64}(undef, nout)
+    ciclosestables!(view(ff, :, 1), f, crange, nit, nout)
+
+    return ff
+end
+function bifurcacion_ceros(f,c₀,pres,direc,orden;tol=1e-5,imprimir=false,
+        paso=2,pasos=[1,1,1,1],abs_value=[0.7,0.5,0.3,0.0],its=100000000)
+    c = Array{Float64,1}(undef, orden)
+    flag =  false
+    for un in 0:orden-1
+        for i in un:pres
+            X_last = 0.0
+            while true
+                c₀ += paso*direc//10^(i+3)
+                crange = c₀
+                ff = diag_bifurc_2(f,its, 3^(un+1), crange)
+                X = 1
+                for int in 1:3^(un+1)
+                    X *= f(x_Dual(ff[int]),c₀)[2]
+                end
+                if imprimir
+                    print(c₀)
+                    print(" - ")
+                    print(abs(abs(X)-1))
+                    print(" - ")
+                    println(X)
+                end
+                if abs(X) < tol
+                    flag = true
+                    break
+                elseif X < 0
+                    break
+                elseif X_last < 0
+                    if 0 > X
+                            break
+                        end
+                end
+                paso = Pasos(abs_value,pasos,X)
+                X_last = X
+            end
+            if flag
+                flag = false
+                break
+            end
+            c₀-= paso*direc//10^(i+3)
+        end
+        c[un+1],paso = c₀, 2^(un+4)
+        if imprimir
+            print("------------------------")
+            print(un+1)
+            println("------------------------")
+        end
+    end
+    return c
+end
+
+function Pasos(abs_value,pasos,X)
+    for i in 1:length(abs_value)
+        if abs(X)>abs_value[i]
+            if X<0.1
+                return 50*pasos[i]
+            else
+                return 200*(abs(X))*pasos[i]
+            end
+        end
+    end
+end
+```
+
+Ahora calculamos el c para el cual hay un periodo 3 superestable.
+
+```julia
+c = bifurcacion_ceros(Q,-1.75,15,-1,1;tol=1e-13,imprimir=true,its=1000000)
+```
+
+Visualizamos la gráfica vs identidad.
+
+```julia
+xrange = -3:1/10^4:3
+Qc(x) = Q(x,c[1])
+plot(xrange,Qc,legend=false)
+plot!(xrange,x->x)
+```
+
+Ahora calculamos los dos puntos fijos que se observan:
+
+```julia
+QcI(x)=Qc(x)-x
+x_mas=Met_Newton(QcI,2;its=1000000)
+```
+
+```julia
+x_menos=Met_Newton(QcI,-1;its=1000000)
+```
+
+Ahora observamos el ciclo super estable:
+
+```julia
+analisis_grafico(Qc, 0.0, 60, xrange,title_l=latexstring("Q_{-1.7548776662466918}"),
+    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+```
+
+Y como en efecto debe estar cercano a 0, usamos una función que sólo nos devuelve 3 valores:
+
+```julia
+ff = diag_bifurc_2(Q,3, 3, c[1])
+```
+
+Y estos son los puntos fijos de periodo estable.
+
+Ahora visualicemos el mapeo $Q_c^3$.
+
+```julia
+function Qc3(x, c)
+    for it = 1:3
+        x = Qc(x,c)
+    end
+    return x
+end
+```
+
+```julia
+Qc_3(x)=Qc3(x, c[1])
+```
+
+```julia
+xrange = -2:1/1000:2
+plot(xrange, x->Qc_3(x),legend=false)
+plot!(xrange, x->x)
+plot!(xrange,Qc)
+ylims!(-2.5,2.5)
+xlabel!("x")
+ylabel!("Q_c(x)")
+```
+
+Observamos que se encuentran 5 puntos fijos a primera vista, los dos de $Q_c$, los de periodo 3, sin embargo si hacemos un zoom, en cada punto de periodo 3 visualizaremos otro punto fijo:
+
+```julia
+plot(xrange, x->Qc_3(x),legend=false)
+plot!(xrange, x->x)
+plot!(xrange,Qc)
+ylims!(-1.76,-1.74)
+xlims!(-1.76,-1.74)
+xlabel!("x")
+ylabel!("Q_c(x)")
+```
+
+Sabemos por lo calculado que el que está cerca de $-1.755$ es el estable, entonces calculamos el que se encuentra más cerca de $-1.743$.
+
+```julia
+QcI(x) = Qc_3(x)-x
+x_ines_1=Met_Newton(QcI,-1.743;its=100000000)
+```
+
+Ahora para otro punto:
+
+```julia
+plot(xrange, x->Qc_3(x),legend=false)
+plot!(xrange, x->x)
+plot!(xrange,Qc)
+ylims!(-0.15,0.05)
+xlims!(-0.15,0.05)
+xlabel!("x")
+ylabel!("Q_c(x)")
+```
+
+Notamos que el que se encuentra cercano a 0 es el ya calculado, por lo que calcumos el cercano a $-0.10$:
+
+```julia
+x_ines_2=Met_Newton(QcI,-0.11;its=100000000)
+```
+
+Por último:
+
+```julia
+plot(xrange, x->Qc_3(x),legend=false)
+plot!(xrange, x->x)
+plot!(xrange,Qc)
+ylims!(1.26,1.34)
+xlims!(1.26,1.34)
+xlabel!("x")
+ylabel!("Q_c(x)")
+```
+
+El más cercano a $1.32$ es el estable por lo que calculamos el cercano a $1.28$:
+
+```julia
+x_ines_3=Met_Newton(QcI,1.28;its=100000000)
+```
+
+De esta forma tenemos los siguientes puntos fijos:
+
+```julia
+puntos_fijos=[x_mas[1],x_menos[1],ff[1],ff[2],ff[3],x_ines_1[1],x_ines_2[1],x_ines_3[1]]
+```
+
+Ahora sólo verificamos que los últimos puntos fijos son de periodo 3:
+
+```julia
+analisis_grafico(Qc, puntos_fijos[6], 60, xrange,
+    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+```
+
+Y que son inestables ya que con una condición un poquito alejada del punto fijo tenemos que ya no existe un ciclo de periodo 3 tan claro como el anterior:
+
+```julia
+analisis_grafico(Qc, puntos_fijos[6]+0.0001, 60, xrange,
+    color=:black,domx_2=(-2,1.5),domy=(-2.5,2.5))
+```
+
+(Los siguientes incisos usan el valor de $c$ encontrado en el inciso anterior.)
+
+- Denotando al ciclo inestable de periodo 3 como $\alpha\mapsto \beta\mapsto\gamma$, con $\gamma<\beta<\alpha$, uno puede asociar a cada uno de estos valores un valor $\hat\alpha, \hat\beta, \hat\gamma$, tales que $Q_c^3(\hat\alpha)=\alpha$, $Q_c^3(\hat\beta)=\beta$, $Q_c^3(\hat\gamma)=\gamma$. ¿Qué podemos concluir de un punto que cae en cualquiera de los intervalos $[\alpha,\hat\alpha]$, $[\beta,\hat\beta]$ y $[\hat\gamma,\gamma]$, en términos de los iterados sucesivos?
+
+Primero definamos a $\alpha,\beta,\gamma$:
+
+```julia
+α = puntos_fijos[8]
+β = puntos_fijos[7]
+γ = puntos_fijos[6]
+```
+
+Ahora calculemos a $\hat\alpha$, notando que localmente las gráficas que visualimos para calcular los puntos $\alpha,\gamma$ y $\beta$; son parábolas.
+
+De esta forma tomamos un valor inicial que se encuentra del otro lado de la parabola:
+
+```julia
+QcI(x) = Qc_3(x)-γ
+x_1=Met_Newton(QcI,-1.765;its=100000000)
+```
+
+```julia
+QcI(x) = Qc_3(x)-β
+x_2=Met_Newton(QcI,0.1;its=100000000)
+```
+
+```julia
+QcI(x) = Qc_3(x)-α
+x_3=Met_Newton(QcI,1.36;its=100000000)
+```
+
+Ahora definamos a $\hat\alpha,\hat\beta$ y $\hat\gamma$:
+
+```julia
+γ_1 = x_1[1]
+β_1 =  x_2[1]
+α_1 = x_3[1]
+```
+
+Creamos un dominio de $[\alpha,\hat\alpha]$:
+
+```julia
+dom_α = α:1e-3:α_1
+```
+
+Creamos ahora una función que itere nuestro dominio:
+
+```julia
+function iterados(f,I;its=100)
+    sub_2 = []
+    for a in I
+        x = itera(f,a,its)
+        push!(sub_2,x)
+    end
+    return sub_2
+end
+```
+
+Por último, observamos que al iterar está función converge al punto fijo, que pertence al ciclo estable, el cual se encuentra entre $[\alpha,\hat\alpha]$:
+
+```julia
+c1=iterados(Qc_3,dom_α[2:end])
+for a in c1
+    if a!= puntos_fijos[4]
+        println("Falso")
+    end
+end
+```
+
+Lo mismo para $\beta$:
+
+```julia
+dom_β = β:1e-3:β_1
+```
+
+```julia
+c2=iterados(Qc_3,dom_β[2:end])
+for a in c2
+    if a!= puntos_fijos[5]
+        println("Falso")
+    end
+end
+```
+
+Y análogamente para $\gamma$:
+
+```julia
+dom_γ = γ_1:1e-3:γ
+```
+
+```julia
+c3=iterados(Qc_3,dom_γ[2:end])
+for a in c3
+    if a != puntos_fijos[3]
+        println("Falso")
+    end
+end
+```
+
+Por lo que cuando un punto cae en estos intervalos, al iterarlo éste converge a los puntos fijos del ciclo estable.
+
+- Definiendo los intervalos $I_0=[\hat\beta, \alpha]$, $I_1=[\gamma,\beta]$, mostrar que bajo la acción de $Q_c(x)$ se cumple: (i) $Q_c(I_0) \supset I_1$, y (ii) $Q_c(I_1) \supset I_0\cup I_1$. ¿Qué propiedad *importante* de $Q_c(x)$ se utiliza aquí?
+
+(Los intervalos $I_0$ e $I_1$, y estas propiedades, son básicos en la demostración del teorema "periodo tres implica caos".)
+
+Primero definimos los intervalos:
+
+```julia
+I₀=β_1:1e-3:α
+```
+
+```julia
+I₁ = γ:1e-3:β
+```
+
+Ahora iteramos $I_0$:
+
+```julia
+c4=iterados(Qc,I₀)
+```
+
+Por último verificamos que $\max(Q_c(I_0))\geq \max(I_1)$ y que $\min(Q_c(I_0))\leq \min(I_1)$, lo que implica que $Q_c(I_0) \supset I_1$:
+
+```julia
+max(c4...) >= max(I₁...)
+```
+
+```julia
+min(c4...) <= min(I₁...)
+```
+
+Ahora iteremos $I_1$:
+
+```julia
+c5=iterados(Qc,I₁)
+```
+
+Y ahora verificamos que $\max(Q_c(I_1))\geq \max(\max(I_1),\max(I_1))$ y que $\min(Q_c(I_1))\leq \min(\min(I_1),\min(I_0))$, lo que implica que $Q_c(I_1) \supset I_1\cup I_0$:
+
+```julia
+max(c5...) >= max(max(I₁...),max(I₀...))
+```
+
+```julia
+min(c5...) <= min(min(I₁...),min(I₀...))
+```
+
+Se utiliza que $Q_c$ es una aplicación continua y además es $C^1$, esto por la existencia del punto fijo en el intervalo $I_1$.
