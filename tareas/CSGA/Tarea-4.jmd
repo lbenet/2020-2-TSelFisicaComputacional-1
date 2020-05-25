@@ -1,0 +1,1142 @@
+
+# Tarea 4
+
+## Ejercicio 1:
+
+Obtengan, para la familia de mapeos cuadrática $Q_c(x)$, el diagrama que muestra el exponente de Lyapunov en términos de $c$, para $c\in[-2,2]$.
+
+- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) para los valores de $c$ donde hay bifurcaciones?
+
+Comencemos definiendo una función que dado un mapeo $f$ y un punto inicial, $x_0$, calcule una aproximación numérica del exponente de Lyapunov.
+
+Para ello, nos conviene cargar el código ya realizado anteriormente:
+
+```julia
+include("Código/Tools.jl")
+using Main.Tools
+```
+
+Recordemos que podemos calcular el exponente de Lyapunov de un mapeo unidimensional de dos formas equivalentes, aunque numéricamente distintas:
+
+- Calculando el logaritmo valor absoluto de la derivada de la iteración $n$-ésima del mapeo, o,
+- Sumando los valores absolutos de los logaritmos de la derivada del mapeo evaluada en los iterados $x_0,\ldots,x_{n-1}$.
+
+Dado a que con lo que hemos realizado es relativamente sencillo implementar ambas definiciones, procedemos a hacerlo:
+
+```julia
+"""
+    Lyapunov(f, x0, n = 1000)
+
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\ln |f^{n}'(x_0)|\$ del exponente de Lyapunov.
+"""
+Lyapunov(f, x0, n = 1000) = log(abs(derivada(iterar(f, n), x0)))/n
+
+"""
+    Lyapunov_2(f, x0, n = 1000)
+
+Dado un mapeo \$f\$ y una condición inicial \$x_0\$, otorga la aproximación \$\\lambda_n(x_0) = \\frac{1}{n} \\sum_{i = 0}^{n - 1} \\ln |f'(x_i)|\$ del exponente de Lyapunov.
+"""
+Lyapunov_2(f, x0, n = 1000) = sum(broadcast(x -> log(abs(derivada(f, x))), iterados(f, n - 1)(x0)))/n
+```
+
+Nos conviene, para nuestro ejemplo, realizar dos tipos de análisis de las funciones definidas.
+El primero, verificar qué tan rápido se alcanza la convergencia al límite $n\rightarrow \infty$, y, el segundo, para verificar qué tan computacionalmente eficientes son nuestras funciones.
+
+Para esto, cargamos un par de paqueterías útiles:
+
+```julia
+using PyPlot
+using BenchmarkTools
+```
+
+Y definimos nuestro mapeo de interés:
+
+```julia
+Q(c) = x -> x^2 + c
+```
+
+Para el análisis de convergencia de los métodos, veamos un caso específico y comparemos ambos:
+
+```julia
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del primer método")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov(Q(-0.5), x, n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+```julia
+clf()
+
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del segundo método")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov_2(Q(-0.5), x, n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+Observamos que ambos métodos se comportan similarmente y convergen al mismo valor para la misma cantidad de iteraciones (lo cual tiene sentido, dado que para $n$ fijo, ambos métodos son formalmente idénticos).
+Más aún, la convergencia se alcanza en este caso para cuando tenemos $n \approx 500$.
+Sin embargo, el primer método presenta una deficiencia numérica que se muestra si se itera demasiado: puede ser que el valor de la derivada, antes de tomar el logaritmo, sea demasiado grande como para ser representado adecuadamente por `Float64`, lo que provoca errores por desbordamiento. 
+Podemos ver que los valores ficticios para $n = 5000$ y $n = 10000$ no ocurren si se usan `BigFloat`s:
+
+```julia
+plt.figure()
+plt.xlabel(L"x")
+plt.ylabel(L"\lambda_n(x)")
+plt.title("Convergencia del primer método con BigFloats")
+plt.ylim(-1, 1)
+
+xs = -2:0.01:2
+
+for n in [5, 10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
+
+    λs_n = broadcast(x -> Lyapunov(Q(-0.5), BigFloat(x), n), xs)
+    plt.plot(xs, λs_n, label = "n = $n")
+end
+
+plt.legend()
+```
+
+Una vez tenemos una idea del número de iteraciones que debemos realizar para obtener el límite, procedemos a hacer un par de tests para ver cómo se comparan computacionalmente las dos definiciones:
+
+```julia
+# Evaluamos por primera vez el macro de benchmarks para tener una comparación más fiel:
+@benchmark 1 + 1
+
+#Procedemos a la comparación.
+@benchmark a = broadcast(x -> Lyapunov(Q(-0.5), x, 1000), -1:0.005:1)
+```
+
+```julia
+@benchmark b = broadcast(x -> Lyapunov_2(Q(-0.5), x, 1000), -1:0.005:1)
+```
+
+Se observa que aunque la definciones son matemáticamente equivalentes y numéricamente dan resultados similares, al momento de realizar el cálculo hay una mejora modesta en el tiempo de ejecución con el primer algoritmo y una mejora muy importante en el uso de memoria con el primer algoritmo.
+
+Dicho esto, podemos concluir que aunque el segundo algoritmo es robusto en el sentido que sigue dando resultados correctos si se itera "de más", éste es mucho menos eficiente en términos de la memoria ocupada.
+Considerando "suficientes, pero no demasiadas" iteraciones con el primer algoritmo podemos aprovechar su relativa eficiencia.
+
+Para poder ver lo que sucede con el exponente de Lyapunov como función de $c$ y $x_0$, nos conviene realizar una gráfica de contorno a la que podamos sobreponer el diagrama de bifurcación.
+
+Para evitar problemas con la escala, en el caso de que el valor del exponente sea muy grande, definamos una función que acote los resultados (con el respectivo signo):
+
+```julia
+acotar(cota, x) = abs(x) <= cota ? x : sign(x)*cota
+acotar(cota) = x -> acotar(cota, x)
+```
+
+Asimismo, nos conviene definir, para comparar con el diagrama de bifurcación, una función que clasifique si el exponente suministrado es mayor o menor que cero (si el mapeo en el punto resulta o no caótico).
+
+```julia
+caótico(λ) = λ > 0 ? true : false
+```
+
+Procedemos a calcular los valores de los exponentes en una malla del diagrama $(c, x_0)$:
+
+```julia
+# Aún con las mejoras, generar un diagrama tan fino toma tiempo, por eso se deja comentado el código.
+
+
+#=
+cs = -2.5:0.0001:0.5
+x0s = -3:0.001:3
+xs = -2:0.1:2
+
+λs = [Lyapunov(Q(c), x0) for x0 in x0s, c in cs]
+λs_acotar = acotar(2.0).(λs)
+λs_caótico = caótico.(λs)
+=#
+```
+
+A partir de esto, podemos graficar:
+
+```julia
+# Valor del exponente.
+
+#=
+using LaTeXStrings # Cargamos un paquete para mejorar el título
+
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
+
+savefig("Lyapunov.png")
+=#
+```
+
+```julia
+# Valor del exponente con el diagrama de bifurcaciones.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+savefig("Lyapunov_bifurcación.png")
+=#
+```
+
+```julia
+# Valor del exponente con el diagrama de bifurcaciones con los puntos atractivos solamente.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.colorbar()
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
+end
+
+savefig("Lyapunov_bifurcación_atractores.png")
+=#
+```
+
+```julia
+# Zonas caóticas.
+
+#=
+using LaTeXStrings # Cargamos un paquete para mejorar el título
+
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
+
+savefig("Lyapunov_2.png")
+=#
+```
+
+```julia
+# Zonas caóticas con el diagrama de bifurcaciones.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+savefig("Lyapunov_bifurcación_2.png")
+=#
+```
+
+```julia
+# Zonas caóticas con el diagrama de bifurcaciones con los puntos atractivos solamente.
+
+#=
+plt.figure(figsize=(10,10))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+plt.contourf(cs, x0s, λs_caótico, cmap = plt.cm.binary, extend = "min")
+
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
+end
+
+savefig("Lyapunov_bifurcación_atractores_2.png")
+=#
+```
+
+```julia
+# Comparación del diagrama de bifurcación con el exponente de Lyapunov.
+
+#=
+plt.figure(figsize=(10,10))
+
+plt.subplot(211)
+plt.title(LaTeXString("Exponente de Lyapunov y diagrama de bifurcación de \$Q_c(x)\$"))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter(x -> abs(derivada(x)) <= 1, Xs)
+    Xs_repulsores = filter!(x -> abs(derivada(x)) > 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+    Cs_repulsores = fill(c, length(Xs_repulsores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.005)
+    plt.plot(Cs_repulsores, principal.(Xs_repulsores), marker = ",", lw = 0, linestyle = "", color = "red", alpha = 0.005)
+end
+
+plt.subplot(212)
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
+
+savefig("Comparación.png")
+=#
+```
+
+```julia
+# Comparación del diagrama de bifurcación (parte atractiva) con el exponente de Lyapunov.
+
+#=
+plt.figure(figsize=(10,10))
+
+plt.subplot(211)
+plt.title(LaTeXString("Exponente de Lyapunov y diagrama de bifurcación de \$Q_c(x)\$"))
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+for c in cs[1:20:end]
+
+    Xs = vcat(iterados(Q(c), 10_000, n_fin = 2048).(var_Dual.(xs))...)
+    
+    Xs_atractores = filter!(x -> abs(derivada(x)) <= 1, Xs)
+    
+    Cs_atractores = fill(c, length(Xs_atractores))
+
+    plt.plot(Cs_atractores, principal.(Xs_atractores), marker = ",", lw = 0, linestyle = "", color = "blue", alpha = 0.01)
+end
+
+plt.subplot(212)
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+plt.xlim(-2.5, 0.5)
+plt.ylim(-3, 3)
+
+plt.contourf(cs, x0s, λs_acotar, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.contourf(cs, x0s, λs_acotar, levels = [1.8, 2.0], colors = ["black"])
+
+savefig("Comparación_atractores.png")
+=#
+```
+
+Los valores de los exponentes de Lyapunov se pueden observar en la imagen `Lyapunov.png`.
+Tonos azules corresponden a zonas no caóticas y tonos rojos a zonas caóticas.
+Éste, con el diagrama de bifurcación sobrepuesto se puede observar en la imagen `Lyapunov_bifurcación.png`.
+Asimismo, se muestra sólamente la rama atractiva en la imagen `Lyapunov_bifurcación_atractores.png`.
+Ésta última se observa a continuación:
+
+![Lyapunov_bifurcaci%C3%B3n_atractores.png](Lyapunov_bifurcaci%C3%B3n_atractores.png)
+
+Para tener mayor claridad respecto a las zonas no-caóticas y caóticas, se anexan las versiones (con un sufijo `_2`) en las que un exponente de Lyapunov positivo se muestra en negro y un exponente de Lyapunov negativo se muestra en blanco.
+
+En general se observa que cuando se dan las bifurcaciones de doblamiento de periodo, el exponente de Lyapunov se vuelve positivo, es decir, se da la transición al caos.
+
+Para poder comparar más detenidamente el diagrama de bifurcación respecto a los valores del exponente de Lyapunov, se muestran ambos lado a lado en `Comparación.png` y `Comparación_atractores.png`.
+Esta última imagen se muestra a continuación:
+
+![Comparaci%C3%B3n_atractores.png](Comparaci%C3%B3n_atractores.png)
+
+- ¿Qué particularidad ocurre (en términos del exponente de Lyapunov) cuando tenemos *ciclos superestables*, es decir, cuando $x=0$ es parte de un ciclo periódico?
+
+De las imágenes, podemos conjeturar que cuando cero es un punto fijo, el exponente de Lyapunov para los elementos al interior del intervalo $(-p_+(C_n), p_+(C_n))$ se mantiene negativo (no caótico).
+
+Podemos elaborar en esta conjetura rescatando herramientas de la tarea anterior:
+
+```julia
+#Definimos la función que tiene por ceros a los valores del parámetro de los ciclos superestables.
+q(n) = c -> iterar(Q(c), 2^n)(0.0)
+
+#Y usamos aproximaciones a las bifurcaciones de doblamiento de periodo [1](https://en.wikipedia.org/wiki/Feigenbaum_constants#Non-linear_maps)
+# como condición inicial para encontrar los valores de $C_n$.
+cs = [-0.75, -1.25, -1.3680989, -1.3940462, -1.3996312, -1.4008286, -1.4010853, -1.4011402]
+Cs = [Newton(q(i - 1), cs[i]) for i in eachindex(cs)]
+```
+
+Finalmente, podemos calcular el exponente de Lyapunov a lo largo de un intervalo que contenga al dominio señalado para los valores de $C_n$:
+
+```julia
+xs = -3:0.01:3
+
+plt.xlabel(L"x")
+plt.ylabel(L"λ_{1000}(x)")
+
+plt.title("Exponente de Lyapunov para \$C_n\$")
+
+for i in eachindex(Cs)
+
+    λs = broadcast(x -> Lyapunov_2(Q(Cs[i]), x), xs)
+    plt.plot(xs, λs, label = "C_$(i - 1)")
+end
+
+plt.legend()
+```
+
+De dónde verificamos que, al menos para los casos bajo estudio, éste parece ser el caso.
+
+Sin embargo, usando las definiciones del exponente de Lyapunov podemos concluir algo más importante en general para las parejas $(c, 0)$, y algo particular para las parejas $(C_n,x)$.
+Sabemos que $Q'_c(x) = 2x$, por lo que necesariamente, si $x_0 = 0$, $Q'_c(x_0) \equiv 0$. (Esto es válido en general para cualquier valor de $c$, no sólo los valores de $C_n$.)
+Esto implica, con la segunda definición equivalente, que uno de los factores del producto de valores de la derivada del mapeo en al interior del logaritmo es idénticamente cero, lo que hace que el valor del exponente de Lyapunov en cero, siempre sea menos infinito. (Es decir, el sistema, localmente en torno al cero, *nunca* presenta caos, sino que en algún sentido, todo lo contrario.)
+
+(En caso de que resulte incómodo el separar el logaritmo cuando uno de los términos sea cero, quizá por temores de que alguno de los iterados diverja y cancele el cero proveniente del término comentado, es fácil notar que la forma explícita de $Q^{n}_c(x)$ siempre es un polinomio de grado $2^n$ **sin término lineal**, lo que hace que la derivada de $Q^{n}_c(x)$ nunca tenga un término independiente no nulo, por lo que al evaluar en cero, el valor de la derivada es idénticamente cero para cualquier $n$. 
+Esto confirma que en efecto, en el cero, *nunca* hay caos.)
+
+Respecto a los valores del parámetro en los que hay un ciclo superestable, como todos los iterados de $x_0$ tienen el mismo exponente de Lyapunov que $x_0$, sabemos que todos los puntos de periodo $2^n$ *nunca* presentan caos, ya que el valor del exponente de Lyapunov en éstos es el mismo que el del cero, menos infinito.
+(En efecto hay $2^n$ puntos de periodo $2^n$ distintos por lo comentado en la tarea anterior sobre criterios de divisibilidad y clases de equivalencia.)
+
+## Ejercicio 2:
+
+Estudiar la dinámica para el mapeo cuadrático $Q_c(x)$, con $c=-2.2$.
+
+- ¿Cómo se caracteriza el valor al que tiende *casi* cualquier condición inicial en el
+intervalo $I=[-p_+,p_+]$ (donde $p_+$ es el valor positivo tal que $Q_c(p_+)=p_+$), después de muchos iterados? (El intervalo $I$ es donde "toda la dinámica interesante ocurre".)
+
+Sabemos que $p_+(c)$ está dado por $p_+(c) = \frac{1}{2} + \sqrt{\frac{1}{4} - c}$, por lo que, para $c = 2.2$, tenemos:
+
+```julia
+p₊ = 1/2 + sqrt(1/4 + 2.2)
+```
+
+Generemos un muestreo del intervalo de interés:
+
+```julia
+I = -p₊:0.00001:p₊
+```
+
+Observemos lo que ocurre cuando iteramos nuestras muestras 200 veces:
+
+```julia
+iterar(Q(-2.2), 200).(I) |> unique
+```
+
+*Todas* las condiciones iniciales que consideramos **explícitamente** (no muestreamos todos los puntos del intervalo, sólamente una muestra *finita* de puntos en el intervalo) eventualmente convergen a infinito. 
+Sin embargo, esto no indica que *todos* los puntos en el intervalo eventualmente converjan a infinito, ya que existen, por lo menos, dos puntos de periodo finito: $(p_-, p_+)$. (Además de los puntos cuyas órbitas se vuelven eventualmente periódicas, a pesar de que estos sean inestables.)
+
+Podemos ver esto con aritmética de intervalos validada:
+
+```julia
+using IntervalArithmetic
+
+intervalo = @interval(-p₊, p₊)
+
+iterar(Q(-2.2), 200)(intervalo)
+```
+
+- Caractericen los subconjuntos de $I$ tales que, después de $n=1,2,3,\dots$ iterados de $Q_c(x)$, su intersección con $I$ es vacía.
+
+Recordemos que los puntos de $I$ satisfacen $ -p_+ \leq x \leq p_+ \iff |x| \leq p_+$.
+Definamos a la familia de conjuntos $J_n$ como:
+
+$$ J_n = \{ x \in I | Q^{n}_{-2.2}(x) \in I \}. $$
+
+Esto lo podemos implementar mediante:
+
+```julia
+J(n) = filter(x -> abs(iterar(Q(-2.2), n, x)) <= p₊, I)
+```
+
+Gráficamente, se pueden observar los conjuntos $J_n$ en la siguiente figura.
+
+```julia
+plt.figure()
+plt.title(L"J_n")
+plt.xlabel("x")
+plt.ylabel("n")
+
+for i in 0:10
+    
+    J_n = J(i)
+    n_escalada = fill(i, length(J_n))
+    plt.plot(J_n, n_escalada, marker = ",", lw = 0, linestyle = "", color = "blue")
+end
+```
+
+- Caracterizen al complemento del conjunto de los casos anteriores, es decir, cuando los iterados de la condición inicial **no** llegan a donde *casi* cualquier condición inicial termina. ¿Cómo se conoce a este conjunto?
+
+Podemos usar la función `setdiff` para obtener el complemento relativo de $J_n$ en $I$:
+
+```julia
+plt.figure()
+plt.title(L"J_n^C")
+plt.xlabel("x")
+plt.ylabel("n")
+
+for i in 0:10
+    
+    J_n_C = setdiff(I, J(i))
+    n_escalada = fill(i, length(J_n_C))
+    plt.plot(J_n_C, n_escalada, marker = ",", lw = 0, linestyle = "", color = "red")
+end
+```
+
+Es necesario comentar que dado a que más y más de las condiciones iniciales se van filtrando conforme el número de iteraciones aumenta, éstas aparentan formar una línea continua al estudiar el complemento.
+Sin embargo, esto es sólamente por la forma en la que se grafica, en la que los conjuntos $J_n$ se vuelven *densos* y "porosos" en $I$.
+Cambiando la escala de las gráficas y haciendo zoom se observa que la línea del complemento no es continua, sino porosa.
+
+Podemos concluir que este conjunto es de tipo Cantor. (La construcción clásica del conjunto de Cantor involucra dividir el intervalo unitario en tercios idénticos y remover el tercio central, repitiendo el proceso en los segmentos restantes.)
+
+## Ejercicio 3:
+
+- Usando el análisis gráfico para un valor de $c$ *ligeramente* anterior al punto donde se observa la ventana de periodo 3 para la familia $Q_c(x)$, y uno en la ventana de periodo 3, concluyan el tipo de bifurcación que se observa.
+
+Para poder realizar el análisis gráfico para el valores en torno de $c$ en el que se da la bifurcación, necesitamos localizar el parámetro en la que ésta se da.
+
+Una forma de darnos una idea del valor es haciendo un análisis sobre la distribución de los ceros de las funciones $F^{n}_c(x) = Q^{n}_c(x) - x$, que definen los puntos de periodo $n$.
+Para ello, graficamos los contornos de los dominios cuyo valor bajo $F^{n}_c(x)$ generan valores positivos y negativos.
+Por continuidad, sabemos que los valores que definen las fronteras entre los contornos son raíces de las funciones $F^{n}_c(x)$ adecuadas.
+En particular, las bifurcaciones ocurren cuando aparecen nuevas "cuñas" en el diagrama correspondiente, lo que se traduce en el aumento (o disminución) en el número de raíces de $F_c^n(x)$.
+
+Definamos la malla en la que realizaremos el muestreo:
+
+```julia
+cs = -2.5:0.005:0.5
+xs = -5.0:0.01:5.0
+```
+
+Así como la función que define los puntos periódicos:
+
+```julia
+F(c, n) = x -> iterar(Q(c), n, x) - x
+```
+
+Usando esto, podemos reconstruir algo similar al "envoltorio" del diagrama de bifurcación para algunos periodos:
+
+```julia
+plt.figure(figsize=(20, 4))
+for n in 1:5
+
+    ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+    plt.subplot(150 + n)
+    plt.title("\$ n = $n\$")
+    plt.xlabel("c")
+    plt.ylabel("x")
+    plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+end
+```
+
+Observemos que no necesariamente los puntos fijos que aparecen en el diagrama $n$-ésimo tienen periodo mínimo $n$.
+Destaca, por ejemplo, el fondo inducido por los puntos fijos.
+
+
+
+En principio, podemos encontrar numéricamente el valor de las raíces de $F^{n}(x)$ usando el método de Newton con un conjunto de condiciones iniciales.
+Sin embargo, si deseamos estudiar la bifurcación por el cambio en el número de raíces que encontramos al variar el parámetro, necesitamos una función que filtre valores aproximadamente iguales, para compensar por diferencias "pequeñas".
+
+Esto lo podemos realizar con una función como la siguiente:
+
+```julia
+"""
+    lista_puntos_periodo(f::Function, n::T, x0s; número_iteraciones_Newton::T = 1000, atol = 0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$, un número de iteraciones \$n\$ y un conjunto de condiciones iniciales `x0s`, utiliza la función `puntos_periodo` con `número_iteraciones_Newton` iteraciones usadas en el método de Newton.
+Posteriormente, elimina `NaN`s y ordena los resultados.
+Para dar una lista "única", se filtran los valores resultantes usando la función `isapprox` con tolerancia absoluta `atol`.
+Adicionalmente, se revisa que los puntos obtenidos en efecto sean periódicos de periodo \$n\$.
+"""
+function lista_puntos_periodo(f::Function, n::T, x0s; número_iteraciones_Newton::T = 1000, atol = 0) where {T <: Integer}
+
+    ys = puntos_periodo(f, n, x0s, número_iteraciones_Newton)
+    
+    filter!(x -> !isnan(x), ys)
+    sort!(ys)
+
+    longitud = length(ys)
+    indicador = zeros(Bool, longitud)
+
+    puntos = eltype(ys)[]
+
+    while indicador != ones(Bool, longitud)
+    
+        siguiente_índice = findfirst(iszero, indicador)
+        valor_siguiente = ys[siguiente_índice]
+    
+        push!(puntos, valor_siguiente)
+    
+        indicador = [indicador[i] == true ? true : isapprox(valor_siguiente, ys[i], atol = atol) for i in 1:longitud]
+    end
+    
+    filter!(x -> isapprox(x, iterar(f, n, x), atol = atol), puntos)    
+    
+    return puntos
+end
+```
+
+Podemos confirmar que en efecto encontramos los puntos periódicos comparando con los diagramas anteriores:
+
+```julia
+n = 1
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+El valor del parámetro $c$ en el que aparentemente se da la bifurcación para los puntos fijos es:
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+```julia
+n = 2
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+```julia
+n = 3
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+Conocemos que la bifurcación para los puntos fijos se da en $c = 0.25$, así como la primera bifurcación de doblamiento de periodo se da en $c = -0.75$.
+
+Usando este método, al parecer la bifurcación en la que aparecen puntos de periodo 3 se da en torno a $c \approx -1.755$.
+
+Para hacer el análisis gráfico, carguemos nuestros métodos gráficos existentes:
+
+```julia
+import Plots #Con esto, evitamos tener que calificar el uso de PyPlot.
+using Main.Plotting_tools
+```
+
+Observemos lo que ocurre para valores de $c$ cercanos a $-1.75$ para un mismco conjunto de condiciones iniciales cercanas:
+
+```julia
+c = -1.745
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+```julia
+c = -1.755
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+```julia
+c = -1.765
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+Observamos que para un valor anterior a la bifurcación, las órbitas parecen separarse conforme el número de iteraciones aumenta, mientras que para los otros valores las órbitas se mantienen juntas por más iterados (las líneas de las órbitas permanecen más juntas por más tiempo).
+
+Para poder apreciar mejor esto usando más iteraciones, y más condiciones iniciales, podemos graficar los iterados como función del paso:
+
+```julia
+c = -1.745
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+c = -1.755
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+c = -1.765
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+¡Pasamos de tener un sistema caótico a un sistema no caótico, dónde las condiciones iniciales que tomamos convergen a un ciclo periódico!
+
+Debido a lo anterior, y a la creación de seis nuevos puntos de periodo 3 (en pares), podemos concluir que tenemos una bifurcación tangente.
+
+- Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
+
+Para poder entender lo que sucede, podemos usar un diagrama para el exponente de Lyapunov similar a los realizados anteriormente con una banda en torno a la bifurcación.
+
+```julia
+plt.figure()
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+# Calculamos los exponentes en una banda en torno a c \approx -1.75
+λs = [acotar(2.0)(Lyapunov(Q(c), x0, 500)) for x0 in xs, c in cs[140:160]]
+
+plt.contourf(cs[140:160], xs, λs, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.colorbar()
+plt.contourf(cs[140:160], xs, λs, levels = [1.8, 2.0], colors = ["black"])
+```
+
+Se observa que justamente en torno a $c \approx 1.75$, se da una región en la que el exponente de Lyapunov es negativo, es decir, el sistema en torno a $c \approx 1.75$ transiciona del caos a un sistema (localmente) no caótico en el intervalo $I = [-p_+,p_+]$.
+Esto concuerda con lo obtenido en el análisis gráfico.
+
+- Encuentren el valor de $c$ donde se da el ciclo superestable de periodo 3. (Nuevamente, usen el método de Newton con una buena semilla inicial para $c$.) Demuestren que para este valor de $c$ el mapeo $Q_c^3(x)$ tiene *ocho* puntos fijos, donde dos de ellos son puntos fijos de $Q_c(x)$, y los otros 6 forman dos secuencias periódicas, de periodo 3 en $Q_c(x)$, una de ellas estable y la otra inestable.
+
+Para el valor de $c$ encontrado más cercano a dónde se da la bifurcación tenemos que los puntos de periodo 3 son:
+
+```julia
+puntos[150]
+```
+
+Por lo que parece razonable utilizar a $c \approx -1.755$ como semilla inicial para localizar el ciclo superestable de periodo tres.
+
+Para ello, definimos la función auxiliar $q(n, c) = Q_c^{n}(0.0)$, cuyos ceros corresponden a los valores de $c$ en los que cero es un punto de periodo $n$:
+
+```julia
+q(n) = c -> iterar(Q(c), n)(0.0)
+```
+
+Y utilizamos el método de Newton para ubicar el valor deseado, $C$:
+
+```julia
+C = Newton(q(3), -1.755)
+```
+
+Verifiquemos que en efecto el cero es un punto de periodo tres:
+
+```julia
+for i in 1:3
+    
+    @show iterar(Q(C), i, 0.0)
+end
+```
+
+Observamos que salvo una pequeña diferencia, en efecto tenemos una buena aproximación al parámetro del ciclo superestable de periodo 3.
+
+Los puntos de periodo 3 correspondientes a $C$ son:
+
+```julia
+periodo_3_C = lista_puntos_periodo(Q(C), 3, xs)
+```
+
+Dado que los puntos son en efecto de periodo tres (hasta cierta tolerancia; por la última condición en la definición de la función `lista_puntos_periodo`), en efecto existen ocho raíces de $F_C^3(x)$.
+Como $F_c^n(x)$ es de grado $2^n$, $F_C^3(x)$ es de grado 8, por lo que tenemos todos los puntos de periodo tres (hasta cierta tolerancia) para el parámetro $C$.
+
+Nombrando los puntos $p_1, \ldots, p_8$ de menor a mayor, observamos que:
+
+- $p_1 \mapsto p_7 \mapsto p_5 \mapsto p_1$,
+- $p_2 \mapsto p_6 \mapsto p_4 \mapsto p_2$,
+- $p_3 \mapsto p_3$,
+- $p_8 \mapsto p_8$.
+
+```julia
+iterar(Q(C), 1).(periodo_3_C)
+```
+
+```julia
+iterar(Q(C), 2).(periodo_3_C)
+```
+
+Por lo que en efecto tenemos dos puntos fijos y dos ciclos de tamaño tres.
+Para verificar que en efecto uno de los ciclos es estable, evaluemos la derivada de $Q_C^3(x)$ en los puntos de periodo 3:
+
+```julia
+broadcast(x -> abs(derivada(iterar(Q(C), 3), x)) < 1 ? "atractor" : "repulsor", periodo_3_C)
+```
+
+Por lo que el ciclo $(p_1, p_7, p_5)$ es estable y el ciclo $(p_2, p_6, p_4)$ es inestable.
+
+(Los siguientes incisos usan el valor de $c$ encontrado en el inciso anterior.)
+
+- Denotando al ciclo inestable de periodo 3 como $\alpha\mapsto \beta\mapsto\gamma$, con $\gamma<\beta<\alpha$, uno puede asociar a cada uno de estos valores un valor $\hat\alpha, \hat\beta, \hat\gamma$, tales que $Q_c^3(\hat\alpha)=\alpha$, $Q_c^3(\hat\beta)=\beta$, $Q_c^3(\hat\gamma)=\gamma$. ¿Qué podemos concluir de un punto que cae en cualquiera de los intervalos $[\alpha,\hat\alpha]$, $[\beta,\hat\beta]$ y $[\hat\gamma,\gamma]$, en términos de los iterados sucesivos?
+
+De lo encontrado anteriormente, podemos hacer la identificación $\gamma = p_2, \beta = p_4$ y $\alpha = p_6$:
+
+```julia
+α = periodo_3_C[6]; β = periodo_3_C[4]; γ = periodo_3_C[2]
+```
+
+A partir de esto, para encontrar los valores de $\hat{\alpha}, \hat{\beta}$ y $\hat{\gamma}$, podemos utilizar el método de Newton para encontrar las raíces de las funciones $f_\hat{\delta}(x) = Q_C^3(x) - \delta$, dónde $\delta \in \{\alpha, \beta, \gamma\}$:
+
+```julia
+f(δ) = x -> iterar(Q(C), 3, x) - δ
+```
+
+Sin embargo, antes de comenzar, nos conviene visualizar el tipo de raíces de $f_\hat{δ}$:
+
+```julia
+ys = f(α).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\alpha}(x)"cvv)
+plt.title(L"f_\hat{\alpha}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([α], [0.0], color = "green")
+```
+
+```julia
+ys = f(β).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\beta}(x)"cvv)
+plt.title(L"f_\hat{\beta}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([β], [0.0], color = "green")
+```
+
+```julia
+ys = f(γ).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\gamma}(x)"cvv)
+plt.title(L"f_\hat{\gamma}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([γ], [0.0], color = "green")
+```
+
+Como podemos ver, de forma esperada, tenemos más de una preimagen de nuestros puntos periódicos del ciclo inestable. (El punto respectivo se muestra con un punto verde en la gráfica respectiva.)
+Asumiendo que los puntos definidos con hachet (que vamos a distinguir con letras griegas mayúsculas) son las raíces distintas más cercanas a estos puntos, tenemos:
+
+```julia
+Α = Newton(f(α), α + 0.1) #¡Recordando que α es raíz!
+Β = Newton(f(β), β + 0.5) #¡Recordando que β es raíz!
+Γ = Newton(f(α), γ - 0.1) #¡Recordando que γ es raíz!
+```
+
+Observemos lo que ocurre gráficamente con algunos puntos en los intervalos mencionados:
+
+```julia
+análisis_gráfico(Q(C), 30, [α:0.01:Α...])
+Plots.scatter!([α], [0.0], label = "α")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre α y Α")
+```
+
+```julia
+análisis_gráfico(Q(C), 30, [β:0.01:Β...])
+Plots.scatter!([β], [0.0], label = "β")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre β y Β")
+```
+
+```julia
+análisis_gráfico(Q(C), 30, [Γ:0.01:γ...])
+Plots.scatter!([γ], [0.0], label = "γ")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre γ y Γ")
+```
+
+Se observa que para los primeros dos casos las órbitas de iterados subsecuentes con condiciones iniciales en los intervalos mencionados son repelidas hacia el ciclo estable, mientras que con el tercer ejemplo, aunque algunas de las condiciones iniciales en el intervalo derivan en el ciclo estable, hay otras que escapan y llegan a orbitar el punto fijo repulsor cercano a menos uno.
+
+Para examinar mejor la dinámica en estos intervalos, realicemos el análisis de los iterados como función del paso de iteración:
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[α, Α]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in α:0.01:Α
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[β, Β]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in β:0.01:Β
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[Γ, γ]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in Γ:0.01:γ
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+¡Podemos observar que precisamente la existencia de la influencia del repulsor de periodo uno en las órbitas de los iterados "destruye" uno de los ciclos! (Entendiéndolo mecánicamente, "perturba lo suficiente" a las condiciones del ciclo inestable como para que eventualmente salgan de él, cosa que no sucede con los otros intervalos.)
+
+- Definiendo los intervalos $I_0=[\hat\beta, \alpha]$, $I_1=[\gamma,\beta]$, mostrar que bajo la acción de $Q_c(x)$ se cumple: (i) $Q_c(I_0) \supset I_1$, y (ii) $Q_c(I_1) \supset I_0\cup I_1$. ¿Qué propiedad *importante* de $Q_c(x)$ se utiliza aquí?
+
+(Los intervalos $I_0$ e $I_1$, y estas propiedades, son básicos en la demostración del teorema "periodo tres implica caos".)
+
+Podemos utilizar de nuevo aritmética de intervalos para mostrar fácilmente las contenciones:
+
+```julia
+@show I₀ = @interval(Β, α)
+@show I₁ = @interval(γ, β)
+```
+
+Las imágenes usadas son:
+
+```julia
+@show Q_C_I₀ = Q(C).(I₀)
+@show Q_C_I₁ = Q(C).(I₁)
+```
+
+Mientras que las contenciones en efecto satisfacen lo siguiente:
+
+```julia
+Q_C_I₀ ⊃ I₁
+```
+
+```julia
+Q_C_I₁ ⊃ (I₀∪I₁)
+```
+
+Podemos ver que la última contención, aunque es cierta, se afirma falsa debido a la forma en la que se construyen los extremos de los intervalos (el modo de redondeo). Necesariamente los extremos tienen precisión finita y no pueden representar cualquier número real.
+
+```julia
+@show Q_C_I₁.hi
+@show (I₀∪I₁).hi
+@show Q_C_I₁.lo
+@show (I₀∪I₁).lo
+```
+
+Podemos ver que cambiando el modo de redondeo para construir los intervalos, y recalculando las imágenes, obtenemos el resultado correcto:
+
+```julia
+setrounding(Interval, :accurate)
+
+@show Q_C_I₀ = Q(C).(I₀)
+@show Q_C_I₁ = Q(C).(I₁)
+```
+
+```julia
+Q_C_I₀ ⊃ I₁
+```
+
+```julia
+Q_C_I₁ ⊃ (I₀∪I₁)
+```
+
+Observemos que estas operaciones se limitan, gráficamente, a proyectar los intervalos de interés sobre la identidad y esto sobre la gráfica de la función:
+
+```julia
+análisis_gráfico(Q(C), 2, [Β, α, γ, β])
+Plots.plot!([Β, α], [0.0, 0.0], label = "I₀")
+Plots.plot!([γ, β], [0.0, 0.0], label = "I₁")
+```
+
+Una cosa importante de resaltar es que estas contenciones se pueden demostrar fácilmente por la continuidad del mapeo.
+Sin embargo, existe otro hecho importante para la demostración del teorema que causa la segunda contención: que la imagen del intevalo $I_1$ sea separada en dos intervalos disjuntos es resultado directo de la existencia del mínimo de la función cuyo valor es mayor en valor absoluto que $\gamma$.
