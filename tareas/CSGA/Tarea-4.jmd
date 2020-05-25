@@ -575,7 +575,7 @@ Podemos concluir que este conjunto es de tipo Cantor. (La construcción clásica
 
 - Usando el análisis gráfico para un valor de $c$ *ligeramente* anterior al punto donde se observa la ventana de periodo 3 para la familia $Q_c(x)$, y uno en la ventana de periodo 3, concluyan el tipo de bifurcación que se observa.
 
-Para poder realizar el análisis gráfico para el valores en torno de $c$ en el que se da la bifurcación, necesitamos localizar el parámetro en la que esta se da.
+Para poder realizar el análisis gráfico para el valores en torno de $c$ en el que se da la bifurcación, necesitamos localizar el parámetro en la que ésta se da.
 
 Una forma de darnos una idea del valor es haciendo un análisis sobre la distribución de los ceros de las funciones $F^{n}_c(x) = Q^{n}_c(x) - x$, que definen los puntos de periodo $n$.
 Para ello, graficamos los contornos de los dominios cuyo valor bajo $F^{n}_c(x)$ generan valores positivos y negativos.
@@ -792,11 +792,63 @@ Plots.ylims!(-2, 5)
 Plots.title!("c = $c")
 ```
 
+Observamos que para un valor anterior a la bifurcación, las órbitas parecen separarse conforme el número de iteraciones aumenta, mientras que para los otros valores las órbitas se mantienen juntas por más iterados (las líneas de las órbitas permanecen más juntas por más tiempo).
+
+Para poder apreciar mejor esto usando más iteraciones, y más condiciones iniciales, podemos graficar los iterados como función del paso:
+
+```julia
+c = -1.745
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+c = -1.755
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+c = -1.765
+n = 100_000
+
+plt.figure()
+plt.title("Iterados para c = $c")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in 1.45:0.01:1.55
+    
+    xns = iterados(Q(c), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+¡Pasamos de tener un sistema caótico a un sistema no caótico, dónde las condiciones iniciales que tomamos convergen a un ciclo periódico!
+
 Debido a lo anterior, y a la creación de seis nuevos puntos de periodo 3 (en pares), podemos concluir que tenemos una bifurcación tangente.
 
 - Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
-
-Observamos que para un valor anterior a la bifurcación, las órbitas parecen separarse conforme el número de iteraciones aumenta, mientras que para los otros valores las órbitas se mantienen juntas por más iterados (las líneas de las órbitas permanecen más juntas por más tiempo).
 
 Para poder entender lo que sucede, podemos usar un diagrama para el exponente de Lyapunov similar a los realizados anteriormente con una banda en torno a la bifurcación.
 
@@ -903,10 +955,6 @@ f(δ) = x -> iterar(Q(C), 3, x) - δ
 Sin embargo, antes de comenzar, nos conviene visualizar el tipo de raíces de $f_\hat{δ}$:
 
 ```julia
-Newton(f_̂α)
-```
-
-```julia
 ys = f(α).(xs)
 
 plt.plot(xs, ys)
@@ -946,7 +994,7 @@ plt.scatter([γ], [0.0], color = "green")
 ```
 
 Como podemos ver, de forma esperada, tenemos más de una preimagen de nuestros puntos periódicos del ciclo inestable. (El punto respectivo se muestra con un punto verde en la gráfica respectiva.)
-Asumiendo que los puntos definidos con hachet (que vamos a distinguir con mayúsculas) son las raíces distintas más cercanas a estos puntos, tenemos:
+Asumiendo que los puntos definidos con hachet (que vamos a distinguir con letras griegas mayúsculas) son las raíces distintas más cercanas a estos puntos, tenemos:
 
 ```julia
 Α = Newton(f(α), α + 0.1) #¡Recordando que α es raíz!
@@ -957,17 +1005,17 @@ Asumiendo que los puntos definidos con hachet (que vamos a distinguir con mayús
 Observemos lo que ocurre gráficamente con algunos puntos en los intervalos mencionados:
 
 ```julia
-análisis_gráfico(Q(C), 30, [α:0.01:A...])
+análisis_gráfico(Q(C), 30, [α:0.01:Α...])
 Plots.scatter!([α], [0.0], label = "α")
 Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
-Plots.title!("Condiciones iniciales entre α y A")
+Plots.title!("Condiciones iniciales entre α y Α")
 ```
 
 ```julia
 análisis_gráfico(Q(C), 30, [β:0.01:Β...])
 Plots.scatter!([β], [0.0], label = "β")
 Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
-Plots.title!("Condiciones iniciales entre β y B")
+Plots.title!("Condiciones iniciales entre β y Β")
 ```
 
 ```julia
@@ -978,6 +1026,55 @@ Plots.title!("Condiciones iniciales entre γ y Γ")
 ```
 
 Se observa que para los primeros dos casos las órbitas de iterados subsecuentes con condiciones iniciales en los intervalos mencionados son repelidas hacia el ciclo estable, mientras que con el tercer ejemplo, aunque algunas de las condiciones iniciales en el intervalo derivan en el ciclo estable, hay otras que escapan y llegan a orbitar el punto fijo repulsor cercano a menos uno.
+
+Para examinar mejor la dinámica en estos intervalos, realicemos el análisis de los iterados como función del paso de iteración:
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[α, Α]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in α:0.01:Α
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[β, Β]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in β:0.01:Β
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+```julia
+n = 500
+
+plt.figure()
+plt.title("[Γ, γ]")
+plt.xlabel(L"n")
+plt.ylabel(L"Q_c^n(x_0)")
+
+for x in Γ:0.01:γ
+    
+    xns = iterados(Q(C), n, x)
+    plt.plot(0:n, xns, marker = ",", lw = 0)
+end
+```
+
+¡Podemos observar que precisamente la existencia de la influencia del repulsor de periodo uno en las órbitas de los iterados "destruye" uno de los ciclos! (Entendiéndolo mecánicamente, "perturba lo suficiente" a las condiciones del ciclo inestable como para que eventualmente salgan de él, cosa que no sucede con los otros intervalos.)
 
 - Definiendo los intervalos $I_0=[\hat\beta, \alpha]$, $I_1=[\gamma,\beta]$, mostrar que bajo la acción de $Q_c(x)$ se cumple: (i) $Q_c(I_0) \supset I_1$, y (ii) $Q_c(I_1) \supset I_0\cup I_1$. ¿Qué propiedad *importante* de $Q_c(x)$ se utiliza aquí?
 
@@ -990,7 +1087,7 @@ Podemos utilizar de nuevo aritmética de intervalos para mostrar fácilmente las
 @show I₁ = @interval(γ, β)
 ```
 
-Las imágenes usadas son: 
+Las imágenes usadas son:
 
 ```julia
 @show Q_C_I₀ = Q(C).(I₀)
@@ -1007,13 +1104,30 @@ Q_C_I₀ ⊃ I₁
 Q_C_I₁ ⊃ (I₀∪I₁)
 ```
 
-(Podemos ver que la última contención, aunque es cierta, se afirma falsa se debe a problemas de redondeo en los extremos de los intervalos por la precisión finita usada para definir los parámetros.)
+Podemos ver que la última contención, aunque es cierta, se afirma falsa debido a la forma en la que se construyen los extremos de los intervalos (el modo de redondeo). Necesariamente los extremos tienen precisión finita y no pueden representar cualquier número real.
 
 ```julia
 @show Q_C_I₁.hi
 @show (I₀∪I₁).hi
 @show Q_C_I₁.lo
 @show (I₀∪I₁).lo
+```
+
+Podemos ver que cambiando el modo de redondeo para construir los intervalos, y recalculando las imágenes, obtenemos el resultado correcto:
+
+```julia
+setrounding(Interval, :accurate)
+
+@show Q_C_I₀ = Q(C).(I₀)
+@show Q_C_I₁ = Q(C).(I₁)
+```
+
+```julia
+Q_C_I₀ ⊃ I₁
+```
+
+```julia
+Q_C_I₁ ⊃ (I₀∪I₁)
 ```
 
 Observemos que estas operaciones se limitan, gráficamente, a proyectar los intervalos de interés sobre la identidad y esto sobre la gráfica de la función:
