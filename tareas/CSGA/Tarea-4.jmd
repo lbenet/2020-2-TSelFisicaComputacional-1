@@ -585,7 +585,7 @@ En particular, las bifurcaciones ocurren cuando aparecen nuevas "cuñas" en el d
 Definamos la malla en la que realizaremos el muestreo:
 
 ```julia
-cs = -2.5:0.01:0.5
+cs = -2.5:0.005:0.5
 xs = -5.0:0.01:5.0
 ```
 
@@ -754,18 +754,275 @@ end
 
 Conocemos que la bifurcación para los puntos fijos se da en $c = 0.25$, así como la primera bifurcación de doblamiento de periodo se da en $c = -0.75$.
 
-Usando este método, al parecer la bifurcación en la que aparecen puntos de periodo 3 se da en torno a $c \approx -1.75$.
+Usando este método, al parecer la bifurcación en la que aparecen puntos de periodo 3 se da en torno a $c \approx -1.755$.
+
+Para hacer el análisis gráfico, carguemos nuestros métodos gráficos existentes:
+
+```julia
+import Plots #Con esto, evitamos tener que calificar el uso de PyPlot.
+using Main.Plotting_tools
+```
+
+Observemos lo que ocurre para valores de $c$ cercanos a $-1.75$ para un mismco conjunto de condiciones iniciales cercanas:
+
+```julia
+c = -1.745
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+```julia
+c = -1.755
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+```julia
+c = -1.765
+análisis_gráfico(Q(c), 40, [1.49, 1.5, 1.51])
+
+Plots.xlims!(-5, 5)
+Plots.ylims!(-2, 5)
+Plots.title!("c = $c")
+```
+
+Debido a lo anterior, y a la creación de seis nuevos puntos de periodo 3 (en pares), podemos concluir que tenemos una bifurcación tangente.
+
 - Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
 
+Observamos que para un valor anterior a la bifurcación, las órbitas parecen separarse conforme el número de iteraciones aumenta, mientras que para los otros valores las órbitas se mantienen juntas por más iterados (las líneas de las órbitas permanecen más juntas por más tiempo).
+
+Para poder entender lo que sucede, podemos usar un diagrama para el exponente de Lyapunov similar a los realizados anteriormente con una banda en torno a la bifurcación.
+
+```julia
+plt.figure()
+plt.xlabel(L"c")
+plt.ylabel(L"x")
+
+plt.title(LaTeXString("Exponente de Lyapunov de \$Q_c(x)\$"))
+
+# Calculamos los exponentes en una banda en torno a c \approx -1.75
+λs = [acotar(2.0)(Lyapunov(Q(c), x0, 500)) for x0 in xs, c in cs[140:160]]
+
+plt.contourf(cs[140:160], xs, λs, levels = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5], cmap = plt.cm.get_cmap("RdBu_r"), extend = "min")
+plt.colorbar()
+plt.contourf(cs[140:160], xs, λs, levels = [1.8, 2.0], colors = ["black"])
+```
+
+Se observa que justamente en torno a $c \approx 1.75$, se da una región en la que el exponente de Lyapunov es negativo, es decir, el sistema en torno a $c \approx 1.75$ transiciona del caos a un sistema (localmente) no caótico en el intervalo $I = [-p_+,p_+]$.
+Esto concuerda con lo obtenido en el análisis gráfico.
+
 - Encuentren el valor de $c$ donde se da el ciclo superestable de periodo 3. (Nuevamente, usen el método de Newton con una buena semilla inicial para $c$.) Demuestren que para este valor de $c$ el mapeo $Q_c^3(x)$ tiene *ocho* puntos fijos, donde dos de ellos son puntos fijos de $Q_c(x)$, y los otros 6 forman dos secuencias periódicas, de periodo 3 en $Q_c(x)$, una de ellas estable y la otra inestable.
+
+Para el valor de $c$ encontrado más cercano a dónde se da la bifurcación tenemos que los puntos de periodo 3 son:
+
+```julia
+puntos[150]
+```
+
+Por lo que parece razonable utilizar a $c \approx -1.755$ como semilla inicial para localizar el ciclo superestable de periodo tres.
+
+Para ello, definimos la función auxiliar $q(n, c) = Q_c^{n}(0.0)$, cuyos ceros corresponden a los valores de $c$ en los que cero es un punto de periodo $n$:
+
+```julia
+q(n) = c -> iterar(Q(c), n)(0.0)
+```
+
+Y utilizamos el método de Newton para ubicar el valor deseado, $C$:
+
+```julia
+C = Newton(q(3), -1.755)
+```
+
+Verifiquemos que en efecto el cero es un punto de periodo tres:
+
+```julia
+for i in 1:3
+    
+    @show iterar(Q(C), i, 0.0)
+end
+```
+
+Observamos que salvo una pequeña diferencia, en efecto tenemos una buena aproximación al parámetro del ciclo superestable de periodo 3.
+
+Los puntos de periodo 3 correspondientes a $C$ son:
+
+```julia
+periodo_3_C = lista_puntos_periodo(Q(C), 3, xs)
+```
+
+Dado que los puntos son en efecto de periodo tres (hasta cierta tolerancia; por la última condición en la definición de la función `lista_puntos_periodo`), en efecto existen ocho raíces de $F_C^3(x)$.
+Como $F_c^n(x)$ es de grado $2^n$, $F_C^3(x)$ es de grado 8, por lo que tenemos todos los puntos de periodo tres (hasta cierta tolerancia) para el parámetro $C$.
+
+Nombrando los puntos $p_1, \ldots, p_8$ de menor a mayor, observamos que:
+
+- $p_1 \mapsto p_7 \mapsto p_5 \mapsto p_1$,
+- $p_2 \mapsto p_6 \mapsto p_4 \mapsto p_2$,
+- $p_3 \mapsto p_3$,
+- $p_8 \mapsto p_8$.
+
+```julia
+iterar(Q(C), 1).(periodo_3_C)
+```
+
+```julia
+iterar(Q(C), 2).(periodo_3_C)
+```
+
+Por lo que en efecto tenemos dos puntos fijos y dos ciclos de tamaño tres.
+Para verificar que en efecto uno de los ciclos es estable, evaluemos la derivada de $Q_C^3(x)$ en los puntos de periodo 3:
+
+```julia
+broadcast(x -> abs(derivada(iterar(Q(C), 3), x)) < 1 ? "atractor" : "repulsor", periodo_3_C)
+```
+
+Por lo que el ciclo $(p_1, p_7, p_5)$ es estable y el ciclo $(p_2, p_6, p_4)$ es inestable.
 
 (Los siguientes incisos usan el valor de $c$ encontrado en el inciso anterior.)
 
 - Denotando al ciclo inestable de periodo 3 como $\alpha\mapsto \beta\mapsto\gamma$, con $\gamma<\beta<\alpha$, uno puede asociar a cada uno de estos valores un valor $\hat\alpha, \hat\beta, \hat\gamma$, tales que $Q_c^3(\hat\alpha)=\alpha$, $Q_c^3(\hat\beta)=\beta$, $Q_c^3(\hat\gamma)=\gamma$. ¿Qué podemos concluir de un punto que cae en cualquiera de los intervalos $[\alpha,\hat\alpha]$, $[\beta,\hat\beta]$ y $[\hat\gamma,\gamma]$, en términos de los iterados sucesivos?
 
+De lo encontrado anteriormente, podemos hacer la identificación $\gamma = p_2, \beta = p_4$ y $\alpha = p_6$:
+
+```julia
+α = periodo_3_C[6]; β = periodo_3_C[4]; γ = periodo_3_C[2]
+```
+
+A partir de esto, para encontrar los valores de $\hat{\alpha}, \hat{\beta}$ y $\hat{\gamma}$, podemos utilizar el método de Newton para encontrar las raíces de las funciones $f_\hat{\delta}(x) = Q_C^3(x) - \delta$, dónde $\delta \in \{\alpha, \beta, \gamma\}$:
+
+```julia
+f(δ) = x -> iterar(Q(C), 3, x) - δ
+```
+
+Sin embargo, antes de comenzar, nos conviene visualizar el tipo de raíces de $f_\hat{δ}$:
+
+```julia
+Newton(f_̂α)
+```
+
+```julia
+ys = f(α).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\alpha}(x)"cvv)
+plt.title(L"f_\hat{\alpha}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([α], [0.0], color = "green")
+```
+
+```julia
+ys = f(β).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\beta}(x)"cvv)
+plt.title(L"f_\hat{\beta}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([β], [0.0], color = "green")
+```
+
+```julia
+ys = f(γ).(xs)
+
+plt.plot(xs, ys)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+plt.xlabel("x")
+plt.ylabel(L"f_\hat{\gamma}(x)"cvv)
+plt.title(L"f_\hat{\gamma}")
+plt.plot([-4, 4], [0,0], color = "red")
+plt.scatter([γ], [0.0], color = "green")
+```
+
+Como podemos ver, de forma esperada, tenemos más de una preimagen de nuestros puntos periódicos del ciclo inestable. (El punto respectivo se muestra con un punto verde en la gráfica respectiva.)
+Asumiendo que los puntos definidos con hachet (que vamos a distinguir con mayúsculas) son las raíces distintas más cercanas a estos puntos, tenemos:
+
+```julia
+Α = Newton(f(α), α + 0.1) #¡Recordando que α es raíz!
+Β = Newton(f(β), β + 0.5) #¡Recordando que β es raíz!
+Γ = Newton(f(α), γ - 0.1) #¡Recordando que γ es raíz!
+```
+
+Observemos lo que ocurre gráficamente con algunos puntos en los intervalos mencionados:
+
+```julia
+análisis_gráfico(Q(C), 30, [α:0.01:A...])
+Plots.scatter!([α], [0.0], label = "α")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre α y A")
+```
+
+```julia
+análisis_gráfico(Q(C), 30, [β:0.01:Β...])
+Plots.scatter!([β], [0.0], label = "β")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre β y B")
+```
+
+```julia
+análisis_gráfico(Q(C), 30, [Γ:0.01:γ...])
+Plots.scatter!([γ], [0.0], label = "γ")
+Plots.scatter!(periodo_3_C[[1,7,5]], [0.0, 0.0, 0.0], label = "Ciclo estable")
+Plots.title!("Condiciones iniciales entre γ y Γ")
+```
+
+Se observa que para los primeros dos casos las órbitas de iterados subsecuentes con condiciones iniciales en los intervalos mencionados son repelidas hacia el ciclo estable, mientras que con el tercer ejemplo, aunque algunas de las condiciones iniciales en el intervalo derivan en el ciclo estable, hay otras que escapan y llegan a orbitar el punto fijo repulsor cercano a menos uno.
+
 - Definiendo los intervalos $I_0=[\hat\beta, \alpha]$, $I_1=[\gamma,\beta]$, mostrar que bajo la acción de $Q_c(x)$ se cumple: (i) $Q_c(I_0) \supset I_1$, y (ii) $Q_c(I_1) \supset I_0\cup I_1$. ¿Qué propiedad *importante* de $Q_c(x)$ se utiliza aquí?
 
 (Los intervalos $I_0$ e $I_1$, y estas propiedades, son básicos en la demostración del teorema "periodo tres implica caos".)
 
+Podemos utilizar de nuevo aritmética de intervalos para mostrar fácilmente las contenciones:
+
 ```julia
+@show I₀ = @interval(Β, α)
+@show I₁ = @interval(γ, β)
 ```
+
+Las imágenes usadas son: 
+
+```julia
+@show Q_C_I₀ = Q(C).(I₀)
+@show Q_C_I₁ = Q(C).(I₁)
+```
+
+Mientras que las contenciones en efecto satisfacen lo siguiente:
+
+```julia
+Q_C_I₀ ⊃ I₁
+```
+
+```julia
+Q_C_I₁ ⊃ (I₀∪I₁)
+```
+
+(Podemos ver que la última contención, aunque es cierta, se afirma falsa se debe a problemas de redondeo en los extremos de los intervalos por la precisión finita usada para definir los parámetros.)
+
+```julia
+@show Q_C_I₁.hi
+@show (I₀∪I₁).hi
+@show Q_C_I₁.lo
+@show (I₀∪I₁).lo
+```
+
+Observemos que estas operaciones se limitan, gráficamente, a proyectar los intervalos de interés sobre la identidad y esto sobre la gráfica de la función:
+
+```julia
+análisis_gráfico(Q(C), 2, [Β, α, γ, β])
+Plots.plot!([Β, α], [0.0, 0.0], label = "I₀")
+Plots.plot!([γ, β], [0.0, 0.0], label = "I₁")
+```
+
+Una cosa importante de resaltar es que estas contenciones se pueden demostrar fácilmente por la continuidad del mapeo.
+Sin embargo, existe otro hecho importante para la demostración del teorema que causa la segunda contención: que la imagen del intevalo $I_1$ sea separada en dos intervalos disjuntos es resultado directo de la existencia del mínimo de la función cuyo valor es mayor en valor absoluto que $\gamma$.
