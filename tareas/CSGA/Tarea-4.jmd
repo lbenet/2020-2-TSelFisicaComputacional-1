@@ -575,6 +575,186 @@ Podemos concluir que este conjunto es de tipo Cantor. (La construcción clásica
 
 - Usando el análisis gráfico para un valor de $c$ *ligeramente* anterior al punto donde se observa la ventana de periodo 3 para la familia $Q_c(x)$, y uno en la ventana de periodo 3, concluyan el tipo de bifurcación que se observa.
 
+Para poder realizar el análisis gráfico para el valores en torno de $c$ en el que se da la bifurcación, necesitamos localizar el parámetro en la que esta se da.
+
+Una forma de darnos una idea del valor es haciendo un análisis sobre la distribución de los ceros de las funciones $F^{n}_c(x) = Q^{n}_c(x) - x$, que definen los puntos de periodo $n$.
+Para ello, graficamos los contornos de los dominios cuyo valor bajo $F^{n}_c(x)$ generan valores positivos y negativos.
+Por continuidad, sabemos que los valores que definen las fronteras entre los contornos son raíces de las funciones $F^{n}_c(x)$ adecuadas.
+En particular, las bifurcaciones ocurren cuando aparecen nuevas "cuñas" en el diagrama correspondiente, lo que se traduce en el aumento (o disminución) en el número de raíces de $F_c^n(x)$.
+
+Definamos la malla en la que realizaremos el muestreo:
+
+```julia
+cs = -2.5:0.01:0.5
+xs = -5.0:0.01:5.0
+```
+
+Así como la función que define los puntos periódicos:
+
+```julia
+F(c, n) = x -> iterar(Q(c), n, x) - x
+```
+
+Usando esto, podemos reconstruir algo similar al "envoltorio" del diagrama de bifurcación para algunos periodos:
+
+```julia
+plt.figure(figsize=(20, 4))
+for n in 1:5
+
+    ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+    plt.subplot(150 + n)
+    plt.title("\$ n = $n\$")
+    plt.xlabel("c")
+    plt.ylabel("x")
+    plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+end
+```
+
+Observemos que no necesariamente los puntos fijos que aparecen en el diagrama $n$-ésimo tienen periodo mínimo $n$.
+Destaca, por ejemplo, el fondo inducido por los puntos fijos.
+
+
+
+En principio, podemos encontrar numéricamente el valor de las raíces de $F^{n}(x)$ usando el método de Newton con un conjunto de condiciones iniciales.
+Sin embargo, si deseamos estudiar la bifurcación por el cambio en el número de raíces que encontramos al variar el parámetro, necesitamos una función que filtre valores aproximadamente iguales, para compensar por diferencias "pequeñas".
+
+Esto lo podemos realizar con una función como la siguiente:
+
+```julia
+"""
+    lista_puntos_periodo(f::Function, n::T, x0s; número_iteraciones_Newton::T = 1000, atol = 0) where {T <: Integer}
+
+Función que dado un mapeo \$f\$, un número de iteraciones \$n\$ y un conjunto de condiciones iniciales `x0s`, utiliza la función `puntos_periodo` con `número_iteraciones_Newton` iteraciones usadas en el método de Newton.
+Posteriormente, elimina `NaN`s y ordena los resultados.
+Para dar una lista "única", se filtran los valores resultantes usando la función `isapprox` con tolerancia absoluta `atol`.
+Adicionalmente, se revisa que los puntos obtenidos en efecto sean periódicos de periodo \$n\$.
+"""
+function lista_puntos_periodo(f::Function, n::T, x0s; número_iteraciones_Newton::T = 1000, atol = 0) where {T <: Integer}
+
+    ys = puntos_periodo(f, n, x0s, número_iteraciones_Newton)
+    
+    filter!(x -> !isnan(x), ys)
+    sort!(ys)
+
+    longitud = length(ys)
+    indicador = zeros(Bool, longitud)
+
+    puntos = eltype(ys)[]
+
+    while indicador != ones(Bool, longitud)
+    
+        siguiente_índice = findfirst(iszero, indicador)
+        valor_siguiente = ys[siguiente_índice]
+    
+        push!(puntos, valor_siguiente)
+    
+        indicador = [indicador[i] == true ? true : isapprox(valor_siguiente, ys[i], atol = atol) for i in 1:longitud]
+    end
+    
+    filter!(x -> isapprox(x, iterar(f, n, x), atol = atol), puntos)    
+    
+    return puntos
+end
+```
+
+Podemos confirmar que en efecto encontramos los puntos periódicos comparando con los diagramas anteriores:
+
+```julia
+n = 1
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+El valor del parámetro $c$ en el que aparentemente se da la bifurcación para los puntos fijos es:
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+```julia
+n = 2
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+```julia
+n = 3
+
+puntos = [lista_puntos_periodo(Q(c), n, xs, atol = 1e-5) for c in cs]
+longitud_puntos = length.(puntos)
+puntos_cat = vcat(puntos...)
+
+ys = [F(c, n)(x) > 0 ? 1 : -1 for x in xs, c in cs]
+
+plt.title("\$ n = $n\$")
+plt.xlabel("c")
+plt.ylabel("x")
+plt.contourf(cs, xs, ys, cmap = plt.cm.binary)
+
+cs_puntos = vcat([fill(cs[i], longitud_puntos[i]) for i in eachindex(puntos)]...)
+
+plt.plot(cs_puntos, puntos_cat, marker = ".", ms = 1, linestyle = "", color = "red")
+```
+
+```julia
+for i in 1:(length(longitud_puntos) - 1)
+
+    if longitud_puntos[i] != longitud_puntos[i + 1]
+        
+        @show i
+        @show cs[i]
+    end
+end
+```
+
+Conocemos que la bifurcación para los puntos fijos se da en $c = 0.25$, así como la primera bifurcación de doblamiento de periodo se da en $c = -0.75$.
+
+Usando este método, al parecer la bifurcación en la que aparecen puntos de periodo 3 se da en torno a $c \approx -1.75$.
 - Comparen la dinámica para ambos valores de $c$ del inciso anterior. ¿Cómo es el exponente de Lyapunov en cada caso?
 
 - Encuentren el valor de $c$ donde se da el ciclo superestable de periodo 3. (Nuevamente, usen el método de Newton con una buena semilla inicial para $c$.) Demuestren que para este valor de $c$ el mapeo $Q_c^3(x)$ tiene *ocho* puntos fijos, donde dos de ellos son puntos fijos de $Q_c(x)$, y los otros 6 forman dos secuencias periódicas, de periodo 3 en $Q_c(x)$, una de ellas estable y la otra inestable.
