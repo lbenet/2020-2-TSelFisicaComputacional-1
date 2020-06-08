@@ -14,8 +14,8 @@ Las ecuaciones (diferenciales) que definen al modelo son:
 
 \begin{eqnarray}
 \frac{\textrm{d}S}{\textrm{d}t} & = & - \frac{\beta I S}{N},          & \quad S(0) \ge 0,\\
-\frac{\textrm{d}I}{\textrm{d}t} & = & \frac{\beta I S}{N} - \gamma R, & \quad I(0) \ge 0,\\
-\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma R,                       & \quad R(0) \ge 0.\\
+\frac{\textrm{d}I}{\textrm{d}t} & = & \frac{\beta I S}{N} - \gamma I, & \quad I(0) \ge 0,\\
+\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma I,                       & \quad R(0) \ge 0.\\
 \end{eqnarray}
 
 En estas ecuaciones, la constante $N$ está dada por $N=S(0)+I(0)+R(0)$, y es claro que corresponde a una constante para todo tiempo, ya que $\dot{S}+\dot{I}+\dot{R} = 0$. 
@@ -30,8 +30,8 @@ De manera similar, el modelo SEIR (que incluye a los Expuestos) está dado por:
 \begin{eqnarray}
 \frac{\textrm{d}S}{\textrm{d}t} & = & - \frac{\beta I S}{N},           & \quad S(0) \ge 0,\\
 \frac{\textrm{d}E}{\textrm{d}t} & = & \frac{\beta I S}{N}  - \sigma E ,& \quad E(0) \ge 0,\\
-\frac{\textrm{d}I}{\textrm{d}t} & = & \sigma E - \gamma R,             & \quad I(0) \ge 0,\\
-\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma R,                        & \quad R(0) \ge 0.\\
+\frac{\textrm{d}I}{\textrm{d}t} & = & \sigma E - \gamma I,             & \quad I(0) \ge 0,\\
+\frac{\textrm{d}R}{\textrm{d}t} & = & \gamma I,                        & \quad R(0) \ge 0.\\
 \end{eqnarray}
 
 En este caso, $N=S(0)+E(0)+I(0)+R(0)$.
@@ -44,8 +44,8 @@ La versión continua de estos modelos ha sido ampliamente estudianda. La idea es
 
 \begin{eqnarray}
 S(t+1) & = & S(t) - \frac{\beta I(t) S(t)}{N},               & \quad S(0) \ge 0,\\
-I(t+1) & = & I(t) + \frac{\beta I(t) S(t)}{N} - \gamma R(t), & \quad I(0) \ge 0,\\
-R(t+1) & = & R(t) + \gamma R(t),                             & \quad R(0) \ge 0.\\
+I(t+1) & = & I(t) + \frac{\beta I(t) S(t)}{N} - \gamma I(t), & \quad I(0) \ge 0,\\
+R(t+1) & = & R(t) + \gamma I(t),                             & \quad R(0) \ge 0.\\
 \end{eqnarray}
 
 - SEIR
@@ -53,8 +53,8 @@ R(t+1) & = & R(t) + \gamma R(t),                             & \quad R(0) \ge 0.
 \begin{eqnarray}
 S(t+1) & = & S(t) - \frac{\beta I(t) S(t)}{N},                & \quad S(0) \ge 0,\\
 E(t+1) & = & E(t) + \frac{\beta I(t) S(t)}{N}  - \sigma E(t), & \quad E(0) \ge 0,\\
-I(t+1) & = & I(t) + \sigma E(t) - \gamma R(t),                & \quad I(0) \ge 0,\\
-R(t+1) & = & R(t) + \gamma R(t),                              & \quad R(0) \ge 0.\\
+I(t+1) & = & I(t) + \sigma E(t) - \gamma I(t),                & \quad I(0) \ge 0,\\
+R(t+1) & = & R(t) + \gamma I(t),                              & \quad R(0) \ge 0.\\
 \end{eqnarray}
 
 
