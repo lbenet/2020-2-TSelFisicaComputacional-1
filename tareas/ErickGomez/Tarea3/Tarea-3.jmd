@@ -1,0 +1,918 @@
+
+## TEMAS SELECTOS DE FÍSICA COMPUTACIONAL I.
+### SEMESTRE 2020-2.
+
+#### Por: Cassab Balbuena Samantha Escarlet/Gómez Hernández Erick Alexis
+
+
+# Tarea 3
+
+> Envío inicial del PR: **22 de abril**.
+>
+> Aceptación PR *final*: **30 de abril**.
+
+
+## Ejercicio 1
+
+Llamemos $c_n$ al valor del parámetro $c$ donde ocurre la bifurcación de doblamiento de periodo para el mapeo $Q_c(x)=x^2+c$, es decir, donde la órbita de periodo $2^n$ nace. Como hemos visto, tenemos que $c_0=1/4$ marca la aparición del atractor de periodo $2^0=1$, $c_1=-1/4$ corresponde a la aparición del atractor de periodo $2^1=2$ y $c_2=-3/4$ a la aparición del atractor de periodo $2^2=4$.
+
+Calculen los valores de $c_r$ (al menos hasta $c_6$). Con estos valores, definimos la secuencia: $\{f_0, f_1, f_2, \dots\}$, donde
+
+\begin{equation}
+f_n = \frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} .
+\end{equation}
+
+La pregunta es, ¿a qué valor converge esta secuencia?, es decir, dar una estimación de $f_\infty$.
+
+
+*Hint:* Para realizar este ejercicio deben calcular el atractor para varios valores de $c$, de tal manera que puedan aislar las órbitas de periodo $2^p$ y de ahí determinar varios valores $c_n$. Se requerir suficiente cuidado para obtener una buena aproximación de $c_n$.
+Una opción se basa en recordar/usar que las bifurcaciones de doblamiento de periodo ocurren cuando los puntos de la órbita de periodo $p$ se tornan en repulsores, es decir, $(Q_c^p)'(x)=-1$. Esta opción, entonces, involucra obtener los valores $c_n$ a partir de órbitas periódicas de periodo $2^n$ usando los polinomios $Q_c^{2^p}(x)$ y diferenciación automática.
+
+```julia
+using Plots
+gr(grid = false)
+```
+
+```julia
+include("NumDual.jl")
+```
+
+```julia
+using Main.NumDual
+```
+
+Para abordar este problema decidímos recurrir al análisis gráfico. Para acortar tiempo de cómputo prefirmos introducir un intervalo $C = [c_i,c_f]$ que definímos con base en lo que observamos en la gráfica. 
+
+Para hallar la mejor aproximación de $c_n$ se evaluaron diversas $c \in C$ hasta por una tolerancia $\epsilon$ igual a la $\delta$-ésima parte de la longitud $\ell_C$ de C.
+
+$C$ se eligió de tal manera que la bifurcación estuviera dentro, era importante acotar en dónde tomábamos $c$, ya que, con la condición de $(Q^p_c)\prime(x) = -1$, encontramos productos que no correspondían al periodo $p$ (si no a la bifurcación siguiente $2p$) pero que cumplían dicha condición. 
+
+Para disminuir el tiempo de cómputo no se evaluó todo $C$ con espaciado  $\epsilon$, sino que inicialmente se tomó un espaciado de $\Delta = \frac{\ell_C}{10}$, de los puntos que surgen de esta partición se eligió una primera aproxmación $c_{n_1}$ de $c_n$ al punto que más se acercara a cumplir la condición $(Q^p_c)\prime(x) = -1$. Hecho esto, se redefinían $c_i$ y $c_f$ para tener $C = [c_{n_1} - 3\Delta, c_{n_1} + 3\Delta]$ y se repetía el proceso de definir $\Delta = \frac{\ell_C}{10}$ hasta que el espaciado $\Delta$ fuera igual o menor a la tolerancia dada.
+
+Tener control sobre $\Delta$ disminuyó el tiempo de cómputo, aunque tuvimos que experimentar un poco para encontrar la adecuada.
+
+```julia
+"""
+iterar0(F::Function, x0, nit::Int, n::Int) \n
+
+Evalua `f`  `nit` veces y devuelve la sucesión de iterados.
+"""
+function iterar0(F::Function, x0, n_it::Int)
+    
+    X = [x0]
+    
+    for i = 1:n_it
+        x0 = F(x0)
+        push!(X,x0)   
+    end
+    
+    return X
+    
+end
+```
+
+```julia
+"""
+iterar(F::Function, x0, nit::Int, n::Int) \n
+
+Evalua `f`  `nit` veces y devuelve los ultimos `p` iterados.
+"""
+function iterar(F::Function, x0, n_it::Int, p::Int)
+    
+    X= [x0]
+    
+    for i = 1:n_it
+        x0 = F(x0)
+        push!(X,x0)   
+    end
+    
+    return [X[end-i] for i=0:p-1]        
+    
+end
+```
+
+```julia
+"""
+deriv_P(F::Function, P::Int, Xr)
+
+Calcula la derivada `(d/dx)[Q^p(x)]` en términos de los `p` últimos elementos de `Xr`, 
+esto al ser `Xr` el conjunto de puntos fijos de `Q^p(x)`.
+"""
+function deriv_p(F::Function, p::Int, Xr)
+    
+    # Xr es un vector de puntos de periodo p
+    der = F(var_dual(Xr[end])).y 
+    
+    for i in 1:(p-1)
+        der = der*F(var_dual(Xr[end - i])).y
+    end
+    
+    return der # derivada de (F^p)(x) en x0 (que es un punto de periodo p).
+    
+end
+```
+
+```julia
+"""
+`diag_bifurc(F::Function, C, n_it::Int, m_end::Int)` \n
+
+Dibuja el diagrama de bifurcación sobre el conjunto de parámetros `C`,  (el cual
+es un rango o vector) a partir de iterar `n_it` veces la función `F`. De las 
+`n_it` iteracciones sólo se pintan las últimas `m_end`.
+"""
+
+function diag_bifurc(F::Function, C, n_it::Int, m_end::Int, x0)
+    
+    #x0 = x
+    
+    p = plot(label = "", xlabel = "c")
+    
+    for c in C
+        
+        # iterando n_it veces, cond. inicial x0.
+        iter = iterar0(x -> F(x, c), x0, n_it)
+        
+        # guardando los m_end últimos elementos de iter.
+        # X = [c]
+        Y = [iter[end]]
+
+        for i = 1:(m_end-1)
+          #  push!(X, c)
+            push!(Y, iter[end-i])      
+        end
+        
+        X = c*ones(length(Y))
+
+        scatter!(X, Y, label = "", 
+            ms = 1.5, mc = :red3, marker = stroke(0, 0, :black, :dot))
+
+    end
+        
+    return p
+    
+end
+```
+
+```julia
+"""
+Función que calcula las `c_n` para una funcion `Q_c` que se itera `nit` veces, con condición 
+inicial `x0`. `p` es el periodo, `[ci,cf]` es el intervalo en el que se encuentra la 
+`c` deseada, y `δ` es la tolerancia en el eje `c`. `ci < cf`.
+"""
+function C_n(Qc::Function, n_it::Int, x0, p::Int, ci, cf, δ)
+    
+        Δ = (cf - ci)/10 # paso en el eje c.
+        c_min = 0.0
+        min_deriv = 0.0
+    while Δ > δ
+        
+        Δ = Δ/10
+        C = ci:Δ:cf
+        verif_deriv = Float64[]
+        
+        for c in C
+            xr  = iterar(x -> Qc(x, c), x0, n_it, p)
+            der = deriv_p(x -> Qc(x, c), p, xr)
+
+            push!(verif_deriv, abs(abs(der) - 1.0))
+        end
+
+        min_deriv = minimum(verif_deriv)
+
+        j = 1
+
+        while verif_deriv[j] != min_deriv
+            j += 1
+        end
+
+        c_min = C[j]
+        ci = C[j] - 3*Δ
+        cf = C[j] + 3*Δ
+        
+    end
+    
+    return  c_min, min_deriv, Δ
+    
+end
+```
+
+```julia
+# Función para calcular la sucesión f_n.
+ratio(N, N_1, N_2) = (N - N_1)/(N_1 - N_2) # f_n -> N, f_{n+1} -> N_1, f_{n+2} -> N_2
+```
+
+### Mapeo $Q_c(x) = x^2 + c$
+
+```julia
+Qc(x, c) = x^2 + c
+```
+
+```julia
+# Qc se evaluó n_it veces desde la condición inicial x0 = 0.
+n_it = 3000000
+x0 = 0.0
+δ = 1e-10 # tolerancia en el espaciado de c.
+```
+
+```julia
+# Valor obtenido analíticamente
+C_1 = -0.75
+```
+
+### * Periodo $2^2 = 4$: $c_2$.
+
+```julia
+# CÁLCULO DE c_2
+p_2  = 4       # periodo
+ci_2 =-1.258   # c inicial
+cf_2 = -1.242  # c final
+C_2  = C_n(Qc, n_it, x0, p_2, ci_2, cf_2, δ)[1] # la primera entrada corresponde a la
+                                                # mejor aproximación de c_n
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n. 
+# Parámetros para diag_bifurc
+n_it_2  = 2000            # número de iteraciones
+m_end_2 = 200             # se guarda los m_end últimos de las n_it iteraciones
+Δ_2     = 1e-3            # paso en el eje c
+C2      = -1.45 :Δ_2: -1.15 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit_2  = "Periodo: 2^2 = 4"
+vert_2 = [ci_2, cf_2, C_2]; # = [ci, cf, c_n]
+limx_2 = (C2[1], C2[end])
+limy_2 = (-0.5, 0.7)
+rad_2  = 0.15
+
+# Gráfica
+diag_bifurc(Qc, C2, n_it_2, m_end_2, x0)
+plot!(title = tit_2, xlims = limx_2, ylims = limy_2, aspectratio = rad_2)
+vline!(vert_2, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_4.png")
+HTML(""" <img src = "Q_bif_4.png"> """)
+```
+
+### * Periodo $2^3 = 8$: $c_3$.
+
+```julia
+# CÁLCULO DE c_3.
+p_3  = 8
+ci_3 = -1.375
+cf_3 = -1.36
+C_3  = C_n(Qc, n_it, x0, p_3, ci_3, cf_3, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n
+n_it_3  = 2000              # número de iteraciones
+m_end_3 = 200               # se guarda los m_end últimos de las n_it iteraciones
+Δ_3     = 4e-4              # paso en el eje c
+C3      = -1.42 :Δ_3: -1.33 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit_3  = "Periodo: 2^3 = 8"
+vert_3 = [ci_3, cf_3, C_3] # = [ci, c_f, c_n];
+limx_3 = (C3[1], C3[end])
+limy_3 = (-0.3, 0.65)
+rad_3  = 0.1;
+
+# Gráfica
+diag_bifurc(Qc, C3, n_it_3, m_end_3, x0)
+plot!(title = tit_3, xlims = limx_3, ylims = limy_3, aspectratio = rad_3)
+vline!(vert_3, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardad y mostrar imagen
+savefig("Q_bif_8.png")
+HTML(""" <img src = "Q_bif_8.png"> """)
+```
+
+### * Periodo $2^4 = 16$: $c_4$.
+
+```julia
+# CÁLCULO DE c_4.
+p_4  = 16
+ci_4 = -1.396
+cf_4 = -1.391
+C_4  = C_n(Qc, n_it, x0, p_4, ci_4, cf_4, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_4  = 2000              # número de iteraciones
+m_end_4 = 200               # se guarda los m_end últimos de las n_it iteraciones
+Δ_4     = 1e-4              # paso en el eje c
+C4      = -1.42 :Δ_4: -1.36 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit_4  = "Periodo: 2^4 = 16"
+vert_4 = [ci_4, cf_4, C_4] # = [ci, c_f, c_n]
+limx_4 = (-1.42, -1.36)
+limy_4 = (-0.4, 0.7)
+rad_4  = 5e-2;
+
+# Gráfica
+diag_bifurc(Qc, C4, n_it_4, m_end_4, x0)
+plot!(title = tit_4, xlims = limx_4, ylims = limy_4, aspectratio = rad_4)
+vline!(vert_4, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_16.png")
+HTML(""" <img src = "Q_bif_16.png"> """)
+```
+
+### * Periodo $2^5 = 32$: $c_5$.
+
+```julia
+# CÁLCULO DE c_5,
+p_5  = 32
+ci_5 = -1.4
+cf_5 = -1.399
+C_5  = C_n(Qc, n_it, x0, p_5, ci_5, cf_5, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_5  = 2000                 # número de iteraciones
+m_end_5 = 200                  # se guarda los m_end últimos de las n_it iteraciones
+Δ_5     = 1e-5                 # paso en el eje c
+C5      = -1.403 :Δ_5: -1.3935 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit_5  = "Periodo: 2^5 = 32"
+vert_5 = [ci_5, cf_5, C_5] # = [ci, c_f, c_n]
+limx_5 = (-1.403, -1.3935)
+limy_5 = (-0.07, 0.11)
+rad_5  = 5e-2;
+
+# Gráfica
+diag_bifurc(Qc, C5, n_it_5, m_end_5, x0)
+plot!(title = tit_5, xlims = limx_5, ylims = limy_5, aspectratio = rad_5)
+vline!(vert_5, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_32.png")
+HTML(""" <img src = "Q_bif_32.png"> """)
+```
+
+### * Periodo $2^6 = 64$: $c_6$.
+
+```julia
+# CÁLCULO DE c_6.
+p_6  = 64
+ci_6 = -1.4009
+cf_6 = -1.40078
+C_6  = C_n(Qc, n_it, x0, p_6, ci_6, cf_6, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_6  = 8000                  # número de iteraciones
+m_end_6 = 300                   # se guarda los m_end últimos de las n_it iteraciones
+Δ_6     = 5e-7                  # paso en el eje c
+C6      = -1.4013 :Δ_6: -1.4006 # rango de parámetros c ∈ C testeados
+
+# Parámetros adicionales para una mejor visualización
+tit_6  = "Periodo: 2^6 = 64"
+limx_6 = (C6[1], C6[end])
+limy_6 = (-0.015, 0.02)
+vert_6 = [ci_6, cf_6, C_6] # = [ci, c_f, c_f]
+rad_6  = 0.015;
+
+# Gráfica
+diag_bifurc(Qc, C6, n_it_6, m_end_6, x0)
+plot!(title = tit_6, xlims = limx_6, ylims = limy_6, aspectratio = rad_6)
+vline!(vert_6, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_64.png")
+HTML(""" <img src = "Q_bif_64.png"> """)
+```
+
+### * Periodo $2^7 = 128$: $c_7$.
+
+```julia
+# CÁLCULO DE c_7.
+p_7  = 128
+ci_7 = -1.4011
+cf_7 = -1.401065
+C_7  = C_n(Qc, n_it, x0, p_7, ci_7, cf_7, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_7  = 8000
+m_end_7 = 300
+Δ_7     = 3e-7
+C7      = -1.4013 :Δ_7: -1.401  
+
+# Parámetros adicionales para una mejor visualización
+tit_7  = "2^7 = 128"
+limx_7 = (-1.4013,-1.4008)
+limy_7 = (-0.015, 0.02)
+vert_7 = [ci_7, cf_7, C_7]
+rad_7  = 0.01
+
+# Gráfica
+diag_bifurc(Qc, C7, n_it_7, m_end_7, x0)
+plot!(title = tit_7, xlims = limx_7, ylims = limy_7, aspectratio = rad_7)
+vline!(vert_7, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_128.png")
+HTML(""" <img src = "Q_bif_128.png"> """)
+```
+
+### * Periodo $2^8 = 256$: $c_8$.
+
+```julia
+# CÁLCULO DE c_8
+p_8  = 256
+ci_8 = -1.401145
+cf_8 = -1.401135
+C_8  =  C_n(Qc, n_it, x0, p_8, ci_8, cf_8, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_8  = 10000
+m_end_8 = 800
+Δ_8     = 8e-8
+C8      = -1.4012 :Δ_8: -1.4011  
+
+# Parámetros adicionales para una mejor visualización
+tit_8  = "2^8 = 256"
+limx_8 = (C8[1], C8[end])
+limy_8 = (-0.008, 0.007)
+vert_8 = [ci_8, cf_8, C_8]
+rad_8  = 0.005;
+
+# Gráfica
+diag_bifurc(Qc, C8, n_it_8, m_end_8, x0)
+plot!(title = tit_8, xlims = limx_8, ylims = limy_8, aspectratio = rad_8)
+vline!(vert_8, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_256.png")
+HTML(""" <img src = "Q_bif_256.png"> """)
+```
+
+### * Periodo $2^9 = 512$: $c_9$.
+
+```julia
+# CÁLCULO DE c_9
+p_9  = 512
+ci_9 = -1.401153
+cf_9 = -1.401151
+C_9  = C_n(Qc, n_it, x0, p_9, ci_9, cf_9, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_9  = 20000
+m_end_9 = 2000
+Δ_9     = 3e-8
+C9      = -1.401165 :Δ_9: -1.401145  
+
+# Parámetros adicionales para una mejor visualización
+tit_9  = "2^9 = 512"
+limx_9 = (C9[1], C9[end])
+limy_9 = (-0.003, 0.0033)
+vert_9 = [ci_9, cf_9, C_9]
+rad_9  = 0.003;
+
+# Gráfica 
+diag_bifurc(Qc, C9, n_it_9, m_end_9, x0)
+plot!(title = tit_9, xlims = limx_9, ylims = limy_9, aspectratio = rad_9)
+vline!(vert_9, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_512.png")
+HTML(""" <img src = "Q_bif_512.png"> """)
+```
+
+### * Periodo $2^{10} = 1024$: $c_{10}$.
+
+```julia
+# CÁLCULO DE c_10
+p_10  = 1024
+ci_10 = -1.40115475
+cf_10 = -1.40115425
+C_10  = C_n(Qc, n_it, x0, p_10, ci_10, cf_10, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_10  = 30000
+m_end_10 = 3000
+Δ_10     = 4e-9
+C10      = -1.401158 :Δ_10: -1.401151  
+
+# Parámetros adicionales para una mejor visualización
+tit_10  = "2^10 = 1024"
+limx_10 = (C10[1], C10[end])
+limy_10 = (-0.0015, 0.00143)
+vert_10 = [ci_10, cf_10, C_10]
+rad_10  = 0.002;
+
+# Gráfica
+diag_bifurc(Qc, C10, n_it_10, m_end_10, x0)
+plot!(title = tit_10, xlims = limx_10, ylims = limy_10, aspectratio = rad_10)
+vline!(vert_10, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_1024.png")
+HTML(""" <img src = "Q_bif_1024.png"> """)
+```
+
+### * Periodo $2^{11} = 2048$: $c_{11}$.
+
+```julia
+# CÁLCULO DE c_11
+p_11  = 2048
+ci_11 = -1.4011551
+cf_11 = -1.401155
+C_11  = C_n(Qc, n_it, x0, p_11, ci_11, cf_11, δ)[1]
+```
+
+```julia
+# DIAGRAMA DE BIFURCACIONES. Se muestran ci, cf y c_n.
+# Parámetros para diag_bifurc
+n_it_11  = 80000
+m_end_11 = 8000
+Δ_11     = 7e-10
+C11     = -1.4011554 :Δ_11: -1.4011548
+
+# Parámetros adicionales para una mejor visualización
+tit_11  = "2^11 = 2048"
+limx_11 = (C11[1], C11[end])
+limy_11 = (-0.00027, 0.00044)
+vert_11 = [ci_11, cf_11, C_11]
+rad_11  = 0.0005;
+
+# Gráfica para estimar c_7
+diag_bifurc(Qc, C11, n_it_11, m_end_11, x0)
+plot!(title = tit_11, xlims = limx_11, ylims = limy_11, aspectratio = rad_11)
+vline!(vert_11, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("Q_bif_2048.png")
+HTML(""" <img src = "Q_bif_2048.png"> """)
+```
+
+```julia
+# CÁLCULO DE f_n
+R_Q = [
+    ratio(C_1, C_2, C_3),  # f_1
+    ratio(C_2, C_3, C_4),  # f_2
+    ratio(C_3, C_4, C_5),  # f_3
+    ratio(C_4, C_5, C_6),  # f_4
+    ratio(C_5, C_6, C_7),  # f_5
+    ratio(C_6, C_7, C_8),  # f_6
+    ratio(C_7, C_8, C_9),  # f_7
+    ratio(C_8, C_9, C_10), # f_8
+    ratio(C_9, C_10, C_11) # f_9
+]
+```
+
+```julia
+hline(R_Q, ylims = (4.2,4.7), xlims = (0,length(R_Q)+1), xlabel = "n", ylabel = "f_n",
+    title = "Convergencia de f_n. Mapeo Q_c.", label = "")
+plot!(1:length(R_Q), R_Q, m = :circle, ms = 5, label = "")
+```
+
+Con las aproximaciones anteriores, se puede intuir que 
+\begin{equation}
+\lim_{n\to \infty}\frac{c_n-c_{n+1}}{c_{n+1}-c_{n+2}} \approx 4.669167
+\end{equation}
+
+## Ejercicio 2
+
+Repitan el ejercicio anterior para el mapeo $S_c(x) = c \sin(x)$.
+
+- ¿Cómo se comparan los valores obtenidos de $f_n$?
+
+- ¿Qué interpretación le pueden dar a este resultado, en comparación del ejercicio anterior?
+
+### Mapeo $S_c(x) = c\,\sin(x)$
+
+```julia
+Sc(x, c) = c*sin(x)
+```
+
+```julia
+# Se iteró S_c n_it veces tomando como condición inicial x0 = 1.0.
+n_it = 1000000
+x0 = 1.0
+δ = 1e-8 # tolerancia
+```
+
+### * Periodo $2^1 = 2$: $c_1$.
+
+```julia
+p_1 = 2
+ci_1, cf_1 = 2.23, 2.28
+c_1 = C_n(Sc, n_it, x0, p_1, ci_1, cf_1, δ)[1]
+```
+
+```julia
+# Diagrama
+
+# parámetros para diag_bifurc
+n_it_1 = 2000
+m_end_1 = 200
+Δ_1 = 5e-4
+C1 = 2.0 :Δ_1: 2.5
+
+# Parámetros adicionales para una mejor visualización
+tit_1 = "2^1 = 2"
+limx_1 = (2.0, 2.5)
+limy_1 = (1.5, 2.5)
+vert_1 = [ci_1, cf_1, c_1]
+rad_1 = 0.4;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C1, n_it_1, m_end_1, x0)
+plot!(title = tit_1, xlims = limx_1, ylims = limy_1, aspectratio = rad_1)
+vline!(vert_1, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_2.png")
+HTML(""" <img src = "S_bif_2.png"> """)
+```
+
+### * Periodo $2^2 = 4$: $c_2$.
+
+```julia
+p_2  = 4
+ci_2 = 2.60
+cf_2 = 2.63
+c_2  = C_n(Sc, n_it, x0, p_2, ci_2, cf_2, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_2  = 2000
+m_end_2 = 200
+Δ_2     = 1e-3
+C2      = 2.55 :Δ_2: 2.8
+
+# Parámetros adicionales para una mejor visualización
+tit_2  = "2^2 = 4"
+limx_2 = (C2[1], C2[end])
+limy_2 = (0.8, 2.8)
+vert_2 = [ci_2, cf_2, c_2]
+rad_2  = 0.1;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C2, n_it_2, m_end_2, x0)
+plot!(title = tit_2, xlims = limx_2, ylims = limy_2, aspectratio = rad_2)
+vline!(vert_2, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_4.png")
+HTML(""" <img src = "S_bif_4.png"> """)
+```
+
+### * Periodo $2^3 = 8$: $c_3$.
+
+```julia
+p_3  = 8
+ci_3 = 2.695
+cf_3 = 2.70
+c_3  = C_n(Sc, n_it, x0, p_3, ci_3, cf_3, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_3  = 2000
+m_end_3 = 200
+Δ_3     = 1e-4
+C3      = 2.68 :Δ_3: 2.73
+
+# Parámetros adicionales para una mejor visualización
+tit_3  = "2^3 = 8"
+limx_3 = (C3[1], C3[end])
+limy_3 = (1.05, 1.8)
+vert_3 = [ci_3, cf_3, c_3]
+rad_3  = 0.05;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C3, n_it_3, m_end_3, x0)
+plot!(title = tit_3, xlims = limx_3, ylims = limy_3, aspectratio = rad_3)
+vline!(vert_3, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_8.png")
+HTML(""" <img src = "S_bif_8.png"> """)
+```
+
+### * Periodo $2^4 = 16$: $c_4$.
+
+```julia
+p_4  = 16
+ci_4 = 2.714
+cf_4 = 2.715
+c_4  = C_n(Sc, n_it, x0, p_4, ci_4, cf_4, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_4  = 2000
+m_end_4 = 200
+Δ_4     = 1e-5
+C4      = 2.7125 :Δ_4: 2.72
+
+# Parámetros adicionales para una mejor visualización
+tit_4  = "2^4 = 16"
+limx_4 = (C4[1], C4[end])
+limy_4 = (1.48, 1.62)
+vert_4 = [ci_4, cf_4, c_4]
+rad_4  = 0.03;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C4, n_it_4, m_end_4, x0)
+plot!(title = tit_4, xlims = limx_4, ylims = limy_4, aspectratio = rad_4)
+vline!(vert_4, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_16.png")
+HTML(""" <img src = "S_bif_16.png"> """)
+```
+
+### * Periodo $2^5 = 32$: $c_5$.
+
+```julia
+p_5  = 32
+ci_5 = 2.7182
+cf_5 = 2.7184
+c_5  = C_n(Sc, n_it, x0, p_5, ci_5, cf_5, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_5  = 4000
+m_end_5 = 200
+Δ_5     = 1e-6
+C5      = 2.7175 :Δ_5: 2.7196
+
+# Parámetros adicionales para una mejor visualización
+tit_5  = "2^5 = 32"
+limx_5 = (C5[1], C5[end])
+limy_5 = (1.55, 1.61)
+vert_5 = [ci_5, cf_5, c_5]
+rad_5  = 0.02;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C5, n_it_5, m_end_5, x0)
+plot!(title = tit_5, xlims = limx_5, ylims = limy_5, aspectratio = rad_5)
+vline!(vert_5, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_32.png")
+HTML(""" <img src = "S_bif_32.png"> """)
+```
+
+### * Periodo $2^6= 64$: $c_6$.
+
+```julia
+p_6  = 64
+ci_6 = 2.71905
+cf_6 = 2.7191
+c_6  = C_n(Sc, n_it, x0, p_6, ci_6, cf_6, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_6  = 6000
+m_end_6 = 300
+Δ_6     = 2e-7
+C6      = 2.7189 :Δ_6: 2.7194
+
+# Parámetros adicionales para una mejor visualización
+tit_6  = "2^6 = 64"
+limx_6 = (C6[1], C6[end])
+limy_6 = (1.505, 1.517)
+vert_6 = [ci_6, cf_6, c_6]
+rad_6  = 0.025;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C6, n_it_6, m_end_6, x0)
+plot!(title = tit_6, xlims = limx_6, ylims = limy_6, aspectratio = rad_6)
+vline!(vert_6, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_64.png")
+HTML(""" <img src = "S_bif_64.png"> """)
+```
+
+### * Periodo $2^7= 128$: $c_7$.
+
+```julia
+p_7  = 128
+ci_7 = 2.71924
+cf_7 = 2.71926
+c_7  = C_n(Sc, n_it, x0, p_7, ci_7, cf_7, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_7  = 8000
+m_end_7 = 400
+Δ_7     = 8e-8
+C7      = 2.71920 :Δ_7: 2.71934
+
+# Parámetros adicionales para una mejor visualización
+tit_7  = "2^7 = 128"
+limx_7 = (C7[1], C7[end])
+limy_7 = (1.507, 1.517)
+vert_7 = [ci_7, cf_7, c_7]
+rad_7  = 0.01;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C7, n_it_7, m_end_7, x0)
+plot!(title = tit_7, xlims = limx_7, ylims = limy_7, aspectratio = rad_7)
+vline!(vert_7, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_128.png")
+HTML(""" <img src = "S_bif_128.png"> """)
+```
+
+### * Periodo $2^8= 256$: $c_8$.
+
+```julia
+p_8  = 256
+ci_8 = 2.719285
+cf_8 = 2.71929
+c_8  = C_n(Sc, n_it, x0, p_8, ci_8, cf_8, δ)[1]
+```
+
+```julia
+# Parámetros para diag_bifurc
+n_it_8  = 25000
+m_end_8 = 2000
+Δ_8     = 5e-8
+C8      = 2.71928 :Δ_8: 2.71931
+
+# Parámetros adicionales para una mejor visualización
+tit_8  = "2^8 = 256"
+limx_8 = (C8[1], C8[end])
+limy_8 = (1.5078, 1.5117)
+vert_8 = [ci_8, cf_8, c_8]
+rad_8  = 0.007;
+
+# Gráfica para estimar c_7
+diag_bifurc(Sc, C8, n_it_8, m_end_8, x0)
+plot!(title = tit_8, xlims = limx_8, ylims = limy_8, aspectratio = rad_8)
+vline!(vert_8, l = 1.5, lc = :blue3, ls = :dash, label = "")
+
+# Guardar y mostrar imagen
+savefig("S_bif_256.png")
+HTML(""" <img src = "S_bif_256.png"> """)
+```
+
+```julia
+# CÁLCULO DE f_n
+R_S = [
+    ratio(c_1, c_2, c_3), # f_1
+    ratio(c_2, c_3, c_4), # f_2
+    ratio(c_3, c_4, c_5), # f_3
+    ratio(c_4, c_5, c_6), # f_4
+    ratio(c_5, c_6, c_7), # f_5
+    ratio(c_6, c_7, c_8)  # f_6
+]
+```
+
+```julia
+hline(R_S,  xlims = (0, length(R_S) + 1), xlabel = "n", ylabel = "f_n",
+    title = "Convergencia de f_n. Mapeo S_C.", label = "")
+plot!(1:length(R_S), R_S, m = :circle, ms = 5, label = "")
+```
+
+En primera instancia la tendencia de la sucesión $f_n$ tanto para $Q_c$ como para $S_c" es la misma en hasta 4 cifras decimales, si comparamos los últimos resultados en ambos casos:
+
+- $ f_{end\_Q_c} = 4.669167 $ en el caso de $Q_c$.
+- $ f_{end\_S_c} = 4.669193 $ en el caso de $S_c$.
+ 
+ por lo que parecen converger a la misma constante.
+
+## Ejercicio 3
+
+Como se ve en la Fig. 1 del diagrama de bifurcaciones de $Q_c$, $x=0$ pertenece a un ciclo de periodo $2^n$ para ciertos valores $C_n$ del parámetro. Dichos valores son *especiales*, ya que el hecho de que $x=0$ pertenezca a un ciclo de periodo $2^n$ define los llamados *ciclos superestable*, donde tenemos $(Q^{2^p}_{C_n})'(0)=0$.
+
+- ¿A qué converge la secuencia $f_n$, definida ahora a partir de los valores $C_n$.
+
+- De los $2^p$ puntos del ciclo de periodo $2^p$, es decir, $\{0, p_1, \dots p_{2^{n-1}}\,\}$ hay uno (distinto del 0) cuya distancia a 0 es la menor; a esa distancia la identificaremos como $d_n$. Calcular numéricamente a qué converge la secuencia $d_n/d_{n+1}$.
+
+```julia
+```
